@@ -1,0 +1,434 @@
+// TIZZI GAS - Prisma Schema
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_POOLING_URL")
+}
+
+// Enums
+enum UserRole {
+  CUSTOMER
+  VENDOR
+  COURIER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+  VERIFIED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  COURIER_ASSIGNED
+  COURIER_PICKED_UP
+  COURIER_DELIVERED
+  COURIER_RETURNING
+  SUCCESSFUL
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOMO
+  WALLET
+}
+
+enum VehicleType {
+  MOTORCYCLE
+  CAR
+  VAN
+  TRUCK
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  PAYMENT_UPDATE
+  PROMOTIONAL
+  SYSTEM
+}
+
+enum SocialProvider {
+  GOOGLE
+  FACEBOOK
+  APPLE
+}
+
+enum RateableEntityType {
+  VENDOR
+  COURIER
+  ORDER
+}
+
+// Core Models
+model User {
+  id          String     @id @default(cuid())
+  email       String?    @unique // Optional, only for optional profile information
+  phone       String     @unique // Required - primary authentication method
+  password    String?    // Deprecated - kept for backward compatibility, not used
+  firstName   String?
+  lastName    String?
+  avatar      String?
+  role        UserRole   @default(CUSTOMER)
+  status      UserStatus @default(PENDING)
+  isVerified  Boolean    @default(false) // Set to true after phone OTP verification
+  deviceToken String?
+  lastLogin   DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  customer      Customer?
+  vendor        Vendor?
+  courier       Courier?
+  notifications Notification[]
+  payments      Payment[]
+  sessions      Session[]
+  accounts      Account[]
+  otps          OTP[]
+  socialLogins  SocialLogin[]
+
+  @@map("users")
+}
+
+model Customer {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  latitude  Float?
+  longitude Float?
+  address   String?
+  city      String?
+  region    String?
+  country   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@map("customers")
+}
+
+model Vendor {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  businessName String
+  description  String?
+  website      String?
+  phoneNumber  String[]
+  email        String?
+  latitude     Float
+  longitude    Float
+  address      String
+  city         String
+  region       String
+  country      String
+  pricePerKg   Float
+  currency     String    @default("GHS")
+  images       String[]
+  isActive     Boolean   @default(false)
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  reviews      Review[]       @relation("VendorReviews")
+  availability Availability[]
+
+  @@map("vendors")
+}
+
+model Courier {
+  id            String      @id @default(cuid())
+  userId        String      @unique
+  firstName     String
+  middleName    String?
+  lastName      String
+  phone1        String
+  phone2        String?
+  email         String?
+  country       String
+  address       String
+  city          String
+  region        String
+  town          String?
+  latitude      Float?
+  longitude     Float?
+  vehicleType   VehicleType
+  licensePlate  String
+  licenseNumber String
+  vehicleMake   String
+  vehicleModel  String
+  vehicleColor  String
+  images        String[]
+  rating        Float       @default(0)
+  totalRatings  Int         @default(0)
+  totalRides    Int         @default(0)
+  totalDistance Float       @default(0)
+  isActive      Boolean     @default(false)
+  isVerified    Boolean     @default(false)
+  isOnline      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders  Order[]
+  reviews Review[] @relation("CourierReviews")
+
+  @@map("couriers")
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  customerId    String
+  vendorId      String
+  courierId     String?
+  cylinderType  String
+  weight        Float
+  volume        String
+  amount        Float
+  deliveryFee   Float
+  serviceFee    Float
+  totalAmount   Float
+  status        OrderStatus   @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod PaymentMethod @default(CASH)
+  customerLat   Float
+  customerLng   Float
+  customerAddr  String
+  vendorLat     Float
+  vendorLng     Float
+  vendorAddr    String
+  notes         String?
+  estimatedTime Int? // in minutes
+  actualTime    Int? // in minutes
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  customer Customer        @relation(fields: [customerId], references: [id])
+  vendor   Vendor          @relation(fields: [vendorId], references: [id])
+  courier  Courier?        @relation(fields: [courierId], references: [id])
+  payments Payment[]
+  timeline OrderTimeline[]
+  reviews  Review[]        @relation("OrderReviews")
+
+  @@map("orders")
+}
+
+model OrderTimeline {
+  id          String   @id @default(cuid())
+  orderId     String
+  status      String
+  title       String
+  description String
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_timeline")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  userId          String
+  orderId         String
+  amount          Float
+  currency        String        @default("GHS")
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?
+  reference       String?
+  gatewayResponse Json?
+  failureReason   String?
+  processedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id])
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+// Unified Review model for polymorphic rating system
+// This model can be used to rate any entity type (Vendor, Courier, Order, etc.)
+model Review {
+  id         String             @id @default(cuid())
+  entityType RateableEntityType
+  entityId   String // ID of the entity being rated (vendorId, courierId, orderId, etc.)
+  userId     String // User who gave the rating
+  rating     Int                @db.SmallInt // Rating value (typically 1-5)
+  comment    String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  // Polymorphic relations - these are optional and only one should be populated based on entityType
+  // Note: Application logic should ensure entityId matches the correct relation
+  vendorId  String? // Optional: set when entityType is VENDOR
+  courierId String? // Optional: set when entityType is COURIER
+  orderId   String? // Optional: set when entityType is ORDER
+
+  vendor  Vendor?  @relation("VendorReviews", fields: [vendorId], references: [id], onDelete: Cascade)
+  courier Courier? @relation("CourierReviews", fields: [courierId], references: [id], onDelete: Cascade)
+  order   Order?   @relation("OrderReviews", fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Indexes for efficient queries
+  @@unique([entityType, entityId, userId]) // Ensure one rating per user per entity
+  @@index([entityType, entityId]) // Fast lookup of all reviews for an entity
+  @@index([userId]) // Fast lookup of all reviews by a user
+  @@index([vendorId]) // Fast lookup of vendor reviews
+  @@index([courierId]) // Fast lookup of courier reviews
+  @@index([orderId]) // Fast lookup of order reviews
+  @@map("reviews")
+}
+
+model Availability {
+  id        String  @id @default(cuid())
+  vendorId  String
+  dayOfWeek Int // 0 = Sunday, 1 = Monday, etc.
+  openTime  String // Format: "HH:MM"
+  closeTime String // Format: "HH:MM"
+  isOpen    Boolean @default(true)
+
+  // Relations
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, dayOfWeek])
+  @@map("availability")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// Authentication models for NextAuth
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model OTP {
+  id          String   @id @default(cuid())
+  phoneNumber String
+  otp         String
+  userId      String
+  isUsed      Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otps")
+}
+
+model SocialLogin {
+  id         String         @id @default(cuid())
+  userId     String
+  provider   SocialProvider
+  providerId String
+  email      String?
+  name       String?
+  avatar     String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@unique([userId, provider])
+  @@map("social_logins")
+}
+
+// System models
+model AppConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_config")
+}
