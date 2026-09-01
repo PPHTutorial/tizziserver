@@ -1,9 +1,7 @@
-import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@stall/db";
 import { auth as coreAuth, AppError } from "@stall/core";
-import { handle, ok } from "@/src/http/envelope";
-import { getContext } from "@/src/http/context";
+import { withApi } from "@/src/http/route";
 import { publicUser, tokenResponse } from "@/src/http/dto";
 
 const Device = z.object({
@@ -22,38 +20,57 @@ const Body = z
     purpose: z.enum(["LOGIN", "VERIFY_PHONE"]).default("LOGIN"),
     device: Device.optional(),
     activeRole: z.enum(["CUSTOMER", "VENDOR", "COURIER"]).optional(),
+    /** required once the user has confirmed 2FA */
+    totpCode: z.string().min(6).max(10).optional(),
   })
   .refine((b) => b.phone || b.email, { message: "phone or email is required" });
 
-export const POST = handle(async (req: NextRequest) => {
-  const ctx = await getContext(req);
-  const b = Body.parse(await req.json());
+export const POST = withApi(
+  {
+    body: Body,
+    rateLimit: { limit: 10, windowSec: 60, by: "ip" },
+    audit: (r) => {
+      const d = r.data as { user?: { id: string }; mfaRequired?: boolean };
+      return d.user ? { action: "auth.login", actorId: d.user.id, targetType: "user", targetId: d.user.id } : null;
+    },
+  },
+  async ({ body, ctx }) => {
+    const channel = body.phone ? "SMS" : "EMAIL";
+    const target = (body.phone ?? body.email)!;
+    await coreAuth.verifyOtp({ target, channel, purpose: body.purpose, code: body.code });
 
-  const channel = b.phone ? "SMS" : "EMAIL";
-  const target = (b.phone ?? b.email)!;
+    if (!body.phone) throw new AppError("VALIDATION", "Phone OTP is required to sign in");
 
-  await coreAuth.verifyOtp({ target, channel, purpose: b.purpose, code: b.code });
+    const user = await coreAuth.findOrCreateUserByPhone(body.phone);
 
-  // Phone is the identity anchor. Email-only login is not a first-class path yet.
-  if (!b.phone) throw new AppError("VALIDATION", "Phone OTP is required to sign in");
+    // 2FA gate
+    if (await coreAuth.hasTotp(user.id)) {
+      if (!body.totpCode) return { mfaRequired: true, methods: ["totp"] as const };
+      if (!(await coreAuth.verifyTotp(user.id, body.totpCode))) {
+        await prisma.loginActivity.create({
+          data: { userId: user.id, ip: ctx.ip, ua: ctx.userAgent, result: "FAILED", reason: "totp" },
+        });
+        throw new AppError("INVALID_OTP", "Incorrect 2FA code");
+      }
+    }
 
-  const user = await coreAuth.findOrCreateUserByPhone(b.phone);
-  await coreAuth.markPhoneVerified(user.id);
-  if (b.device) await coreAuth.registerDevice(user.id, b.device);
+    await coreAuth.markPhoneVerified(user.id);
+    if (body.device) await coreAuth.registerDevice(user.id, body.device);
 
-  const pair = await coreAuth.issueTokenPair({
-    userId: user.id,
-    platform: ctx.platform,
-    deviceId: b.device?.deviceId ?? ctx.deviceId,
-    userAgent: ctx.userAgent,
-    ip: ctx.ip,
-    activeRole: b.activeRole,
-  });
+    const pair = await coreAuth.issueTokenPair({
+      userId: user.id,
+      platform: ctx.platform,
+      deviceId: body.device?.deviceId ?? ctx.deviceId,
+      userAgent: ctx.userAgent,
+      ip: ctx.ip,
+      activeRole: body.activeRole,
+    });
 
-  await prisma.loginActivity.create({
-    data: { userId: user.id, deviceId: b.device?.deviceId, ip: ctx.ip, ua: ctx.userAgent, result: "SUCCESS" },
-  });
+    await prisma.loginActivity.create({
+      data: { userId: user.id, deviceId: body.device?.deviceId, ip: ctx.ip, ua: ctx.userAgent, result: "SUCCESS" },
+    });
 
-  const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-  return ok({ user: publicUser(fresh), ...tokenResponse(pair) });
-});
+    const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    return { user: publicUser(fresh), ...tokenResponse(pair) };
+  },
+);

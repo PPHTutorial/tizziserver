@@ -1,25 +1,19 @@
-import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { auth as coreAuth } from "@stall/core";
-import { handle, ok } from "@/src/http/envelope";
-import { getContext, requireAuth } from "@/src/http/context";
+import { withApi } from "@/src/http/route";
 
-export const GET = handle(async (req: NextRequest) => {
-  const ctx = await getContext(req);
-  const p = requireAuth(ctx);
-  return ok(await coreAuth.listSessions(p.userId, p.sessionId));
+export const GET = withApi({ auth: true }, async ({ ctx }) => {
+  const p = ctx.principal!;
+  return coreAuth.listSessions(p.userId, p.sessionId);
 });
 
-const DelBody = z.object({ sessionId: z.string().min(6) });
-
-export const DELETE = handle(async (req: NextRequest) => {
-  const ctx = await getContext(req);
-  const p = requireAuth(ctx);
-  const { sessionId } = DelBody.parse(await req.json());
-  // A user may only revoke their own sessions; listSessions already scopes to the user,
-  // and revokeSession is a no-op for ids that aren't theirs + still active.
-  const mine = (await coreAuth.listSessions(p.userId)).some((s) => s.id === sessionId);
-  if (!mine) return ok({ revoked: false });
-  await coreAuth.revokeSession(sessionId, "user-revoked");
-  return ok({ revoked: true });
-});
+export const DELETE = withApi(
+  { auth: true, body: z.object({ sessionId: z.string().min(6) }), audit: "auth.session.revoke" },
+  async ({ body, ctx }) => {
+    const p = ctx.principal!;
+    const mine = (await coreAuth.listSessions(p.userId)).some((s) => s.id === body.sessionId);
+    if (!mine) return { revoked: false };
+    await coreAuth.revokeSession(body.sessionId, "user-revoked");
+    return { revoked: true };
+  },
+);

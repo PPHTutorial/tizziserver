@@ -1,9 +1,7 @@
-import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { auth as coreAuth, AppError } from "@stall/core";
 import { sendEmail } from "@/lib/email";
-import { handle, ok } from "@/src/http/envelope";
-import { getContext } from "@/src/http/context";
+import { withApi } from "@/src/http/route";
 
 const Body = z
   .object({
@@ -13,24 +11,23 @@ const Body = z
   })
   .refine((b) => b.phone || b.email, { message: "phone or email is required" });
 
-export const POST = handle(async (req: NextRequest) => {
-  await getContext(req); // parse headers (rate-limit hook later)
-  const { phone, email, purpose } = Body.parse(await req.json());
+export const POST = withApi(
+  { body: Body, rateLimit: { limit: 5, windowSec: 60, by: "ip" } },
+  async ({ body }) => {
+    const channel = body.phone ? "SMS" : "EMAIL";
+    const target = (body.phone ?? body.email)!;
+    const { code, expiresAt } = await coreAuth.issueOtp({ target, channel, purpose: body.purpose });
 
-  const channel = phone ? "SMS" : "EMAIL";
-  const target = (phone ?? email)!;
-  const { code, expiresAt } = await coreAuth.issueOtp({ target, channel, purpose });
-
-  if (channel === "SMS") {
-    await coreAuth.sendSms(target, `Your Stall code is ${code}. Expires in 10 minutes.`);
-  } else {
-    const res = await sendEmail(target, {
-      subject: "Your Stall verification code",
-      text: `Your code is ${code}. It expires in 10 minutes.`,
-      html: `<p>Your Stall verification code is <b style="font-size:20px">${code}</b>.</p><p>It expires in 10 minutes.</p>`,
-    });
-    if (!res.success) throw new AppError("INTERNAL", "Failed to send verification email");
-  }
-
-  return ok({ sent: true, channel, expiresAt: expiresAt.toISOString() });
-});
+    if (channel === "SMS") {
+      await coreAuth.sendSms(target, `Your Stall code is ${code}. Expires in 10 minutes.`);
+    } else {
+      const res = await sendEmail(target, {
+        subject: "Your Stall verification code",
+        text: `Your code is ${code}. It expires in 10 minutes.`,
+        html: `<p>Your Stall verification code is <b style="font-size:20px">${code}</b>.</p><p>It expires in 10 minutes.</p>`,
+      });
+      if (!res.success) throw new AppError("INTERNAL", "Failed to send verification email");
+    }
+    return { sent: true, channel, expiresAt: expiresAt.toISOString() };
+  },
+);

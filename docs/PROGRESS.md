@@ -10,6 +10,25 @@ Last updated: **2026-09-01** (Session 5)
 
 ## CURRENT STATE (one paragraph)
 
+**Session 8 — Phase 1 auth is feature-complete for the backend.** Added the `withApi(opts,
+handler)` wrapper (`apps/api/src/http/route.ts`): body/query Zod parse, `auth`/`Role` guard,
+`capability` gate (`assertFeature`), Redis fixed-window **rate-limit**, **`Idempotency-Key`**
+replay via the `IdempotencyKey` table, **`AuditLog`** write, unified envelope + error mapping —
+all 12 `/api/v1` routes refactored onto it. New: **TOTP 2FA** (`@stall/core/auth/credentials`
+— enroll/confirm/status/disable + recovery codes as a hashed array; login `verify` returns
+`{mfaRequired}` then accepts `totpCode` or a recovery code), **transaction PIN** (argon2id +
+lockout), **password**, **social sign-in** (`/api/v1/auth/social` — Google/Apple via JWKS in
+`jose`, Facebook via Graph debug_token). **`_compat` bridge**: `apps/api/app/api/[...api]`
+translates `auth.send-otp` / `auth.verify-otp` / `auth.refresh-token` to the new flows (old
+`{success,data:{token}}` shape); every other legacy action → `410`. `@stall/core` gained
+`redis` (shared ioredis + `rateLimit`). **Verified live** (Docker `stall` DB, `scratchpad/
+authtest.mjs`): login → 2FA enroll → confirm (10 recovery codes) → relogin gated
+(`mfaRequired`) → relogin w/ TOTP → relogin w/ recovery code → set PIN → disable 2FA; plus
+rate-limit 429, `_compat` old-shape round-trip, AuditLog rows written. Green: build (12 v1
+routes), typecheck, lint (0).
+
+--- earlier ---
+
 **Session 7 — Phase 1 auth module is live and curl-verified.** New `@stall/core` package:
 argon2id (`@node-rs/argon2`, prebuilt), EdDSA JWT (`jose`), OTP issue/verify, rotating-refresh
 sessions with **family reuse-detection**, role switch, capability resolver, bootstrap builder.
@@ -77,9 +96,9 @@ breaks `next build`), `pnpm -r typecheck`, `@stall/api` lint (0 errors), `flutte
 - [x] **Auth flows** — OTP issue+verify (SMS `log` adapter for dev / email via Mailpit), `issueTokenPair` (new session + family), `rotateTokenPair` (**reuse-detection → revoke family**), `switchRole`, `revokeSession`/`revokeAllForUser` (+epoch bump), `listSessions`, `registerDevice`, `findOrCreateUserByPhone` + `markPhoneVerified`. Session gained `activeRole` + `platformSlug` (migration `20260901201604`).
 - [x] **`/api/v1` routes** — `apps/api/src/http/{envelope,context,dto}` + `auth/{otp,verify,refresh,logout,sessions,switch-role}` + `config/bootstrap`. Envelope `{ok,data,error,meta}`, `AppError`→status mapping, `getContext` (X-Platform/X-Device-Id/bearer→principal + TokenEpoch check).
 - [x] **Capability resolver + bootstrap** — `resolveFeatures` (platform ∩ role ∩ region ∩ user-override), `hasFeature`/`assertFeature`, `buildBootstrap`. **Verified live:** `GET /config/bootstrap` returns `auction=true`/`catalog.scope="all"` for `grandprice`, `auction=false`/`"gas"` for `tizzi-gas`; authed → `activeRole` + role-based `nav`. Full flow curl-tested (verify→tokens→refresh→**reuse-detect**→switch-role 403).
-- [ ] Social sign-in (Google/Apple/Facebook ID-token verify) · TOTP 2FA · transaction PIN — additive, next.
-- [ ] Middleware: rate-limit + `Idempotency-Key` + `AuditLog` on every write (envelope + `getContext` in place; guards `requireAuth`/`requireRole` done).
-- [ ] `_compat` bridge for the gas app's `auth.send-otp`/`verify-otp` onto the new handlers.
+- [x] Social sign-in (`/api/v1/auth/social` — Google/Apple via JWKS, Facebook via Graph) · **TOTP 2FA** (`/api/v1/auth/2fa` enroll/confirm/status/disable + recovery codes; login MFA gate) · **transaction PIN** (`/api/v1/auth/pin`, argon2id + lockout) · **password** (`/api/v1/auth/password`).
+- [x] **`withApi` middleware wrapper** — Zod body/query, `auth`/`Role` guard, `capability` gate, Redis rate-limit, `Idempotency-Key` replay, `AuditLog`. All 12 `/api/v1` routes use it. `@stall/core/redis` (shared ioredis + `rateLimit`).
+- [x] **`_compat` bridge** — `apps/api/app/api/[...api]` maps `auth.send-otp`/`verify-otp`/`refresh-token` to the new flows (old shape); other actions → `410`.
 - [ ] Contracts: auth + config schemas → OpenAPI → Dart client.
 - [ ] Mobile: splash/welcome/onboarding, sign-up, login, phone/email verify, OTP + resend, forgot/reset/create password, social auth, account recovery, select-role, role switcher, session/security notices, logout confirm, disabled/suspended (screens 1–20); `AppBottomNav` from `nav`.
 
@@ -112,22 +131,25 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
-1. **Phase 1 — auth extras**: social sign-in (`/api/v1/auth/social` — verify Google ID token
-   via JWKS in `jose`, Apple, Facebook), TOTP 2FA (`otpauth` — enroll/verify/disable, gate
-   sensitive ops), transaction PIN (`Credential(kind=PIN)` set/verify, `requirePin()` guard),
-   password set/verify (optional). All wire into `@stall/core/auth`.
-2. **Phase 1 — middleware hardening**: Redis token-bucket rate-limit per (principal, route);
-   `Idempotency-Key` persistence + replay on `IdempotencyKey`; `AuditLog` write on auth events
-   + role changes. Fold into a `withApi(handler, { auth?, capability?, rateLimit?, idempotent? })`
-   wrapper so every `/api/v1` handler is one line.
-3. **Phase 1 — `_compat` bridge**: `apps/api/app/api/[...api]/route.ts` maps `auth.send-otp` →
-   `POST /api/v1/auth/otp`, `auth.verify-otp` → `/verify` (shape-translate) so the gas app keeps
-   working.
-4. **Phase 1 — contracts + mobile**: auth/config Zod schemas → `openapi.json` → generated Dart
-   client (`mobile/lib/api/`); Flutter screens 1–20 (splash → onboarding → phone OTP → verify →
-   select-role → role switcher) with `AppBottomNav` fed by `bootstrap.nav`.
-5. **Phase 1 exit**: integration tests for refresh-rotation + reuse-detection + epoch bump;
-   assert a (stub) auction route `403 FEATURE_DISABLED`s under `x-platform: tizzi-gas`.
+1. **Phase 1 — contracts → Dart client**: express the auth + `config/bootstrap` request/response
+   shapes as Zod in `packages/contracts`; regen `openapi.json` with real paths/params/security;
+   wire an `openapi-generator` (or `dio`-based) step → `mobile/lib/api/` typed client.
+2. **Phase 1 — Flutter auth screens (1–20)**: splash → welcome → onboarding → sign-up/login
+   (phone) → OTP entry + resend → (2FA code) → select-role → role switcher → session/security
+   notices → logout confirm → account disabled/suspended. `go_router` flow, Riverpod auth
+   controller, `AppBottomNav` fed by `bootstrap.nav`. Store tokens in secure storage; auto-
+   refresh on 401.
+3. **Phase 1 exit**: a stub `/api/v1/auctions/ping` route with `capability: "auction"` → assert
+   `403 FEATURE_DISABLED` under `x-platform: tizzi-gas`, `200` under `grandprice`. Optional:
+   Vitest integration tests for refresh-rotation + reuse-detection + epoch bump.
+4. Then **Phase 2 — Catalog, vendors, search, discovery** (`docs/05-ROADMAP.md` §Phase 2).
+
+### Deferred / user-owned
+- Rename repo folder `tizziserver` → `stall` (locked in-session): close IDE, `cd 'E:\Projects\NextJs'; Rename-Item tizziserver stall`, reopen at new path. GitHub repo rename + `git remote set-url` yourself.
+- Merge `stall-rebuild → main` when ready.
+
+### Resume the dev env
+Docker stack is up (`restart: unless-stopped`). `pnpm dev`. Redis rate-limit keys: `docker exec stall-redis-1 redis-cli FLUSHALL` to reset during testing.
 
 ### Deferred / user-owned
 - **Rename the repo folder** `tizziserver` → `stall` (locked in-session). Close IDE + terminals,
@@ -192,6 +214,7 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Session | What changed |
 |------|---------|--------------|
+| 2026-09-01 | 8 | **Phase 1 — auth hardening + extras.** `withApi` wrapper (Zod parse · auth/role guard · capability gate · Redis rate-limit · Idempotency-Key replay · AuditLog) — all 12 `/api/v1` routes refactored onto it. TOTP 2FA (`@stall/core/auth/credentials` — enroll/confirm/status/disable, recovery codes as hashed array, login `mfaRequired` gate), transaction PIN (argon2id + lockout), password, social sign-in (Google/Apple JWKS, FB Graph). `_compat` bridge for `auth.*` legacy actions. `@stall/core/redis`. Fixed: recovery codes violated `Credential @@unique([userId,kind])` → now one row w/ `params.codes[]`. Verified end-to-end via `scratchpad/authtest.mjs` (2FA lifecycle, MFA-gated relogin, recovery-code login, PIN, rate-limit 429, `_compat` round-trip, AuditLog rows). Green: build/typecheck/lint(0). |
 | 2026-09-01 | 7 | **Phase 1 — auth module.** New `@stall/core` (crypto/jwt/auth/platform/errors). argon2 via `@node-rs/argon2` (prebuilt — no VS C++ toolchain on this box; the `argon2` npm pkg failed node-gyp). EdDSA JWT keypair added to `.env`/`.env.example`; `packages/config` gained JWT/OTP/SMS/social keys. `Session.activeRole`+`platformSlug` (migration `20260901201604`, hand-stripped its spurious geo `DROP INDEX`s → `packages/db/README.md` documents the manual geo-DDL workflow). `apps/api/src/http` + 7 `/api/v1` routes. **curl-verified full flow**: OTP→verify→tokens→authed bootstrap (nav)→refresh rotate→reuse-detect→switch-role 403; bootstrap gating grandprice vs tizzi-gas. Green: build/typecheck/lint(0). |
 | 2026-09-01 | 6 | **Phase 1 started — schema v2 Domains 0+1+2.** Rewrote `schema.prisma` (platform/config/system + identity w/ relational `UserRole` + profiles). Dropped v1 gas models + both v1 migrations; fresh `20260901191354_init` with hand-added `CREATE EXTENSION postgis` + 5 GiST indexes on `geography` cols. `prisma migrate reset` (**user-consented** — Prisma 7 AI guardrail) + `deploy` on local `stall` DB → 43 tables, PostGIS 3.5.2. New `seed.ts`: currencies/regions, `grandprice`+`tizzi-gas` platforms, 12-flag registry, 24 PlatformFeature rows (gating verified). Archived the 6 legacy RPC services → `apps/api/_legacy_services/` (tsc+eslint excluded); catch-all route → `410 ENDPOINT_MIGRATED`. Green: build, typecheck, lint (0 warnings), seed, DB smoke. |
 | 2026-09-01 | 1 | Read spec + repo; confirmed Figma file is empty; 4 architecture decisions locked (monorepo / custom JWT / GCP+Cloudflare / master-plan-first). Created `docs/`: PROGRESS, RESUME, 00-MASTER-PLAN, 01-ARCHITECTURE, 02-DATA-MODEL, 03-DESIGN-SYSTEM, 04-SCREEN-CATALOG, 05-ROADMAP. Saved Figma API responses to `docs/design/`. Wrote project memory. Added `scripts/figma-pull.mjs` + `npm run figma:pull` + `docs/design/README.md` — one-pass reproducible Figma export (user will populate the file first). |
