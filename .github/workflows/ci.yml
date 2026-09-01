@@ -28,6 +28,37 @@ jobs:
       - run: pnpm -r typecheck
       - run: pnpm --filter @stall/api lint
 
+  test:
+    name: node (integration tests)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_USER: stall
+          POSTGRES_PASSWORD: stall
+          POSTGRES_DB: stall
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U stall" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - name: Prisma generate
+        run: pnpm --filter @stall/db generate
+      - name: Migrate + seed the test DB
+        run: |
+          pnpm --filter @stall/db migrate:deploy
+          pnpm --filter @stall/db seed
+      - run: pnpm test
+
   flutter:
     name: flutter (analyze · test)
     runs-on: ubuntu-latest

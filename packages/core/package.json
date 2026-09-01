@@ -9,6 +9,7 @@
     "./platform": "./src/platform/index.ts"
   },
   "scripts": {
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,6 +23,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
-    "typescript": "^5.7.0"
+    "dotenv": "^16.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
   }
 }

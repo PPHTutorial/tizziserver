@@ -46,14 +46,20 @@ no-Docker fallback (S4). CI green on the PR still pending push.
 - [x] Middleware: `withApi(opts, handler)` wrapper — Zod body/query, `auth`/`Role` guard, `capability` gate, Redis fixed-window rate-limit, `Idempotency-Key` replay (`IdempotencyKey` table), `AuditLog` write, envelope + error mapping. All 12 `/api/v1` routes use it.
 - [x] Auth extras: **TOTP 2FA** (`/api/v1/auth/2fa`, recovery codes, login MFA gate), **transaction PIN** (`/api/v1/auth/pin`, argon2id + lockout), **password**, **social sign-in** (`/api/v1/auth/social` — Google/Apple JWKS via `jose`, Facebook Graph).
 - [x] `_compat` shim: `apps/api/app/api/[...api]` bridges `auth.send-otp`/`verify-otp`/`refresh-token`; other legacy actions → `410`.
-- [ ] `_compat` RPC shim for existing `auth.*` gas-app actions.
-- [ ] Contracts: auth + config schemas → OpenAPI → Dart client.
-- [ ] Mobile: splash, welcome, onboarding, sign-up, login, phone/email verification, OTP + resend, forgot/reset/create password, social auth, account recovery, select-role, role switcher, session/security notices, logout confirm, account disabled/suspended (screens 1–20). `AppBottomNav` rendered from `nav`.
+- [x] `_compat` RPC shim for existing `auth.*` gas-app actions.
+- [x] Exit gate: `GET /api/v1/auctions/ping` (`capability: "auction"`). **Vitest** integration suite (9 tests, live DB): refresh rotation + reuse-detection + token-epoch bump + capability gate 200/403/401.
+- [x] Contracts: auth + config schemas → OpenAPI. `packages/contracts/src/auth.ts` (Zod, 14 ops) → `openapi.json` (real paths/params/bearer/error envelope). Dart client is **hand-written** in `mobile/lib/api/` (dio wrapper + models), not generator-emitted.
+- [x] Mobile: splash, onboarding ×3, welcome (+social), phone/email OTP request, OTP entry (resend countdown + TOTP challenge), dedicated social, forgot/reset/create password, account recovery, select-role + role-switcher sheet, signed-in devices (revoke / sign-out-everywhere), security alert, account suspended/disabled (screens 1–20). `AppBottomNav` rendered from `bootstrap.nav`; `HomeShell` account tab wires 2FA/PIN/password/logout. `go_router` redirect + Riverpod `AuthController`; tokens in `flutter_secure_storage`; one-shot refresh on 401. `flutter analyze` 0 · `flutter test` 5.
 
 **Exit:** New user registers via phone OTP on the Flutter app → receives access+refresh →
 switches between Customer/Vendor/Courier roles → `bootstrap` returns different `features` for
 `grandprice` vs `tizzi-gas` → a sample auction endpoint returns `403 FEATURE_DISABLED` under
 `tizzi-gas`. Refresh rotation + reuse-detection covered by integration tests.
+
+> **Status (S8): CODE-COMPLETE.** Backend gates 200/403 by platform; rotation + reuse-detection
+> + epoch bump covered by Vitest (`pnpm test`, 9 green). The Flutter register → role-switch →
+> gated-screen flow is fully implemented and analyze/test-green. Outstanding: a single
+> emulator/device run against the live API for final sign-off (tracked in PROGRESS NEXT ACTIONS).
 
 ---
 

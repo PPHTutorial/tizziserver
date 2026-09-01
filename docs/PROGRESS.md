@@ -4,7 +4,7 @@
 > Resume a cleared session by typing **`RESUME STALL`** (see `docs/RESUME.md`).
 > Flush state before clearing context by typing **`SAVE STALL`**.
 
-Last updated: **2026-09-01** (Session 5)
+Last updated: **2026-09-01** (Session 8)
 
 ---
 
@@ -26,6 +26,36 @@ authtest.mjs`): login → 2FA enroll → confirm (10 recovery codes) → relogin
 (`mfaRequired`) → relogin w/ TOTP → relogin w/ recovery code → set PIN → disable 2FA; plus
 rate-limit 429, `_compat` old-shape round-trip, AuditLog rows written. Green: build (12 v1
 routes), typecheck, lint (0).
+
+**Session 8 (cont.) — Phase 1 exit gate landed + a real test suite.** Added the capability
+probe route **`GET /api/v1/auctions/ping`** (`auth: true`, `capability: "auction"`) — the
+Phase-1 exit assertion: `200` under `x-platform: grandprice`, `403 FEATURE_DISABLED` under
+`tizzi-gas`. Stood up **Vitest** as the repo test runner (`pnpm test` → `turbo run test`;
+`packages/core` + `apps/api` each have a `vitest.config.ts` + `test/setup.ts` that loads the
+root `.env`). **9 integration tests, all green** against the Docker `stall` DB: `@stall/core`
+— refresh-token rotation (one family, one live session per hop), **reuse-detection** (replaying
+a rotated token revokes the whole family), **token-epoch bump** (`revokeAllForUser` increments
+`TokenEpoch.ver` + kills every session), and the `grandprice`/`tizzi-gas` capability resolver;
+`@stall/api` — the `/auctions/ping` route through `withApi` returns 200 / 403 / 401 as
+specified. Green: build (**13** v1 routes), typecheck (core tsconfig now also covers `test/`),
+lint (0), test (9).
+
+**Session 8 (cont.) — Phase 1 client: contracts → OpenAPI → Flutter auth.** `packages/
+contracts` now carries the full Phase-1 Zod contract (`src/auth.ts` — 11 auth ops + bootstrap +
+`auctions/ping`, shared models); `scripts/build-openapi.ts` rewritten to emit real paths, query
+params, bearer security, and the standard error envelope for 400/401/403/404/429 →
+`openapi.json` (13 paths / 14 operations). **Flutter `mobile/` app built out** (analyze + 5
+tests green): hand-written typed **dio client** (`lib/api/` — `StallApi` + models + envelope
+unwrap + one-shot refresh-token rotation on 401 → `forceLogout`), secure-storage `TokenStore`,
+Riverpod `AuthController` / `bootstrapProvider`, `go_router` with an auth/onboarding redirect,
+and **screens 1–20**: splash · 3-slide onboarding · welcome (+social) · phone & email OTP
+request · OTP entry with resend countdown + TOTP 2FA challenge · dedicated social · forgot /
+reset / create password · account recovery · select-role + role-switcher sheet · signed-in
+devices (revoke / sign-out-everywhere) · security alert · account suspended / disabled. **§32**
+`AppBottomNav` renders from `bootstrap.nav`; `HomeShell` account tab wires sessions, 2FA
+enrol, PIN, password, logout. New dep `flutter_secure_storage`. CI `test` job (postgis
+service) + Flutter job already cover the suites. Green: pnpm build/typecheck/lint/test (9) ·
+flutter analyze (0) · flutter test (5).
 
 --- earlier ---
 
@@ -87,7 +117,13 @@ breaks `next build`), `pnpm -r typecheck`, `@stall/api` lint (0 errors), `flutte
 
 ## ACTIVE PHASE
 
-**Phase 1 — Identity & platform core.** Started S6. Branch `phase-0-foundation`. See `docs/05-ROADMAP.md` §Phase 1.
+**Phase 2 — Catalog, vendors, search, discovery.** See `docs/05-ROADMAP.md` §Phase 2 +
+`docs/02-DATA-MODEL.md` §Catalog + `docs/04-SCREEN-CATALOG.md` §03–05. Not started.
+
+**Phase 1 — Identity & platform core: CODE-COMPLETE (S6–S8).** Branch `stall-rebuild`. All
+checklist items done; every gate green (pnpm build/typecheck/lint/test · flutter analyze/test).
+The one open thread is a physical device/emulator run of register → role-switch → capability
+gate against the live API — do that first thing in Phase 2 as the last Phase-1 sign-off.
 
 - [x] **Schema v2 Domains 0+1+2** — `packages/db/prisma/schema.prisma` rewritten (Domain 0 platform/config/system, Domain 1 identity/access with relational `UserRole`, Domain 2 profiles). Fresh baseline migration `20260901191354_init` (hand-added `CREATE EXTENSION postgis` + 5 GiST indexes on `geography` columns). Old v1 gas models + migrations dropped. `prisma migrate reset` (user-consented) + `deploy` on the local `stall` DB → **43 tables, PostGIS 3.5.2, 5 GiST indexes**.
 - [x] **Seed** (`packages/db/prisma/seed.ts`) — 4 currencies, 3 regions, `grandprice` + `tizzi-gas` platforms, 12-flag registry, 24 `PlatformFeature` rows. Verified: `grandprice` auction/advertising=**true** catalog.scope=**all**; `tizzi-gas` auction/advertising=**false** catalog.scope=**gas**. Starter `FeeSchedule` + `PricingRule` + `AppConfig`. (Gas `Category` moves to Phase 2 / Domain 3.)
@@ -99,12 +135,15 @@ breaks `next build`), `pnpm -r typecheck`, `@stall/api` lint (0 errors), `flutte
 - [x] Social sign-in (`/api/v1/auth/social` — Google/Apple via JWKS, Facebook via Graph) · **TOTP 2FA** (`/api/v1/auth/2fa` enroll/confirm/status/disable + recovery codes; login MFA gate) · **transaction PIN** (`/api/v1/auth/pin`, argon2id + lockout) · **password** (`/api/v1/auth/password`).
 - [x] **`withApi` middleware wrapper** — Zod body/query, `auth`/`Role` guard, `capability` gate, Redis rate-limit, `Idempotency-Key` replay, `AuditLog`. All 12 `/api/v1` routes use it. `@stall/core/redis` (shared ioredis + `rateLimit`).
 - [x] **`_compat` bridge** — `apps/api/app/api/[...api]` maps `auth.send-otp`/`verify-otp`/`refresh-token` to the new flows (old shape); other actions → `410`.
-- [ ] Contracts: auth + config schemas → OpenAPI → Dart client.
-- [ ] Mobile: splash/welcome/onboarding, sign-up, login, phone/email verify, OTP + resend, forgot/reset/create password, social auth, account recovery, select-role, role switcher, session/security notices, logout confirm, disabled/suspended (screens 1–20); `AppBottomNav` from `nav`.
+- [x] **Exit gate + tests** — `GET /api/v1/auctions/ping` (`capability: "auction"` → 200 grandprice / 403 tizzi-gas). **Vitest** wired as the repo test runner; 9 integration tests green (`@stall/core`: refresh rotation · reuse-detection · epoch bump · capability resolver — `@stall/api`: the `/auctions/ping` gate 200/403/401).
+- [x] **Contracts → OpenAPI** — `packages/contracts/src/auth.ts` (11 auth ops + bootstrap + `auctions/ping` as Zod, shared models); `build-openapi.ts` emits real paths, query params, bearer security, standard error envelope (400/401/403/404/429) → `openapi.json` (13 paths / 14 ops). *Dart client is hand-written, not generator-emitted (see DECISION LOG S8).*
+- [x] **Mobile auth (screens 1–20 + §32)** — `mobile/lib/api/` hand-written typed dio client (`StallApi` + models, envelope unwrap, one-shot 401→refresh→retry→`forceLogout`), `TokenStore` (flutter_secure_storage), Riverpod `AuthController` + `bootstrapProvider`, `go_router` auth/onboarding redirect. Screens: splash · onboarding ×3 · welcome (+social) · phone & email OTP request · OTP entry (resend countdown + TOTP challenge) · social · forgot/reset/create password · account recovery · select-role + switcher sheet · signed-in devices · security alert · suspended/disabled. `AppBottomNav` from `bootstrap.nav`; `HomeShell` account tab (sessions, 2FA, PIN, password, logout). `flutter analyze` 0, `flutter test` 5.
 
 **Exit:** phone-OTP register on Flutter → access+refresh → role switch → `bootstrap` returns
 different `features` for `grandprice` vs `tizzi-gas` → an auction endpoint `403`s under
 `tizzi-gas`; refresh-rotation + reuse-detection covered by integration tests.
+→ **Backend + client code all in place and gate-green.** Only outstanding confirmation: an
+on-device run of the full flow against the live API (no emulator was run this session).
 
 ---
 
@@ -131,18 +170,16 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
-1. **Phase 1 — contracts → Dart client**: express the auth + `config/bootstrap` request/response
-   shapes as Zod in `packages/contracts`; regen `openapi.json` with real paths/params/security;
-   wire an `openapi-generator` (or `dio`-based) step → `mobile/lib/api/` typed client.
-2. **Phase 1 — Flutter auth screens (1–20)**: splash → welcome → onboarding → sign-up/login
-   (phone) → OTP entry + resend → (2FA code) → select-role → role switcher → session/security
-   notices → logout confirm → account disabled/suspended. `go_router` flow, Riverpod auth
-   controller, `AppBottomNav` fed by `bootstrap.nav`. Store tokens in secure storage; auto-
-   refresh on 401.
-3. **Phase 1 exit**: a stub `/api/v1/auctions/ping` route with `capability: "auction"` → assert
-   `403 FEATURE_DISABLED` under `x-platform: tizzi-gas`, `200` under `grandprice`. Optional:
-   Vitest integration tests for refresh-rotation + reuse-detection + epoch bump.
-4. Then **Phase 2 — Catalog, vendors, search, discovery** (`docs/05-ROADMAP.md` §Phase 2).
+1. **Phase 1 sign-off** — run `mobile/` on an emulator/device against the live API
+   (`flutter run --dart-define=STALL_API_URL=http://10.0.2.2:3000`): phone OTP register (code in
+   the api server log, `SMS_PROVIDER=log`) → land on `HomeShell` → account tab → switch role →
+   confirm `bootstrap` nav changes → hit an auction-gated screen under `x-platform: tizzi-gas`
+   (`--dart-define=STALL_PLATFORM=tizzi-gas`) and see the 403 surface. Fix anything that breaks.
+2. **Phase 2 kickoff** — expand `docs/04-SCREEN-CATALOG.md` §03–05 to per-screen tables; schema
+   v2 Domain 3 (catalog: `Category`, `Product`, `Vendor`, `Listing`, media) + migration + seed
+   (gas category tree for `tizzi-gas`); `/api/v1/catalog/*` + `/vendors/*` + `/search`.
+3. Contracts + Flutter grow per phase: add catalog ops to `packages/contracts`, new screens to
+   `mobile/lib/features/`, and a `vitest.config.ts` wherever testable logic lands.
 
 ### Deferred / user-owned
 - Rename repo folder `tizziserver` → `stall` (locked in-session): close IDE, `cd 'E:\Projects\NextJs'; Rename-Item tizziserver stall`, reopen at new path. GitHub repo rename + `git remote set-url` yourself.
@@ -150,6 +187,11 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 ### Resume the dev env
 Docker stack is up (`restart: unless-stopped`). `pnpm dev`. Redis rate-limit keys: `docker exec stall-redis-1 redis-cli FLUSHALL` to reset during testing.
+
+### Tests
+`pnpm test` (→ `turbo run test`). **Integration-only** — needs the Docker `stall` DB up + seeded
+(`pnpm db:seed`). CI runs them in a `node (integration tests)` job with a `postgis/postgis:16-3.5`
+service. Add a `vitest.config.ts` + `test/` to any package that grows testable logic.
 
 ### Deferred / user-owned
 - **Rename the repo folder** `tizziserver` → `stall` (locked in-session). Close IDE + terminals,
@@ -182,6 +224,8 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-09-01 (S8) | **The Flutter API client is hand-written, not generated.** `packages/contracts` stays the OpenAPI source of truth (Zod → `openapi.json`); `mobile/lib/api/` is a hand-authored dio wrapper + plain model classes kept faithful to those schemas. A drift check (contract vs route DTOs vs Dart) is a Phase-2 task. | `openapi-generator` needs a JVM in CI and emits non-idiomatic Dart; the surface is ~14 ops. A hand client gives the envelope-unwrap + one-shot refresh-rotation behaviour the screens need, with far less machinery. Revisit if the surface balloons. |
+| 2026-09-01 (S8) | **Test runner = Vitest**, one `vitest.config.ts` per package (`packages/core`, `apps/api` so far). Tests are **integration-first** — they run against the live Docker `stall` DB (seed required), no mocking of Prisma/Redis. `test/setup.ts` loads the root `.env`; `pnpm test` → `turbo run test` (`dependsOn: ^build`). A package's `tsconfig` `include` is widened to cover `test/` so test code is typechecked. | Fast, ESM-native, zero-config with the Vite resolver (handles `workspace:*` + raw-`.ts` `exports`). The auth surface's risk is in real DB state transitions (rotation, family revoke, epoch) — mocks would test nothing. |
 | 2026-09-01 (S7) | **argon2 via `@node-rs/argon2`** (Rust, prebuilt binaries) instead of the `argon2` npm package. | `argon2` needs node-gyp + a C++ toolchain; there's no Visual Studio on this machine and the prebuild download failed. `@node-rs/argon2` ships per-platform `.node` binaries, zero build step, same argon2id. |
 | 2026-09-01 (S7) | **JWT = EdDSA (Ed25519)** via `jose`, keys as base64 DER (PKCS8/SPKI) in env, wrapped to PEM at load. Access token carries `ver` (TokenEpoch); `getContext` rejects tokens whose `ver` ≠ the user's current epoch. Refresh = 256-bit opaque, stored `sha256` for O(1) lookup, `familyId` chain, rotate-on-use, replay of a rotated token ⇒ revoke the whole family. | Roadmap-specified. sha256 (not argon2) for refresh because it's already high-entropy. |
 | 2026-09-01 (S7) | **PostGIS geo DDL is hand-managed.** `prisma migrate dev` can't see GiST indexes on `Unsupported()` columns → it emits `DROP INDEX` for them every run. Workflow: `migrate dev --create-only`, delete the `DROP INDEX "..._gist"` lines, hand-add any new geo index, `migrate deploy`. Documented in `packages/db/README.md`. | No clean Prisma-native option for GiST-on-geography; explicit + reviewed SQL beats fighting the differ. |
@@ -214,6 +258,8 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Session | What changed |
 |------|---------|--------------|
+| 2026-09-01 | 8 (cont.) | **Phase 1 client — contracts → OpenAPI → Flutter auth.** `packages/contracts/src/auth.ts` (11 auth ops + bootstrap + `auctions/ping` Zod + shared models); `build-openapi.ts` rewritten → real paths/params/bearer/error-envelope, `openapi.json` 13 paths/14 ops. `mobile/`: hand-written typed dio client (`lib/api/` — `StallApi`, models, envelope unwrap, one-shot 401→refresh→`forceLogout`), `TokenStore` (flutter_secure_storage), Riverpod `AuthController`/`bootstrapProvider`, `go_router` auth+onboarding redirect, **screens 1–20** (splash, onboarding, welcome+social, phone/email OTP, OTP entry w/ resend + TOTP, social, forgot/reset/create password, recovery, select-role + switcher, sessions, security alert, suspended/disabled), **§32** `AppBottomNav` from `bootstrap.nav`, `HomeShell` account tab (sessions/2FA/PIN/password/logout). New dep `flutter_secure_storage`. Hardened storage reads for the test env. Green: pnpm build/typecheck/lint/test (9) · flutter analyze (0) · flutter test (5). ACTIVE PHASE → Phase 2. |
+| 2026-09-01 | 8 (cont.) | **Phase 1 exit gate + test suite.** `GET /api/v1/auctions/ping` (`capability: "auction"` → 200 grandprice / 403 tizzi-gas / 401 no-token). **Vitest** wired repo-wide (`pnpm test` → `turbo run test`; per-pkg `vitest.config.ts` + `test/setup.ts` loading root `.env`; `packages/core` tsconfig widened to typecheck `test/`). 9 integration tests green vs the Docker `stall` DB: refresh rotation (single family/live session), reuse-detection (family revoke), epoch bump (`revokeAllForUser`), capability resolver grandprice/tizzi-gas, and the `/auctions/ping` route through `withApi`. Green: build (13 v1 routes) · typecheck · lint (0) · test (9). |
 | 2026-09-01 | 8 | **Phase 1 — auth hardening + extras.** `withApi` wrapper (Zod parse · auth/role guard · capability gate · Redis rate-limit · Idempotency-Key replay · AuditLog) — all 12 `/api/v1` routes refactored onto it. TOTP 2FA (`@stall/core/auth/credentials` — enroll/confirm/status/disable, recovery codes as hashed array, login `mfaRequired` gate), transaction PIN (argon2id + lockout), password, social sign-in (Google/Apple JWKS, FB Graph). `_compat` bridge for `auth.*` legacy actions. `@stall/core/redis`. Fixed: recovery codes violated `Credential @@unique([userId,kind])` → now one row w/ `params.codes[]`. Verified end-to-end via `scratchpad/authtest.mjs` (2FA lifecycle, MFA-gated relogin, recovery-code login, PIN, rate-limit 429, `_compat` round-trip, AuditLog rows). Green: build/typecheck/lint(0). |
 | 2026-09-01 | 7 | **Phase 1 — auth module.** New `@stall/core` (crypto/jwt/auth/platform/errors). argon2 via `@node-rs/argon2` (prebuilt — no VS C++ toolchain on this box; the `argon2` npm pkg failed node-gyp). EdDSA JWT keypair added to `.env`/`.env.example`; `packages/config` gained JWT/OTP/SMS/social keys. `Session.activeRole`+`platformSlug` (migration `20260901201604`, hand-stripped its spurious geo `DROP INDEX`s → `packages/db/README.md` documents the manual geo-DDL workflow). `apps/api/src/http` + 7 `/api/v1` routes. **curl-verified full flow**: OTP→verify→tokens→authed bootstrap (nav)→refresh rotate→reuse-detect→switch-role 403; bootstrap gating grandprice vs tizzi-gas. Green: build/typecheck/lint(0). |
 | 2026-09-01 | 6 | **Phase 1 started — schema v2 Domains 0+1+2.** Rewrote `schema.prisma` (platform/config/system + identity w/ relational `UserRole` + profiles). Dropped v1 gas models + both v1 migrations; fresh `20260901191354_init` with hand-added `CREATE EXTENSION postgis` + 5 GiST indexes on `geography` cols. `prisma migrate reset` (**user-consented** — Prisma 7 AI guardrail) + `deploy` on local `stall` DB → 43 tables, PostGIS 3.5.2. New `seed.ts`: currencies/regions, `grandprice`+`tizzi-gas` platforms, 12-flag registry, 24 PlatformFeature rows (gating verified). Archived the 6 legacy RPC services → `apps/api/_legacy_services/` (tsc+eslint excluded); catch-all route → `410 ENDPOINT_MIGRATED`. Green: build, typecheck, lint (0 warnings), seed, DB smoke. |

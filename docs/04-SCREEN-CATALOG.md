@@ -17,7 +17,7 @@ capability key in `()`.
 | # | MD Section | Screens | Primary module(s) | Roles | Gate | Realtime | Maps | Phase | Status |
 |---|---|---|---|---|---|---|---|---|---|
 | 01 | Design System | components | `packages/tokens` + `packages/design` | — | all | — | — | 0 | ⬜ |
-| 02 | Authentication & Account Access | 1–20 | `auth`, identity | all | all | — | — | 1 | ⬜ |
+| 02 | Authentication & Account Access | 1–20 | `auth`, identity | all | all | — | — | 1 | 🔨 (built S8, pending device e2e) |
 | 03 | Customer Home & Marketplace | 21–40 | `catalog`, `promotions` | Customer | all (`catalog.scope`) | notif | nearby | 2 | ⬜ |
 | 04 | Search & Discovery | 41–59 | `catalog/search` | Customer | all | — | location filter | 2 | ⬜ |
 | 05 | Product Experience | 60–80 | `catalog`, `reviews` | Customer | all | — | — | 2 | ⬜ |
@@ -110,6 +110,37 @@ Responsive: phone = map full-bleed + draggable sheet; tablet (`expanded`+) = `Ap
 map ∥ details.
 
 ---
+
+## Section 02 — Authentication & Account Access (screens 1–20) — 🔨 built S8
+
+Flutter: `mobile/lib/features/{onboarding,auth,shell}/`. State: Riverpod `AuthController` +
+`bootstrapProvider`; routing: `go_router` redirect (`app/router.dart`); transport:
+`lib/api/StallApi` (hand client over `packages/contracts`). Tokens in `flutter_secure_storage`.
+
+| # | Screen | File | Key states | API (`/api/v1`) | Notes |
+|---|---|---|---|---|---|
+| 1 | Splash | `onboarding/splash_screen.dart` | booting | — | restores onboarding + token state, then redirect decides |
+| 2–3 | Onboarding carousel | `onboarding/onboarding_screen.dart` | 3 slides, skip | — | persists `onboardingSeen`; → welcome |
+| 4 | Welcome / Login-Sign-up | `auth/screens/welcome_screen.dart` | — | — | phone / email / 3 social CTAs |
+| 5 | Social auth (entry) | on welcome + `social.dart` | dialog / error | `POST auth/social` | native SDK token pending; accepts `--dart-define=STALL_SOCIAL_TEST_TOKEN` |
+| 6 | Phone sign-up / login | `auth/screens/phone_entry_screen.dart` | invalid / busy / error | `POST auth/otp` | E.164 normalise; → OTP |
+| 7 | Email sign-in | `auth/screens/email_entry_screen.dart` | invalid / busy / error | `POST auth/otp` (`VERIFY_EMAIL`) | → OTP |
+| 8–9 | OTP entry + resend | `auth/screens/otp_screen.dart` | idle / verifying / error / **mfaRequired** / resend countdown | `POST auth/verify` | 6-box input; 45s resend; TOTP challenge inline |
+| 10 | Forgot password | `auth/screens/forgot_password_screen.dart` | busy / error | `POST auth/otp` | phone accounts → code sign-in then set password |
+| 11 | Reset password | `auth/screens/reset_password_screen.dart` | validation / busy / error | `POST auth/password` | reuses `PasswordSetForm` (authed) |
+| 12 | Create password | `auth/screens/create_password_screen.dart` | validation / busy / error | `POST auth/password` | optional; from account tab too |
+| 13 | Social auth (screen) | `auth/screens/social_auth_screen.dart` | dialog / error | `POST auth/social` | dedicated provider list |
+| 14 | Account recovery | `auth/screens/account_recovery_screen.dart` | — | — | 3 paths: still-have-number / 2FA recovery code / lost number → support |
+| 15 | Select role | `auth/screens/select_role_screen.dart` | pending / error | `POST auth/switch-role` | shown when `roles.length > 1` (router-gated) |
+| 16 | Role switcher | `showRoleSwitcher` sheet (same file) | pending | `POST auth/switch-role` | from `HomeShell` account tab |
+| 17–18 | Signed-in devices / security notices | `auth/screens/sessions_screen.dart` | loading / error / list | `GET`,`DELETE auth/sessions`, `POST auth/logout` | per-device revoke + sign-out-everywhere |
+| 19 | Security alert | `auth/screens/security_alert_screen.dart` | — | `POST auth/logout` (everywhere) | "this was me" / "secure my account" |
+| 19–20 | Account disabled / suspended | `auth/screens/account_state_screens.dart` | terminal | — | router redirect on `user.status`; sign-out only |
+| §32 | Bottom nav | `shell/app_bottom_nav.dart` + `home_shell.dart` | — | `GET config/bootstrap` | `NavigationBar` from `bootstrap.nav`; FA icon-name map |
+
+Not yet wired (follow-ups, not Phase-1 blockers): native social SDKs (google_sign_in /
+sign_in_with_apple / flutter_facebook_auth), device-info/push-token on the `device` payload,
+bundled Outfit/Inter fonts (`pubspec` TODO), OTP autofill.
 
 ## Expansion plan
 
