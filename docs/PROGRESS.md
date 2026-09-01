@@ -4,11 +4,46 @@
 > Resume a cleared session by typing **`RESUME STALL`** (see `docs/RESUME.md`).
 > Flush state before clearing context by typing **`SAVE STALL`**.
 
-Last updated: **2026-09-01** (Session 8)
+Last updated: **2026-09-01** (Session 9)
 
 ---
 
 ## CURRENT STATE (one paragraph)
+
+**Session 9 — Phase 2 (Catalog / vendors / search) backend + mobile slice is in.**
+**Schema v2 Domain 3** added to `packages/db` (migration `20260901231947_catalog_domain3`):
+`Category` (tree + materialised `path` + `platformSlugs`), `Product` (+ `Unsupported("tsvector")`
+`searchVector`), `ProductMedia`/`ProductVariant`/`Inventory`, `VendorOffer` (multi-vendor,
+`@@unique([productId,vendorId])`), `PriceHistory`, `ProductReview`/`ProductQuestion`/
+`ProductAnswer`, `WishlistItem`, `RecentlyViewed`, `GasCylinderListing`, plus `KycCase`.
+Manual DDL in the migration: `pg_trgm`, a `BEFORE INSERT/UPDATE` trigger maintaining
+`searchVector` (title=A/brand=B/description=C), and 3 GIN indexes (`search_vector` +
+`title`/`brand` trigram); the 5 baseline GiST indexes were preserved (differ's spurious
+`DROP INDEX`s stripped per `packages/db/README.md`). **Seed** extended: 2 vendor users +
+profiles + approved `KycCase`, a 12-node category tree (general for `grandprice`, LPG for
+`tizzi-gas`), 5 products / 6 offers (incl. a multi-vendor phone and a gas cylinder with a
+`GasCylinderListing`), + Accra business `location`s for `/search/nearby`. **`@stall/core/catalog`**
+(new): `categories` (list + tree), `products` (`listProducts` cursor-paged + `getProductDetail`
+with offers/variants/reviews/Q&A), `search` (`searchProducts` FTS+trigram via `$queryRawUnsafe`,
+`nearbyVendors` via PostGIS `ST_DWithin`), `vendors` (onboarding → `KycCase`, mock
+`reviewVendorKyc`, `createProductDraft`/`updateProductDraft`/`publishProduct`/`listMyProducts`),
+`engagement` (wishlist / recently-viewed / reviews / Q&A). **17 `/api/v1` routes** added
+(catalog, search, vendors, `me/wishlist`, `me/recently-viewed`) — `withApi` gained a `params`
+arg for `[slug]`/`[id]` dynamic segments. **Contracts**: `packages/contracts/src/catalog.ts` →
+`openapi.json` now **30 paths / 35 operations** (path params emitted). **Vitest**: +9 catalog
+integration tests (tenant scope, multi-vendor offers, cross-tenant 404, FTS + typo/trigram,
+onboarding→KYC→publish gate) — 18 TS tests green. **Live-verified** against the Docker `stall`
+DB (all curl-checked): category tree, product list, multi-vendor detail (`184900` from Kumasi
+Gadget Store vs `189900`), gas listing, cross-tenant `404`, search, vendor page, nearby (527 m).
+**Mobile**: `lib/api/catalog_models.dart` + `StallApi` catalog methods; `features/catalog/`
+providers + screens — customer home feed, category explorer, category grid (sortable), search
+(query/sort/empty/error), product detail (gallery, multi-seller offers, variants, reviews,
+write-review, ask-question, wishlist), vendor storefront, wishlist, **seller hub**
+(onboarding → KYC-pending → dashboard) + add/edit product wizard with publish. `HomeShell`
+tabs now render the real catalog/vendor bodies from `bootstrap.nav`. Green: pnpm
+build/typecheck/lint/test (18) · flutter analyze (0) · flutter test (9).
+
+--- earlier ---
 
 **Session 8 — Phase 1 auth is feature-complete for the backend.** Added the `withApi(opts,
 handler)` wrapper (`apps/api/src/http/route.ts`): body/query Zod parse, `auth`/`Role` guard,
@@ -117,13 +152,33 @@ breaks `next build`), `pnpm -r typecheck`, `@stall/api` lint (0 errors), `flutte
 
 ## ACTIVE PHASE
 
-**Phase 2 — Catalog, vendors, search, discovery.** See `docs/05-ROADMAP.md` §Phase 2 +
-`docs/02-DATA-MODEL.md` §Catalog + `docs/04-SCREEN-CATALOG.md` §03–05. Not started.
+**Phase 2 — Catalog, vendors, search, discovery.** Started S9. Branch `stall-rebuild`.
+See `docs/05-ROADMAP.md` §Phase 2 + `docs/02-DATA-MODEL.md` §Domain 3 + `docs/04-SCREEN-CATALOG.md` §03–05, §25.
 
-**Phase 1 — Identity & platform core: CODE-COMPLETE (S6–S8).** Branch `stall-rebuild`. All
-checklist items done; every gate green (pnpm build/typecheck/lint/test · flutter analyze/test).
-The one open thread is a physical device/emulator run of register → role-switch → capability
-gate against the live API — do that first thing in Phase 2 as the last Phase-1 sign-off.
+- [x] **Schema v2 Domain 3** — `Category` · `Product` (+`tsvector`) · `ProductMedia`/`ProductVariant`/`Inventory` · `VendorOffer` (multi-vendor) · `PriceHistory` · `ProductReview`/`ProductQuestion`/`ProductAnswer` · `WishlistItem` · `RecentlyViewed` · `GasCylinderListing` · `KycCase`. Migration `20260901231947_catalog_domain3` (manual DDL: `pg_trgm`, `searchVector` trigger + 3 GIN indexes; baseline GiST indexes preserved). `migrate deploy` on the local `stall` DB.
+- [x] **Seed** extended — 2 vendor users + profiles + approved `KycCase`; 12-node category tree (general→`grandprice`, LPG→`tizzi-gas`); 5 products / 6 offers (multi-vendor phone, gas cylinder w/ `GasCylinderListing`); Accra business `location`s.
+- [x] **`@stall/core/catalog`** — `categories` (list/tree), `products` (`listProducts` cursor-paged + `getProductDetail`), `search` (`searchProducts` FTS+trigram via `$queryRawUnsafe`; `nearbyVendors` PostGIS `ST_DWithin`), `vendors` (onboarding→`KycCase`, mock `reviewVendorKyc`, product draft/update/publish, `listMyProducts`), `engagement` (wishlist / recently-viewed / reviews / Q&A).
+- [x] **17 `/api/v1` routes** — `catalog/{categories,products,products/[slug],products/[slug]/reviews,products/[slug]/questions}` · `search` · `search/nearby` · `vendors/{[id],[id]/products,me,onboarding,kyc/review,products,products/[id],products/[id]/publish}` · `me/{wishlist,recently-viewed}`. `withApi` gained a `params` arg for dynamic segments. Live-verified via curl.
+- [x] **Contracts** — `packages/contracts/src/catalog.ts` → `openapi.json` **30 paths / 35 ops** (path params emitted).
+- [x] **Vitest** — +9 catalog integration tests (tenant scope, multi-vendor offers, cross-tenant 404, FTS + typo trigram, onboarding→KYC→publish gate). 18 TS tests green.
+- [x] **Mobile** — `lib/api/catalog_models.dart` + `StallApi` catalog methods; `features/catalog/` providers + screens: home feed · category explorer · category grid (sort) · search (query/sort/empty/error) · product detail (gallery, multi-seller offers, variants, reviews, write-review, ask-question, wishlist) · vendor storefront · wishlist · seller hub (onboarding → KYC-pending → dashboard) · add/edit product wizard (+publish). `HomeShell` tabs render real bodies from `bootstrap.nav`. analyze 0 / 9 tests.
+- [ ] **Promotions read-side** — flash deals / campaigns / banners data + endpoints (deferred within Phase 2).
+- [ ] **Mobile depth** — personalised home, trending/new/top/flash rails, nearby-vendors **map**, product gallery fullscreen/video, similar products, search suggestions/recents/filters sheet, vendor onboarding doc upload, product performance stub (screens 21–40, 41–59 remainder, 60–80 remainder).
+- [ ] **Migrate legacy gas listings** into `VendorOffer`/`GasCylinderListing` shape (pre-prod; currently only seed data).
+- [ ] **Device e2e** — run `mobile/` against the live API: browse → search → product → add to wishlist; vendor onboard → (STAFF approve) → add product → publish → see it in the tenant listing. Also closes the deferred Phase-1 device sign-off.
+
+**Exit:** on both platforms a customer can browse categories, search, filter by location, open
+a product with multiple vendor offers, and view a vendor page; a vendor can register, pass
+business KYC (mock reviewer), and publish a product; all Tizzi-Gas listings visible under
+`catalog.scope='gas'`. **Backend + core mobile flow are code-complete and gate-green (S9);
+the depth screens + device e2e above remain.**
+
+---
+
+## Phase 1 — Identity & platform core ✅ CODE-COMPLETE (S6–S8)
+
+Branch `stall-rebuild`. Every checklist item done; all gates green. Open thread carried into
+Phase 2: a device/emulator run of register → role-switch → capability gate against the live API.
 
 - [x] **Schema v2 Domains 0+1+2** — `packages/db/prisma/schema.prisma` rewritten (Domain 0 platform/config/system, Domain 1 identity/access with relational `UserRole`, Domain 2 profiles). Fresh baseline migration `20260901191354_init` (hand-added `CREATE EXTENSION postgis` + 5 GiST indexes on `geography` columns). Old v1 gas models + migrations dropped. `prisma migrate reset` (user-consented) + `deploy` on the local `stall` DB → **43 tables, PostGIS 3.5.2, 5 GiST indexes**.
 - [x] **Seed** (`packages/db/prisma/seed.ts`) — 4 currencies, 3 regions, `grandprice` + `tizzi-gas` platforms, 12-flag registry, 24 `PlatformFeature` rows. Verified: `grandprice` auction/advertising=**true** catalog.scope=**all**; `tizzi-gas` auction/advertising=**false** catalog.scope=**gas**. Starter `FeeSchedule` + `PricingRule` + `AppConfig`. (Gas `Category` moves to Phase 2 / Domain 3.)
@@ -170,16 +225,18 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
-1. **Phase 1 sign-off** — run `mobile/` on an emulator/device against the live API
-   (`flutter run --dart-define=STALL_API_URL=http://10.0.2.2:3000`): phone OTP register (code in
-   the api server log, `SMS_PROVIDER=log`) → land on `HomeShell` → account tab → switch role →
-   confirm `bootstrap` nav changes → hit an auction-gated screen under `x-platform: tizzi-gas`
-   (`--dart-define=STALL_PLATFORM=tizzi-gas`) and see the 403 surface. Fix anything that breaks.
-2. **Phase 2 kickoff** — expand `docs/04-SCREEN-CATALOG.md` §03–05 to per-screen tables; schema
-   v2 Domain 3 (catalog: `Category`, `Product`, `Vendor`, `Listing`, media) + migration + seed
-   (gas category tree for `tizzi-gas`); `/api/v1/catalog/*` + `/vendors/*` + `/search`.
-3. Contracts + Flutter grow per phase: add catalog ops to `packages/contracts`, new screens to
-   `mobile/lib/features/`, and a `vitest.config.ts` wherever testable logic lands.
+1. **Device e2e (closes Phase 1 sign-off + Phase 2 exit)** — `flutter run --dart-define=STALL_API_URL=http://10.0.2.2:3000`.
+   Customer: phone-OTP register (code in the api log, `SMS_PROVIDER=log`) → home feed → open a
+   category → search `laptop` → product detail (multi-seller) → heart it → Wishlist tab.
+   Vendor: account tab → "Sell on Stall" → onboard → `POST /api/v1/vendors/kyc/review`
+   `{vendorId, decision:"APPROVED"}` from a STAFF token (or Studio) → add product → publish →
+   confirm it appears in `/catalog/products`. Under `--dart-define=STALL_PLATFORM=tizzi-gas`
+   confirm only gas categories/products show.
+2. **Phase 2 depth** — promotions read-side (flash deals / campaigns / banners) + endpoints;
+   mobile: personalised home rails, nearby-vendors **map** (`google_maps_flutter`), product
+   gallery fullscreen/video, similar products, search suggestions/recents + filter sheet,
+   vendor doc upload, product performance stub.
+3. **Phase 3 prep** — Domain 4 (cart, orders, fulfilment, payments, wallet); see `docs/05-ROADMAP.md` §Phase 3.
 
 ### Deferred / user-owned
 - Rename repo folder `tizziserver` → `stall` (locked in-session): close IDE, `cd 'E:\Projects\NextJs'; Rename-Item tizziserver stall`, reopen at new path. GitHub repo rename + `git remote set-url` yourself.
@@ -224,6 +281,9 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-09-01 (S9) | **Catalog scoping is by `Product.platformSlugs` (array `has` filter), not the `catalog.scope` flag.** `catalog.scope` (`"all"`/`"gas"`) stays in `bootstrap` for the client to theme/label; server-side tenant isolation is `platformSlugs @> [ctx.platform]` on every catalog query (empty ⇒ all tenants). Cross-tenant reads 404. | The flag is always truthy so `assertFeature` can't gate on it; an explicit per-row tenant list is precise, index-friendly, and lets one product list on several tenants later. |
+| 2026-09-01 (S9) | **Product search = Postgres FTS + `pg_trgm`, maintained by a DB trigger, queried via `$queryRawUnsafe`.** `Product.searchVector` is `Unsupported("tsvector")`; a `BEFORE INSERT/UPDATE` trigger rebuilds it (title A / brand B / description C). Queries use `websearch_to_tsquery('simple', …)` with a `title % :q` trigram fallback for typos. No Meilisearch yet. | Zero extra infra, good enough for Phase 2 scale, survives Prisma migrations (trigger + hand-added GIN indexes live in the migration SQL, documented in `packages/db/README.md`). Meilisearch (compose profile) can front it later without schema change. |
+| 2026-09-01 (S9) | **`KycCase` is a standalone table keyed `@@unique([subjectType, subjectId])`, no FK to the subject.** A mock `reviewVendorKyc` (STAFF/ADMIN route) flips `status` + syncs `VendorProfile.status` + the `UserRole`. | One review-case shape serves vendors now and couriers in Phase 4; skipping the polymorphic FK keeps it simple. Real STAFF console is §24 (Phase 6). |
 | 2026-09-01 (S8) | **The Flutter API client is hand-written, not generated.** `packages/contracts` stays the OpenAPI source of truth (Zod → `openapi.json`); `mobile/lib/api/` is a hand-authored dio wrapper + plain model classes kept faithful to those schemas. A drift check (contract vs route DTOs vs Dart) is a Phase-2 task. | `openapi-generator` needs a JVM in CI and emits non-idiomatic Dart; the surface is ~14 ops. A hand client gives the envelope-unwrap + one-shot refresh-rotation behaviour the screens need, with far less machinery. Revisit if the surface balloons. |
 | 2026-09-01 (S8) | **Test runner = Vitest**, one `vitest.config.ts` per package (`packages/core`, `apps/api` so far). Tests are **integration-first** — they run against the live Docker `stall` DB (seed required), no mocking of Prisma/Redis. `test/setup.ts` loads the root `.env`; `pnpm test` → `turbo run test` (`dependsOn: ^build`). A package's `tsconfig` `include` is widened to cover `test/` so test code is typechecked. | Fast, ESM-native, zero-config with the Vite resolver (handles `workspace:*` + raw-`.ts` `exports`). The auth surface's risk is in real DB state transitions (rotation, family revoke, epoch) — mocks would test nothing. |
 | 2026-09-01 (S7) | **argon2 via `@node-rs/argon2`** (Rust, prebuilt binaries) instead of the `argon2` npm package. | `argon2` needs node-gyp + a C++ toolchain; there's no Visual Studio on this machine and the prebuild download failed. `@node-rs/argon2` ships per-platform `.node` binaries, zero build step, same argon2id. |
@@ -258,6 +318,7 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Session | What changed |
 |------|---------|--------------|
+| 2026-09-01 | 9 | **Phase 2 — Catalog / vendors / search (backend + mobile slice).** Schema v2 Domain 3 (12 models + `KycCase`) → migration `20260901231947_catalog_domain3` with manual DDL (`pg_trgm`, `searchVector` trigger, 3 GIN indexes; baseline GiST preserved). Seed +vendors/categories/products/offers (multi-vendor phone, gas cylinder + `GasCylinderListing`, Accra locations). New `@stall/core/catalog` (categories/products/search/vendors/engagement). 17 `/api/v1` routes (catalog, search, search/nearby, vendors CRUD + KYC review, me/wishlist, me/recently-viewed); `withApi` gained a `params` arg for `[slug]`/`[id]`. Contracts `catalog.ts` → `openapi.json` 30 paths/35 ops. +9 Vitest catalog tests (18 TS green). Live-verified via curl (tenant scope, multi-vendor detail, gas listing, cross-tenant 404, FTS, nearby 527 m). Mobile: `catalog_models.dart` + `StallApi` methods; `features/catalog/` (home feed, category explorer/grid, search, product detail w/ offers+variants+reviews+Q&A+wishlist, vendor page, wishlist, seller hub onboarding→KYC→dashboard, add/edit product wizard). `HomeShell` tabs render real bodies. flutter analyze 0 / 9 tests. Green: pnpm build/typecheck/lint/test (18) · flutter analyze/test (9). |
 | 2026-09-01 | 8 (cont.) | **Phase 1 client — contracts → OpenAPI → Flutter auth.** `packages/contracts/src/auth.ts` (11 auth ops + bootstrap + `auctions/ping` Zod + shared models); `build-openapi.ts` rewritten → real paths/params/bearer/error-envelope, `openapi.json` 13 paths/14 ops. `mobile/`: hand-written typed dio client (`lib/api/` — `StallApi`, models, envelope unwrap, one-shot 401→refresh→`forceLogout`), `TokenStore` (flutter_secure_storage), Riverpod `AuthController`/`bootstrapProvider`, `go_router` auth+onboarding redirect, **screens 1–20** (splash, onboarding, welcome+social, phone/email OTP, OTP entry w/ resend + TOTP, social, forgot/reset/create password, recovery, select-role + switcher, sessions, security alert, suspended/disabled), **§32** `AppBottomNav` from `bootstrap.nav`, `HomeShell` account tab (sessions/2FA/PIN/password/logout). New dep `flutter_secure_storage`. Hardened storage reads for the test env. Green: pnpm build/typecheck/lint/test (9) · flutter analyze (0) · flutter test (5). ACTIVE PHASE → Phase 2. |
 | 2026-09-01 | 8 (cont.) | **Phase 1 exit gate + test suite.** `GET /api/v1/auctions/ping` (`capability: "auction"` → 200 grandprice / 403 tizzi-gas / 401 no-token). **Vitest** wired repo-wide (`pnpm test` → `turbo run test`; per-pkg `vitest.config.ts` + `test/setup.ts` loading root `.env`; `packages/core` tsconfig widened to typecheck `test/`). 9 integration tests green vs the Docker `stall` DB: refresh rotation (single family/live session), reuse-detection (family revoke), epoch bump (`revokeAllForUser`), capability resolver grandprice/tizzi-gas, and the `/auctions/ping` route through `withApi`. Green: build (13 v1 routes) · typecheck · lint (0) · test (9). |
 | 2026-09-01 | 8 | **Phase 1 — auth hardening + extras.** `withApi` wrapper (Zod parse · auth/role guard · capability gate · Redis rate-limit · Idempotency-Key replay · AuditLog) — all 12 `/api/v1` routes refactored onto it. TOTP 2FA (`@stall/core/auth/credentials` — enroll/confirm/status/disable, recovery codes as hashed array, login `mfaRequired` gate), transaction PIN (argon2id + lockout), password, social sign-in (Google/Apple JWKS, FB Graph). `_compat` bridge for `auth.*` legacy actions. `@stall/core/redis`. Fixed: recovery codes violated `Credential @@unique([userId,kind])` → now one row w/ `params.codes[]`. Verified end-to-end via `scratchpad/authtest.mjs` (2FA lifecycle, MFA-gated relogin, recovery-code login, PIN, rate-limit 429, `_compat` round-trip, AuditLog rows). Green: build/typecheck/lint(0). |

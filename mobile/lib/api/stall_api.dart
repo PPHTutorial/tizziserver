@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../core/api_config.dart';
 import '../core/token_store.dart';
 import 'api_exception.dart';
+import 'catalog_models.dart';
 import 'models.dart';
 
 /// Typed wrapper over the `/api/v1` surface (see `packages/contracts`).
@@ -215,4 +216,164 @@ class StallApi {
     final d = await _send('POST', '/api/v1/auth/2fa', body: {'action': 'confirm', 'code': code});
     return (d['recoveryCodes'] as List<dynamic>? ?? const []).cast<String>();
   }
+
+  // --- catalog (Phase 2) -------------------------------------------
+
+  List<T> _items<T>(Map<String, dynamic> d, T Function(Map<String, dynamic>) map) =>
+      (d['items'] as List<dynamic>? ?? const [])
+          .map((e) => map((e as Map).cast<String, dynamic>()))
+          .toList(growable: false);
+
+  Future<List<CategoryDto>> categories({bool tree = false}) async {
+    final d = await _send('GET', '/api/v1/catalog/categories',
+        auth: false, query: tree ? {'tree': '1'} : null);
+    final key = tree ? 'tree' : 'items';
+    return (d[key] as List<dynamic>? ?? const [])
+        .map((e) => CategoryDto.fromJson((e as Map).cast<String, dynamic>()))
+        .toList(growable: false);
+  }
+
+  Future<PageResult<ProductCard>> products({
+    String? category,
+    String? vendorId,
+    String? sort,
+    String? cursor,
+    int? limit,
+  }) async {
+    final d = await _send('GET', '/api/v1/catalog/products', auth: false, query: {
+      if (category != null) 'category': category,
+      if (vendorId != null) 'vendorId': vendorId,
+      if (sort != null) 'sort': sort,
+      if (cursor != null) 'cursor': cursor,
+      if (limit != null) 'limit': '$limit',
+    });
+    return PageResult(items: _items(d, ProductCard.fromJson), nextCursor: d['nextCursor'] as String?);
+  }
+
+  Future<ProductDetail> product(String slug) async {
+    final d = await _send('GET', '/api/v1/catalog/products/$slug', auth: false);
+    return ProductDetail.fromJson(d);
+  }
+
+  Future<({List<ProductCard> items, int total, int page})> search(
+    String q, {
+    String? category,
+    int? minPrice,
+    int? maxPrice,
+    String? sort,
+    int page = 1,
+  }) async {
+    final d = await _send('GET', '/api/v1/search', auth: false, query: {
+      'q': q,
+      if (category != null) 'category': category,
+      if (minPrice != null) 'minPrice': '$minPrice',
+      if (maxPrice != null) 'maxPrice': '$maxPrice',
+      if (sort != null) 'sort': sort,
+      'page': '$page',
+    });
+    return (
+      items: _items(d, ProductCard.fromJson),
+      total: (d['total'] as num?)?.toInt() ?? 0,
+      page: (d['page'] as num?)?.toInt() ?? 1,
+    );
+  }
+
+  Future<VendorPage> vendor(String id) async {
+    final d = await _send('GET', '/api/v1/vendors/$id', auth: false);
+    return VendorPage.fromJson(d);
+  }
+
+  Future<PageResult<ProductCard>> vendorProducts(String id, {String? cursor}) async {
+    final d = await _send('GET', '/api/v1/vendors/$id/products',
+        auth: false, query: {if (cursor != null) 'cursor': cursor});
+    return PageResult(items: _items(d, ProductCard.fromJson), nextCursor: d['nextCursor'] as String?);
+  }
+
+  Future<void> addReview(String slug, {required int rating, String? title, String? body}) =>
+      _send('POST', '/api/v1/catalog/products/$slug/reviews',
+          body: {'rating': rating, if (title != null) 'title': title, if (body != null) 'body': body});
+
+  Future<void> askQuestion(String slug, String body) =>
+      _send('POST', '/api/v1/catalog/products/$slug/questions', body: {'body': body});
+
+  // --- shopper engagement --------------------------------------
+
+  Future<List<WishlistItemDto>> wishlist() async {
+    final d = await _send('GET', '/api/v1/me/wishlist');
+    return _items(d, WishlistItemDto.fromJson);
+  }
+
+  Future<bool> toggleWishlist(String productId, {required bool add}) async {
+    final d = await _send(add ? 'POST' : 'DELETE', '/api/v1/me/wishlist', body: {'productId': productId});
+    return d['wished'] == true;
+  }
+
+  Future<List<WishlistItemDto>> recentlyViewed() async {
+    final d = await _send('GET', '/api/v1/me/recently-viewed');
+    return _items(d, WishlistItemDto.fromJson);
+  }
+
+  // --- vendor authoring --------------------------------------
+
+  Future<VendorStatus> vendorMe() async {
+    final d = await _send('GET', '/api/v1/vendors/me');
+    return VendorStatus.fromJson(d);
+  }
+
+  Future<VendorStatus> vendorOnboard({
+    required String displayName,
+    String? bio,
+    required Map<String, dynamic> business,
+  }) async {
+    final d = await _send('POST', '/api/v1/vendors/onboarding', body: {
+      'displayName': displayName,
+      if (bio != null) 'bio': bio,
+      'business': business,
+    });
+    return VendorStatus.fromJson({'onboarded': true, ...d});
+  }
+
+  Future<List<MyProduct>> myProducts({String? status}) async {
+    final d = await _send('GET', '/api/v1/vendors/products',
+        query: {if (status != null) 'status': status});
+    return _items(d, MyProduct.fromJson);
+  }
+
+  Future<String> createProduct({
+    required String title,
+    required String description,
+    required String categoryId,
+    required int priceMinor,
+    String? brand,
+    List<String>? images,
+  }) async {
+    final d = await _send('POST', '/api/v1/vendors/products', body: {
+      'title': title,
+      'description': description,
+      'categoryId': categoryId,
+      'priceMinor': priceMinor,
+      if (brand != null) 'brand': brand,
+      if (images != null) 'images': images,
+    });
+    return d['id'] as String;
+  }
+
+  Future<void> updateProduct(
+    String id, {
+    String? title,
+    String? description,
+    int? priceMinor,
+    List<String>? images,
+    int? quantity,
+  }) =>
+      _send('PATCH', '/api/v1/vendors/products/$id', body: {
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (priceMinor != null) 'priceMinor': priceMinor,
+        if (images != null) 'images': images,
+        if (quantity != null) 'quantity': quantity,
+      });
+
+  Future<void> publishProduct(String id) =>
+      _send('POST', '/api/v1/vendors/products/$id/publish');
 }

@@ -18,9 +18,9 @@ capability key in `()`.
 |---|---|---|---|---|---|---|---|---|---|
 | 01 | Design System | components | `packages/tokens` + `packages/design` | — | all | — | — | 0 | ⬜ |
 | 02 | Authentication & Account Access | 1–20 | `auth`, identity | all | all | — | — | 1 | 🔨 (built S8, pending device e2e) |
-| 03 | Customer Home & Marketplace | 21–40 | `catalog`, `promotions` | Customer | all (`catalog.scope`) | notif | nearby | 2 | ⬜ |
-| 04 | Search & Discovery | 41–59 | `catalog/search` | Customer | all | — | location filter | 2 | ⬜ |
-| 05 | Product Experience | 60–80 | `catalog`, `reviews` | Customer | all | — | — | 2 | ⬜ |
+| 03 | Customer Home & Marketplace | 21–40 | `catalog`, `promotions` | Customer | all (`catalog.scope`) | notif | nearby | 2 | 🔨 (home feed + category grid built S9; rails/map/promos = depth) |
+| 04 | Search & Discovery | 41–59 | `catalog/search` | Customer | all | — | location filter | 2 | 🔨 (FTS+trigram search + sort built S9; suggestions/recents/filter sheet = depth) |
+| 05 | Product Experience | 60–80 | `catalog`, `reviews` | Customer | all | — | — | 2 | 🔨 (detail: gallery/offers/variants/reviews/Q&A/wishlist built S9; fullscreen/video/similar = depth) |
 | 06 | Cart & Checkout | 81–103 | `cart`, `checkout`, `payments`, `coupons` | Customer | all | — | address picker | 3 | ⬜ |
 | 07 | Orders & Fulfilment | 104–123 | `orders`, `returns`, `refunds` | Customer | all | order events | — | 3 | ⬜ |
 | 08 | Delivery & Courier — Customer | 124–151 | `delivery` | Customer | all (`delivery.live_tracking`) | **tracking** | **live map** | 4 | ⬜ |
@@ -40,14 +40,14 @@ capability key in `()`.
 | 22 | Notifications | 383–394 | `notifications` | all | all | **notifications** | — | 6 | ⬜ |
 | 23 | Customer Profile | 395–415 | identity, `users`, addresses | Customer | all | — | saved locations | 2/6 | ⬜ |
 | 24 | KYC, Trust & Safety | 416–434 | `kyc`, `reports`, `security` | all | all | — | — | 6 | ⬜ |
-| 25 | Vendor Mobile System | 435–469 | `vendors`, `orders`, `catalog`, `wallet` | Vendor | all | order/pickup push | — | 2/3/4 | ⬜ |
+| 25 | Vendor Mobile System | 435–469 | `vendors`, `orders`, `catalog`, `wallet` | Vendor | all | order/pickup push | — | 2/3/4 | 🔨 (seller hub: onboarding→KYC→dashboard + add/edit/publish wizard built S9) |
 | 26 | Vendor Boosting & Advertising | 470–486 | `campaigns`, `boosts`, `ads` | Vendor | **gp** (`advertising`) | — | — | 7 | ⬜ |
 | 27 | Support & Disputes | 487–502 | `support`, `disputes` | all | all | dispute push | — | 6 | ⬜ |
 | 28 | Global System States | 503–522 | `packages/design` | — | all | offline detect | permission primers | 0/ongoing | ⬜ |
 | 29 | Global Overlays & Component Screens | components | `packages/design` | — | all | — | map sheet, QR | 0/ongoing | ⬜ |
 | 30 | Responsive & Tablet | variants | `packages/design` + every screen | — | all | — | two-pane maps | ongoing | ⬜ |
 | 31 | Font & Icon Requirements | rule | `packages/tokens` | — | all | — | FA markers | 0 | ⬜ |
-| 32 | Core Mobile Navigation | 3 nav sets | `platform` bootstrap + `AppBottomNav` | all | all | — | — | 1 | ⬜ |
+| 32 | Core Mobile Navigation | 3 nav sets | `platform` bootstrap + `AppBottomNav` | all | all | — | — | 1 | ✅ (S8 — `AppBottomNav` from `bootstrap.nav`; S9 wired tab bodies) |
 | 33 | Data-Model Awareness | rule | `packages/db` | — | — | — | — | see `02-DATA-MODEL.md` | ✅ (outlined) |
 | 34 | Final Figma Requirement | org rule | design file structure | — | — | — | — | ongoing | ⬜ |
 

@@ -31,7 +31,12 @@ export interface HandlerArgs<B, Q> {
   ctx: RequestContext & { features?: Features };
   body: B;
   query: Q;
+  /** Dynamic route segments (`[slug]`, `[id]`), resolved from the Next route context. */
+  params: Record<string, string>;
 }
+
+/** Shape of the 2nd arg Next passes to a route handler for a dynamic segment. */
+type RouteCtx = { params?: Promise<Record<string, string>> | Record<string, string> };
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -39,10 +44,11 @@ export function withApi<B = undefined, Q = undefined, R = unknown>(
   opts: RouteOpts<B, Q>,
   handler: (args: HandlerArgs<B, Q>) => Promise<R> | R,
 ) {
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest, routeCtx?: RouteCtx): Promise<NextResponse> => {
     try {
       const ctx: RequestContext & { features?: Features } = await getContext(req);
       const path = req.nextUrl.pathname;
+      const params = routeCtx?.params ? await routeCtx.params : {};
 
       // --- rate limit -------------------------------------------------
       if (opts.rateLimit) {
@@ -99,7 +105,7 @@ export function withApi<B = undefined, Q = undefined, R = unknown>(
       }
 
       // --- handle -----------------------------------------------
-      const data = await handler({ req, ctx, body, query });
+      const data = await handler({ req, ctx, body, query, params });
       const res = ok(data);
 
       if (idemKey) {

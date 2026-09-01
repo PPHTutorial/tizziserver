@@ -95,7 +95,14 @@ for (const [opId, r] of Object.entries(routes) as [string, RouteContract][]) {
     },
   };
 
-  if (r.query) op.parameters = queryParams(r.query);
+  const pathParams = [...r.path.matchAll(/\{(\w+)\}/g)].map((m) => ({
+    name: m[1],
+    in: "path",
+    required: true,
+    schema: { type: "string" },
+  }));
+  const qp = r.query ? queryParams(r.query) : [];
+  if (pathParams.length || qp.length) op.parameters = [...pathParams, ...qp];
   if (r.idempotent) {
     op.parameters = [
       ...((op.parameters as unknown[]) ?? []),

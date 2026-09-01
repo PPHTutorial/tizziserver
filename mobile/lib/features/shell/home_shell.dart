@@ -9,6 +9,8 @@ import '../../design/context_ext.dart';
 import '../../design/tokens.g.dart';
 import '../../design/widgets.dart';
 import '../auth/screens/select_role_screen.dart';
+import '../catalog/screens/catalog_home_body.dart';
+import '../catalog/screens/vendor_hub_screen.dart';
 import 'app_bottom_nav.dart';
 
 /// Post-auth landing. Phase 1 ships the shell + server-driven nav + the account
@@ -45,7 +47,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         final nav = boot.nav;
         final index = _index.clamp(0, nav.isEmpty ? 0 : nav.length - 1);
         final current = nav.isEmpty ? null : nav[index];
-        final isAccount = current != null && current.route.contains('profile');
+        final key = current?.key ?? 'home';
 
         return Scaffold(
           backgroundColor: c.bg,
@@ -53,9 +55,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             title: Text(current?.label ?? boot.platform.name),
             centerTitle: false,
           ),
-          body: isAccount
-              ? _AccountTab(boot: boot)
-              : _PlaceholderTab(boot: boot, navKey: current?.key ?? 'home'),
+          body: switch (key) {
+            'profile' => _AccountTab(boot: boot),
+            'home' when boot.activeRole == 'CUSTOMER' =>
+              CatalogHomeBody(platformName: boot.platform.name),
+            'explore' => const CatalogExploreBody(),
+            'dashboard' || 'products' => const VendorHubBody(),
+            _ => _PlaceholderTab(boot: boot, navKey: key),
+          },
           bottomNavigationBar: AppBottomNav(
             items: nav,
             currentIndex: index,
@@ -142,6 +149,16 @@ class _AccountTab extends ConsumerWidget {
             label: 'Switch role',
             onTap: () => showRoleSwitcher(context, ref),
           ),
+        _Tile(
+          icon: Icons.storefront_outlined,
+          label: 'Sell on Stall',
+          onTap: () => context.push(RoutePaths.sell),
+        ),
+        _Tile(
+          icon: Icons.favorite_border,
+          label: 'Wishlist',
+          onTap: () => context.push(RoutePaths.wishlist),
+        ),
         _Tile(
           icon: Icons.devices,
           label: 'Signed-in devices',

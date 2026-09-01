@@ -32,3 +32,16 @@ represent their **GiST indexes**, so every `prisma migrate dev` run emits spurio
 The 5 baseline GiST indexes live in `migrations/20260901191354_init/migration.sql`:
 `addresses.location`, `saved_locations.location`, `businesses.location`,
 `courier_profiles.lastLocation`, `courier_service_areas.area`.
+
+## Product search — **manual DDL** (`20260901231947_catalog_domain3`)
+
+`Product.searchVector` is `Unsupported("tsvector")`. The migration hand-adds:
+
+- `CREATE EXTENSION pg_trgm`
+- `products_search_vector_refresh()` + a `BEFORE INSERT/UPDATE` trigger that rebuilds
+  `searchVector` from `title` (weight A) / `brand` (B) / `description` (C)
+- GIN indexes: `products_search_vector_gin`, `products_title_trgm`, `products_brand_trgm`
+
+Query it from `@stall/core/catalog` via `$queryRawUnsafe` (`websearch_to_tsquery('simple', …)`
+with a `title % :q` trigram fallback). If you add searchable columns, extend the trigger
+function and the `UPDATE "products" SET "title"="title"` backfill line.

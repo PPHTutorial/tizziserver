@@ -174,6 +174,37 @@ enum DocStatus {
   EXPIRED
 }
 
+enum KycSubject {
+  VENDOR
+  COURIER
+}
+
+// --- Domain 3 (catalog) ---------------------------------------------
+
+enum ProductCondition {
+  NEW
+  USED
+  REFURBISHED
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  SUSPENDED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum OfferStatus {
+  ACTIVE
+  PAUSED
+  OUT_OF_STOCK
+}
+
 // =====================================================================
 // Domain 0 — Platform & configuration
 // =====================================================================
@@ -460,6 +491,12 @@ model User {
   addresses       Address[]
   savedLocations  SavedLocation[]
 
+  productQuestions ProductQuestion[]
+  productAnswers   ProductAnswer[]
+  productReviews   ProductReview[]
+  wishlist         WishlistItem[]
+  recentlyViewed   RecentlyViewed[]
+
   @@map("users")
 }
 
@@ -674,8 +711,11 @@ model VendorProfile {
   updatedAt   DateTime      @updatedAt
   deletedAt   DateTime?
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business Business?
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business  Business?
+  products  Product[]
+  offers    VendorOffer[]
+  inventory Inventory[]
 
   @@map("vendor_profiles")
 }
@@ -846,4 +886,269 @@ model CourierServiceArea {
 
   @@index([courierId])
   @@map("courier_service_areas")
+}
+
+// =====================================================================
+// Domain 2b — KYC review case (vendor / courier onboarding)
+// =====================================================================
+
+/// One review case per (subject, type). A mock reviewer flips `status` in dev.
+model KycCase {
+  id           String     @id @default(cuid(2))
+  subjectType  KycSubject
+  subjectId    String
+  status       KycStatus  @default(PENDING)
+  platformSlug String?
+  fields       Json?
+  note         String?
+  reviewedById String?
+  submittedAt  DateTime   @default(now())
+  reviewedAt   DateTime?
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([subjectType, subjectId])
+  @@index([status])
+  @@map("kyc_cases")
+}
+
+// =====================================================================
+// Domain 3 — Catalog
+// =====================================================================
+
+/// Category tree. `path` is a materialised "/a/b/c" slug chain for cheap subtree
+/// queries; `platformSlugs` scopes a branch to tenants (empty ⇒ all).
+model Category {
+  id            String   @id @default(cuid(2))
+  parentId      String?
+  slug          String   @unique
+  name          String
+  icon          String?
+  path          String   @default("/")
+  platformSlugs String[]
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([parentId])
+  @@index([path])
+  @@map("categories")
+}
+
+/// Base product, owned by the creating vendor. Sold through one or more
+/// `VendorOffer`s (multi-vendor). `searchVector` is maintained in migration SQL.
+model Product {
+  id            String                   @id @default(cuid(2))
+  vendorId      String
+  categoryId    String
+  title         String
+  slug          String                   @unique
+  description   String
+  brand         String?
+  condition     ProductCondition         @default(NEW)
+  attributes    Json?
+  status        ProductStatus            @default(DRAFT)
+  platformSlugs String[]
+  ratingAvg     Float                    @default(0)
+  ratingCount   Int                      @default(0)
+  searchVector  Unsupported("tsvector")?
+  publishedAt   DateTime?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  deletedAt     DateTime?
+
+  vendor    VendorProfile     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  category  Category          @relation(fields: [categoryId], references: [id])
+  media     ProductMedia[]
+  variants  ProductVariant[]
+  offers    VendorOffer[]
+  questions ProductQuestion[]
+  reviews   ProductReview[]
+  wishedBy  WishlistItem[]
+  views     RecentlyViewed[]
+
+  @@index([vendorId])
+  @@index([categoryId])
+  @@index([status])
+  @@map("products")
+}
+
+model ProductMedia {
+  id        String    @id @default(cuid(2))
+  productId String
+  kind      MediaKind @default(IMAGE)
+  fileKey   String
+  alt       String?
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_media")
+}
+
+model ProductVariant {
+  id             String   @id @default(cuid(2))
+  productId      String
+  sku            String   @unique
+  name           String
+  options        Json?
+  priceMinor     Int
+  compareAtMinor Int?
+  barcode        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventory Inventory[]
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model Inventory {
+  id                String    @id @default(cuid(2))
+  variantId         String
+  vendorId          String
+  quantity          Int       @default(0)
+  reserved          Int       @default(0)
+  restockAt         DateTime?
+  lowStockThreshold Int       @default(0)
+  updatedAt         DateTime  @updatedAt
+
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  vendor  VendorProfile  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, vendorId])
+  @@map("inventory")
+}
+
+/// A seller's listing of a product: same `productId`, several vendors.
+model VendorOffer {
+  id         String           @id @default(cuid(2))
+  productId  String
+  vendorId   String
+  priceMinor Int
+  currency   String           @default("GHS")
+  condition  ProductCondition @default(NEW)
+  fulfilment Json?
+  status     OfferStatus      @default(ACTIVE)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  product      Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendor       VendorProfile       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  priceHistory PriceHistory[]
+  gasListing   GasCylinderListing?
+
+  @@unique([productId, vendorId])
+  @@index([vendorId])
+  @@index([status])
+  @@map("vendor_offers")
+}
+
+model PriceHistory {
+  id         String   @id @default(cuid(2))
+  offerId    String
+  priceMinor Int
+  at         DateTime @default(now())
+
+  offer VendorOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, at])
+  @@map("price_history")
+}
+
+model ProductQuestion {
+  id        String   @id @default(cuid(2))
+  productId String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers ProductAnswer[]
+
+  @@index([productId])
+  @@map("product_questions")
+}
+
+model ProductAnswer {
+  id           String   @id @default(cuid(2))
+  questionId   String
+  answeredById String
+  body         String
+  createdAt    DateTime @default(now())
+
+  question ProductQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  author   User            @relation(fields: [answeredById], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@map("product_answers")
+}
+
+model ProductReview {
+  id        String   @id @default(cuid(2))
+  productId String
+  userId    String
+  rating    Int
+  title     String?
+  body      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, userId])
+  @@index([productId])
+  @@map("product_reviews")
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid(2))
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
+}
+
+model RecentlyViewed {
+  id        String   @id @default(cuid(2))
+  userId    String
+  productId String
+  at        DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId, at])
+  @@map("recently_viewed")
+}
+
+/// Tizzi-Gas-specific attributes hang off the offer, never the order.
+model GasCylinderListing {
+  id               String  @id @default(cuid(2))
+  offerId          String  @unique
+  cylinderType     String
+  weightKg         Float
+  capacityL        Float
+  requiresExchange Boolean @default(true)
+  depositMinor     Int     @default(0)
+
+  offer VendorOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@map("gas_cylinder_listings")
 }
