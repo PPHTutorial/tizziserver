@@ -94,20 +94,27 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
-1. **Rename the repo folder** (blocked in-session: the folder is locked by the IDE/agent).
-   Close the IDE + all terminals in the folder, then from PowerShell:
-   ```powershell
-   cd 'E:\Projects\NextJs'
-   Rename-Item tizziserver stall
-   ```
-   Reopen the IDE at `E:\Projects\NextJs\stall`. `node_modules` is path-relative so `pnpm`
-   should be fine; if anything complains, `pnpm install`. Postgres cluster (`.pgdata`) moves
-   with the folder — `pnpm dev:db` restarts it.
-   *(Optional, outward-facing — do yourself)* rename the GitHub repo `tizziserver` → `stall`
-   (`gh repo rename stall` or repo Settings), then `git remote set-url origin <new-url>`.
-2. Everything else is done + committed on `phase-0-foundation` (monorepo → dev-env → rename →
-   Docker verify). Merge `phase-0-foundation → main` when ready.
-3. **Begin Phase 1 — Identity & platform core** (`docs/05-ROADMAP.md` §Phase 1): schema v2 Domain 0 (Platform/FeatureFlag) + Domain 1 (identity, multi-role `UserRole`) + Domain 2 profiles; migration + seed (`grandprice` + `tizzi-gas` platforms, flag registry, gas category). This is where **argon2 + jose** replace bcryptjs/jsonwebtoken and the middleware chain + capability resolver + `/api/v1/config/bootstrap` land.
+1. **Phase 1 — auth module** (`apps/api/src/auth` + `packages/core`): install `jose`, `argon2`,
+   `otpauth`; build — OTP issue/verify (phone via SMS port, email via Mailpit), access-JWT
+   sign/verify (EdDSA, `TokenEpoch`-aware), rotating refresh with `familyId` reuse-detection,
+   `POST /api/v1/auth/{register,otp,verify,refresh,logout,switch-role}`, device registration,
+   session list/revoke. Wire `@stall/config` for the JWT keys. Add `SMS_*` to `packages/config`.
+2. **Phase 1 — capability resolver + bootstrap** (`apps/api/src/platform`): resolve
+   `platform ∩ role ∩ user-overrides ∩ region` → `ctx.features`; `GET /api/v1/config/bootstrap`
+   (features + nav + theme + minAppVersion). Middleware chain (parse → authn → capabilities →
+   authz → rate-limit/idempotency), error envelope, `AuditLog` on auth events.
+3. **Phase 1 — contracts + mobile**: auth/config Zod schemas → `openapi.json` → Dart client;
+   Flutter screens 1–20 (splash → role switcher) with `AppBottomNav` from `nav`.
+4. `_compat` bridge: map the gas app's `auth.send-otp` / `auth.verify-otp` onto the new handlers.
+5. Optional Phase-1 exit: integration tests for refresh-rotation + reuse-detection; assert an
+   auction endpoint `403`s under `X-Platform: tizzi-gas`.
+
+### Deferred / user-owned
+- **Rename the repo folder** `tizziserver` → `stall` (locked in-session). Close IDE + terminals,
+  then `cd 'E:\Projects\NextJs'; Rename-Item tizziserver stall`, reopen at the new path
+  (`pnpm install` if paths complain). GitHub repo rename + `git remote set-url` — do yourself.
+- Merge `stall-rebuild → main` when ready (6 commits: monorepo → dev-env → rename → Docker →
+  schema-v2).
 4. Wire `@stall/config` into `apps/api` (replace direct `process.env` reads in `lib/constants.ts`, `lib/email.ts`).
 5. (optional, non-blocking) B1c — real Figma Variables if Enterprise/Tokens Studio becomes available.
 
