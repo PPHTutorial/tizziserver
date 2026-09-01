@@ -1,0 +1,26 @@
+{
+  "name": "@stall/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./platform": "./src/platform/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stall/config": "workspace:*",
+    "@stall/db": "workspace:*",
+    "@node-rs/argon2": "^2.2.0",
+    "jose": "^6.2.10",
+    "otpauth": "^9.5.1",
+    "zod": "^4.0.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

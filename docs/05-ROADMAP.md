@@ -41,9 +41,9 @@ no-Docker fallback (S4). CI green on the PR still pending push.
 **Goal:** Multi-role auth + the capability system. MD §02, §32.
 
 - [x] Schema v2 Domain 0 (Platform/FeatureFlag/…) + Domain 1 (identity, relational `UserRole`) + Domain 2 profiles; baseline migration `20260901191354_init` (+ PostGIS extension + 5 GiST indexes); seed (`grandprice`, `tizzi-gas`, 12-flag registry, per-platform gating). *Gas `Category` deferred to Phase 2 (Domain 3).* Legacy `{action}`-RPC services archived; catch-all route → `410`.
-- [ ] `apps/api/src/auth`: OTP (phone+email), access JWT (`jose`), rotating refresh + reuse-detection, social sign-in (Google/Apple/Facebook ID-token verify), TOTP 2FA, transaction PIN, session/device list + revoke, role switch.
-- [ ] `apps/api/src/platform`: capability resolver + `ctx.features`; `GET /api/v1/config/bootstrap` (features + nav + theme + minAppVersion).
-- [ ] Middleware chain: parse → authenticate → resolve capabilities → authorize (RBAC guards) → rate-limit/idempotency → handle. Error envelope + codes. `AuditLog` for auth events.
+- [x] `@stall/core` + `apps/api/src/auth`: OTP (phone via SMS port / email via Mailpit), access JWT (`jose` EdDSA, `TokenEpoch`-aware), rotating refresh + **family reuse-detection**, session/device list + revoke, role switch. `/api/v1/auth/{otp,verify,refresh,logout,sessions,switch-role}`. argon2 via `@node-rs/argon2`. **curl-verified.** *(social sign-in · TOTP 2FA · transaction PIN — still to do.)*
+- [x] `@stall/core/platform`: capability resolver (`platform ∩ role ∩ region ∩ user-override`) + `GET /api/v1/config/bootstrap` (features + role `nav` + theme + minAppVersion). Verified: gating differs grandprice vs tizzi-gas.
+- [~] Middleware chain: `getContext` (headers → principal, epoch check) + envelope + `requireAuth`/`requireRole` guards done. **Rate-limit + `Idempotency-Key` + `AuditLog` still to wire.**
 - [ ] `_compat` RPC shim for existing `auth.*` gas-app actions.
 - [ ] Contracts: auth + config schemas → OpenAPI → Dart client.
 - [ ] Mobile: splash, welcome, onboarding, sign-up, login, phone/email verification, OTP + resend, forgot/reset/create password, social auth, account recovery, select-role, role switcher, session/security notices, logout confirm, account disabled/suspended (screens 1–20). `AppBottomNav` rendered from `nav`.

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@stall/config": "workspace:*",
+    "@stall/core": "workspace:*",
     "@stall/db": "workspace:*",
     "@headlessui/react": "^2.2.6",
     "@hookform/resolvers": "^5.2.0",

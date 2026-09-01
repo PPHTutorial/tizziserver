@@ -14,10 +14,37 @@ const schema = z.object({
   DATABASE_URL: z.string().url(),
   DATABASE_POOLING_URL: z.string().url().optional(),
 
-  // --- Auth / JWT (present in v1; hardened in Phase 1) ------------------
-  JWT_SECRET: z.string().min(16).optional(),
+  // --- Auth / JWT (Phase 1) ------------------------------------------
+  // EdDSA (Ed25519) keypair, base64-encoded DER: PKCS8 private, SPKI public.
+  // Generate: node -e "const{generateKeyPairSync}=require('crypto');const{privateKey,publicKey}=generateKeyPairSync('ed25519');console.log('priv',privateKey.export({type:'pkcs8',format:'der'}).toString('base64'));console.log('pub',publicKey.export({type:'spki',format:'der'}).toString('base64'))"
+  JWT_PRIVATE_KEY: z.string().min(40),
+  JWT_PUBLIC_KEY: z.string().min(40),
+  JWT_ISSUER: z.string().default("stall"),
+  JWT_AUDIENCE: z.string().default("stall-app"),
   JWT_ACCESS_TTL: z.string().default("15m"),
-  JWT_REFRESH_TTL: z.string().default("60d"),
+  JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(60),
+  JWT_SECRET: z.string().min(16).optional(), // legacy, unused
+
+  // --- OTP ---------------------------------------------------------
+  OTP_TTL_SECONDS: z.coerce.number().int().positive().default(600),
+  OTP_LENGTH: z.coerce.number().int().min(4).max(8).default(6),
+  OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+  OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().nonnegative().default(45),
+
+  // --- SMS provider (Phase 1). `log` prints codes to the server log in dev.
+  SMS_PROVIDER: z.enum(["log", "nalo", "twilio"]).default("log"),
+  NALO_API_BASE_URL: z.string().url().optional(),
+  NALO_API_KEY: z.string().optional(),
+  NALO_SENDER_ID: z.string().optional(),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_PHONE_NUMBER: z.string().optional(),
+
+  // --- Social sign-in (Phase 1; verification wired incrementally) ----
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  APPLE_CLIENT_ID: z.string().optional(),
+  FACEBOOK_CLIENT_ID: z.string().optional(),
+  FACEBOOK_CLIENT_SECRET: z.string().optional(),
 
   // --- Redis (Phase 0 infra, wired Phase 1+) --------------------------
   REDIS_URL: z.string().url().optional(),

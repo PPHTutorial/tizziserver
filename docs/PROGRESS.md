@@ -10,6 +10,21 @@ Last updated: **2026-09-01** (Session 5)
 
 ## CURRENT STATE (one paragraph)
 
+**Session 7 — Phase 1 auth module is live and curl-verified.** New `@stall/core` package:
+argon2id (`@node-rs/argon2`, prebuilt), EdDSA JWT (`jose`), OTP issue/verify, rotating-refresh
+sessions with **family reuse-detection**, role switch, capability resolver, bootstrap builder.
+`/api/v1/auth/{otp,verify,refresh,logout,sessions,switch-role}` + `/api/v1/config/bootstrap`
+served by `apps/api` (envelope + `getContext` principal/TokenEpoch check). Verified end-to-end
+against the Docker `stall` DB: request OTP (code to server log) → verify → EdDSA access +
+rotating refresh + device row → authed bootstrap returns `activeRole`+`nav` → refresh rotates
+→ replaying the old refresh triggers `REFRESH_REUSE_DETECTED` (family revoked) → switch to an
+unheld role `403 ROLE_NOT_ACTIVE`. `bootstrap` gates correctly: `grandprice` auction=true/
+scope=all vs `tizzi-gas` auction=false/scope=gas. Green: build (7 v1 routes), typecheck, lint
+(0). Migration `20260901201604_session_role_platform` added `Session.activeRole`+`platformSlug`
+(and the PostGIS geo-DDL is now hand-managed — see `packages/db/README.md`).
+
+--- earlier ---
+
 **Session 6 — Phase 1 started: schema v2 Domains 0+1+2 is live.** `packages/db/prisma/
 schema.prisma` is now the v2 baseline (platform/config/system · identity with relational
 `UserRole` · profiles); migration `20260901191354_init` applied to the local `stall` DB
@@ -58,10 +73,13 @@ breaks `next build`), `pnpm -r typecheck`, `@stall/api` lint (0 errors), `flutte
 - [x] **Schema v2 Domains 0+1+2** — `packages/db/prisma/schema.prisma` rewritten (Domain 0 platform/config/system, Domain 1 identity/access with relational `UserRole`, Domain 2 profiles). Fresh baseline migration `20260901191354_init` (hand-added `CREATE EXTENSION postgis` + 5 GiST indexes on `geography` columns). Old v1 gas models + migrations dropped. `prisma migrate reset` (user-consented) + `deploy` on the local `stall` DB → **43 tables, PostGIS 3.5.2, 5 GiST indexes**.
 - [x] **Seed** (`packages/db/prisma/seed.ts`) — 4 currencies, 3 regions, `grandprice` + `tizzi-gas` platforms, 12-flag registry, 24 `PlatformFeature` rows. Verified: `grandprice` auction/advertising=**true** catalog.scope=**all**; `tizzi-gas` auction/advertising=**false** catalog.scope=**gas**. Starter `FeeSchedule` + `PricingRule` + `AppConfig`. (Gas `Category` moves to Phase 2 / Domain 3.)
 - [x] **Legacy RPC retired** — 6 Tizzi-Gas services → `apps/api/_legacy_services/` (excluded from tsc + eslint); catch-all `/api/[...api]` route gutted to `test` + `410 ENDPOINT_MIGRATED`. `lib/{utils,email,constants,email-templates,prisma}.ts` kept (compile clean).
-- [ ] `apps/api/src/auth`: OTP (phone+email) · access JWT (`jose`) · rotating refresh + reuse-detection · social sign-in · TOTP 2FA · transaction PIN · session/device list + revoke · role switch. **argon2 + jose** land here (replace bcryptjs/jsonwebtoken).
-- [ ] `apps/api/src/platform`: capability resolver → `ctx.features`; `GET /api/v1/config/bootstrap`.
-- [ ] Middleware chain: parse → authenticate → resolve capabilities → authorize → rate-limit/idempotency. Error envelope. `AuditLog` for auth events.
-- [ ] `_compat` bridge for the gas app's `auth.*` actions onto the new handlers.
+- [x] **`packages/core`** (`@stall/core`) — new shared-domain package. `crypto` (argon2id via `@node-rs/argon2` — prebuilt, no C++ toolchain; sha256 for refresh lookup; numeric OTP), `jwt` (EdDSA via `jose`, `TokenEpoch`-aware `AccessClaims`), `auth/{sms,otp,identity,tokens}`, `platform/{features,nav,bootstrap}`, `errors` (`AppError` + codes).
+- [x] **Auth flows** — OTP issue+verify (SMS `log` adapter for dev / email via Mailpit), `issueTokenPair` (new session + family), `rotateTokenPair` (**reuse-detection → revoke family**), `switchRole`, `revokeSession`/`revokeAllForUser` (+epoch bump), `listSessions`, `registerDevice`, `findOrCreateUserByPhone` + `markPhoneVerified`. Session gained `activeRole` + `platformSlug` (migration `20260901201604`).
+- [x] **`/api/v1` routes** — `apps/api/src/http/{envelope,context,dto}` + `auth/{otp,verify,refresh,logout,sessions,switch-role}` + `config/bootstrap`. Envelope `{ok,data,error,meta}`, `AppError`→status mapping, `getContext` (X-Platform/X-Device-Id/bearer→principal + TokenEpoch check).
+- [x] **Capability resolver + bootstrap** — `resolveFeatures` (platform ∩ role ∩ region ∩ user-override), `hasFeature`/`assertFeature`, `buildBootstrap`. **Verified live:** `GET /config/bootstrap` returns `auction=true`/`catalog.scope="all"` for `grandprice`, `auction=false`/`"gas"` for `tizzi-gas`; authed → `activeRole` + role-based `nav`. Full flow curl-tested (verify→tokens→refresh→**reuse-detect**→switch-role 403).
+- [ ] Social sign-in (Google/Apple/Facebook ID-token verify) · TOTP 2FA · transaction PIN — additive, next.
+- [ ] Middleware: rate-limit + `Idempotency-Key` + `AuditLog` on every write (envelope + `getContext` in place; guards `requireAuth`/`requireRole` done).
+- [ ] `_compat` bridge for the gas app's `auth.send-otp`/`verify-otp` onto the new handlers.
 - [ ] Contracts: auth + config schemas → OpenAPI → Dart client.
 - [ ] Mobile: splash/welcome/onboarding, sign-up, login, phone/email verify, OTP + resend, forgot/reset/create password, social auth, account recovery, select-role, role switcher, session/security notices, logout confirm, disabled/suspended (screens 1–20); `AppBottomNav` from `nav`.
 
@@ -94,20 +112,22 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
-1. **Phase 1 — auth module** (`apps/api/src/auth` + `packages/core`): install `jose`, `argon2`,
-   `otpauth`; build — OTP issue/verify (phone via SMS port, email via Mailpit), access-JWT
-   sign/verify (EdDSA, `TokenEpoch`-aware), rotating refresh with `familyId` reuse-detection,
-   `POST /api/v1/auth/{register,otp,verify,refresh,logout,switch-role}`, device registration,
-   session list/revoke. Wire `@stall/config` for the JWT keys. Add `SMS_*` to `packages/config`.
-2. **Phase 1 — capability resolver + bootstrap** (`apps/api/src/platform`): resolve
-   `platform ∩ role ∩ user-overrides ∩ region` → `ctx.features`; `GET /api/v1/config/bootstrap`
-   (features + nav + theme + minAppVersion). Middleware chain (parse → authn → capabilities →
-   authz → rate-limit/idempotency), error envelope, `AuditLog` on auth events.
-3. **Phase 1 — contracts + mobile**: auth/config Zod schemas → `openapi.json` → Dart client;
-   Flutter screens 1–20 (splash → role switcher) with `AppBottomNav` from `nav`.
-4. `_compat` bridge: map the gas app's `auth.send-otp` / `auth.verify-otp` onto the new handlers.
-5. Optional Phase-1 exit: integration tests for refresh-rotation + reuse-detection; assert an
-   auction endpoint `403`s under `X-Platform: tizzi-gas`.
+1. **Phase 1 — auth extras**: social sign-in (`/api/v1/auth/social` — verify Google ID token
+   via JWKS in `jose`, Apple, Facebook), TOTP 2FA (`otpauth` — enroll/verify/disable, gate
+   sensitive ops), transaction PIN (`Credential(kind=PIN)` set/verify, `requirePin()` guard),
+   password set/verify (optional). All wire into `@stall/core/auth`.
+2. **Phase 1 — middleware hardening**: Redis token-bucket rate-limit per (principal, route);
+   `Idempotency-Key` persistence + replay on `IdempotencyKey`; `AuditLog` write on auth events
+   + role changes. Fold into a `withApi(handler, { auth?, capability?, rateLimit?, idempotent? })`
+   wrapper so every `/api/v1` handler is one line.
+3. **Phase 1 — `_compat` bridge**: `apps/api/app/api/[...api]/route.ts` maps `auth.send-otp` →
+   `POST /api/v1/auth/otp`, `auth.verify-otp` → `/verify` (shape-translate) so the gas app keeps
+   working.
+4. **Phase 1 — contracts + mobile**: auth/config Zod schemas → `openapi.json` → generated Dart
+   client (`mobile/lib/api/`); Flutter screens 1–20 (splash → onboarding → phone OTP → verify →
+   select-role → role switcher) with `AppBottomNav` fed by `bootstrap.nav`.
+5. **Phase 1 exit**: integration tests for refresh-rotation + reuse-detection + epoch bump;
+   assert a (stub) auction route `403 FEATURE_DISABLED`s under `x-platform: tizzi-gas`.
 
 ### Deferred / user-owned
 - **Rename the repo folder** `tizziserver` → `stall` (locked in-session). Close IDE + terminals,
@@ -140,6 +160,9 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-09-01 (S7) | **argon2 via `@node-rs/argon2`** (Rust, prebuilt binaries) instead of the `argon2` npm package. | `argon2` needs node-gyp + a C++ toolchain; there's no Visual Studio on this machine and the prebuild download failed. `@node-rs/argon2` ships per-platform `.node` binaries, zero build step, same argon2id. |
+| 2026-09-01 (S7) | **JWT = EdDSA (Ed25519)** via `jose`, keys as base64 DER (PKCS8/SPKI) in env, wrapped to PEM at load. Access token carries `ver` (TokenEpoch); `getContext` rejects tokens whose `ver` ≠ the user's current epoch. Refresh = 256-bit opaque, stored `sha256` for O(1) lookup, `familyId` chain, rotate-on-use, replay of a rotated token ⇒ revoke the whole family. | Roadmap-specified. sha256 (not argon2) for refresh because it's already high-entropy. |
+| 2026-09-01 (S7) | **PostGIS geo DDL is hand-managed.** `prisma migrate dev` can't see GiST indexes on `Unsupported()` columns → it emits `DROP INDEX` for them every run. Workflow: `migrate dev --create-only`, delete the `DROP INDEX "..._gist"` lines, hand-add any new geo index, `migrate deploy`. Documented in `packages/db/README.md`. | No clean Prisma-native option for GiST-on-geography; explicit + reviewed SQL beats fighting the differ. |
 | 2026-09-01 (S6) | **Schema v2 = a clean rewrite, not a migration from v1.** Dropped the gas-era models (`Order`/`Vendor`/`Customer`/`Courier`/…) and both v1 migrations; new baseline `init` covers Domains 0+1+2 only (3–10 arrive in Phases 2–6). The 6 legacy `{action}`-RPC services are archived under `apps/api/_legacy_services/` (excluded from build); the catch-all route returns `410 ENDPOINT_MIGRATED`. `_compat` for the gas app's `auth.*` comes with the auth module later in Phase 1. | 0 production rows; roadmap already mandated a fresh v2 baseline. Keeping v1 models alongside v2 would fork `User` and bloat the schema. Gas-app clients are pre-production. |
 | 2026-09-01 (S6) | **PostGIS via raw migration SQL**, not the Prisma `postgresqlExtensions` preview. `geography(Point/Polygon, 4326)` columns modelled as `Unsupported(...)`; `CREATE EXTENSION` + `CREATE INDEX … USING GIST` hand-appended to `init/migration.sql` (generated with `migrate dev --create-only`). | Avoids a preview-feature flag; the GiST indexes Prisma can't express are explicit and reviewable. Re-generate future geo migrations the same way. |
 | 2026-09-01 (S5) | **Docker compose image tags pinned** (`postgis/postgis:16-3.5`, `minio/minio:RELEASE.2025-04-22…`, `minio/mc:RELEASE.2025-04-16…`, `axllent/mailpit:v1.21`, `getmeili/meilisearch:v1.12`). MinIO healthcheck rewritten to `mc alias set … && mc ready`. `.env`/`.env.example` DB default → Docker form (`stall:stall@localhost:5432/stall`). | After the Docker Desktop factory-reset, floating `:latest` tags resolved to corrupt/mismatched layers → containers restart-looped with `exec format error` (even though VM + image arch were both amd64). Fresh pinned tags work; `redis:7-alpine` and `alpine:3` were unaffected. |
@@ -169,6 +192,7 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Session | What changed |
 |------|---------|--------------|
+| 2026-09-01 | 7 | **Phase 1 — auth module.** New `@stall/core` (crypto/jwt/auth/platform/errors). argon2 via `@node-rs/argon2` (prebuilt — no VS C++ toolchain on this box; the `argon2` npm pkg failed node-gyp). EdDSA JWT keypair added to `.env`/`.env.example`; `packages/config` gained JWT/OTP/SMS/social keys. `Session.activeRole`+`platformSlug` (migration `20260901201604`, hand-stripped its spurious geo `DROP INDEX`s → `packages/db/README.md` documents the manual geo-DDL workflow). `apps/api/src/http` + 7 `/api/v1` routes. **curl-verified full flow**: OTP→verify→tokens→authed bootstrap (nav)→refresh rotate→reuse-detect→switch-role 403; bootstrap gating grandprice vs tizzi-gas. Green: build/typecheck/lint(0). |
 | 2026-09-01 | 6 | **Phase 1 started — schema v2 Domains 0+1+2.** Rewrote `schema.prisma` (platform/config/system + identity w/ relational `UserRole` + profiles). Dropped v1 gas models + both v1 migrations; fresh `20260901191354_init` with hand-added `CREATE EXTENSION postgis` + 5 GiST indexes on `geography` cols. `prisma migrate reset` (**user-consented** — Prisma 7 AI guardrail) + `deploy` on local `stall` DB → 43 tables, PostGIS 3.5.2. New `seed.ts`: currencies/regions, `grandprice`+`tizzi-gas` platforms, 12-flag registry, 24 PlatformFeature rows (gating verified). Archived the 6 legacy RPC services → `apps/api/_legacy_services/` (tsc+eslint excluded); catch-all route → `410 ENDPOINT_MIGRATED`. Green: build, typecheck, lint (0 warnings), seed, DB smoke. |
 | 2026-09-01 | 1 | Read spec + repo; confirmed Figma file is empty; 4 architecture decisions locked (monorepo / custom JWT / GCP+Cloudflare / master-plan-first). Created `docs/`: PROGRESS, RESUME, 00-MASTER-PLAN, 01-ARCHITECTURE, 02-DATA-MODEL, 03-DESIGN-SYSTEM, 04-SCREEN-CATALOG, 05-ROADMAP. Saved Figma API responses to `docs/design/`. Wrote project memory. Added `scripts/figma-pull.mjs` + `npm run figma:pull` + `docs/design/README.md` — one-pass reproducible Figma export (user will populate the file first). |
 | 2026-09-01 | 2 | User populated the Figma file + gave a new token. Ran `npm run figma:pull` → `docs/design/Untitled/` (64 frames @390×844, `file.json` 31MB, `nodes/Page-1.json`, 64 `renders/*.png`, `manifest.json`; variables 403 — not Enterprise). Wrote `scripts/figma-extract-tokens.mjs` → `extracted-tokens.json` (41 colors, 63 text styles, radii, shadows, spacing). Read 6 key renders. Reconciled `03-DESIGN-SYSTEM.md` (§1–4 + new §9 patterns — real orange/cream/Outfit+Inter system), `02-DATA-MODEL.md` (Domain 7 → Inverse Draw), `04-SCREEN-CATALOG.md` (64-frame → MD-section map). B1/B1b resolved. Still no production code changed. |

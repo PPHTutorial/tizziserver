@@ -502,6 +502,8 @@ model Session {
   deviceId      String?
   refreshHash   String    @unique
   familyId      String
+  activeRole    Role      @default(CUSTOMER)
+  platformSlug  String?
   userAgent     String?
   ip            String?
   lastUsedAt    DateTime  @default(now())
