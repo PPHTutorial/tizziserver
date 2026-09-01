@@ -27,12 +27,12 @@ Phases are scoped so a cleared session can pick up one checklist item at a time.
 - [x] Repo cleanup: 9 legacy `.md` → `docs/legacy/`; removed `package-lock.json`, stale `.next`; `.gitignore` + `.gitattributes` rewritten. (`next.svg`/`vercel.svg` still under `apps/api/public` — trim in Phase 2 when the marketing page is redone.)
 - [x] `docs/` committed (this corpus).
 
-**Exit — MET (Session 4):** ✅ `pnpm -r build` · ✅ `pnpm -r typecheck` · ✅ `@stall/api`
-lint (0 err) · ✅ `flutter analyze` · ✅ `flutter test` · ✅ `prisma migrate deploy` (native
-Postgres, no Docker) · ✅ api :3000 + realtime :3001 + worker :3002 booted & health-checked ·
-✅ DB-backed request returns real data · ✅ email → maildev round-trip.
-Docker path deferred (Docker Desktop WSL backend broken on the dev machine — `docs/DEV_SETUP.md`);
-`docker compose config` valid. CI green on the PR still pending push.
+**Exit — MET:** ✅ `pnpm -r build` · ✅ `pnpm -r typecheck` · ✅ `@stall/api` lint (0 err) ·
+✅ `flutter analyze` · ✅ `flutter test` · ✅ `prisma migrate deploy` · ✅ api :3000 +
+realtime :3001 + worker :3002 booted & health-checked · ✅ DB-backed request returns real
+data · ✅ email round-trip. Verified on **both** the Docker compose stack (S5 —
+Postgres+PostGIS 3.5, Redis, MinIO+bucket, Mailpit healthy; image tags pinned) **and** the
+no-Docker fallback (S4). CI green on the PR still pending push.
 
 ---
 

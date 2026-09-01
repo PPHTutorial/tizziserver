@@ -10,15 +10,19 @@ Last updated: **2026-09-01** (Session 5)
 
 ## CURRENT STATE (one paragraph)
 
-**Session 5 — renamed the engine to `Stall`.** The system is now **Stall** (multi-tenant
-marketplace + delivery engine); **GrandPrice** and **Tizzi Gas** are `Platform` *tenants* on
-it (matching the existing data model). Package scope `@grandprice/*` → **`@stall/*`**, Flutter
-`Gp*` classes → **`App*`**, resume keyword → **`RESUME STALL`**, dev DB → `stall`, memory
-files renamed. `docs/` prose updated to separate engine (Stall) from tenant (GrandPrice/Tizzi
-Gas); tenant slugs `grandprice`/`tizzi-gas` unchanged. All checks re-verified green + services
-re-booted against the `stall` DB. **Repo folder is still `tizziserver`** — the OS-level
-rename to `stall` is the last step (see NEXT ACTIONS); it will likely require reopening the
-IDE/terminal at the new path.
+**Session 5 — renamed the engine to `Stall` + verified the Docker dev path.** The system is
+**Stall** (multi-tenant marketplace + delivery engine); **GrandPrice** and **Tizzi Gas** are
+`Platform` *tenants*. `@grandprice/*` → **`@stall/*`**, Flutter `Gp*` → **`App*`**, keyword →
+**`RESUME STALL`**, dev DB → `stall`, memory files renamed; tenant slugs `grandprice`/
+`tizzi-gas` unchanged. **Docker Desktop now works** — the compose stack is up and healthy:
+Postgres 16 + **PostGIS 3.5** (extension enabled, migrations applied), Redis 7, MinIO (bucket
+`stall-media` created), Mailpit (:8025). Verified against it: `vendor.list` returns real DB
+data, realtime/worker `/health`, email → Mailpit round-trip. **Image tags are now pinned** in
+`docker-compose.yml` — floating `:latest` gave corrupt / `exec format error` layers after the
+Docker Desktop factory-reset. `.env` + `.env.example` default `DATABASE_URL` is the Docker
+form (`stall:stall@localhost:5432/stall`); the no-Docker fallback (`pnpm dev:db`) still works.
+All checks re-verified green. **Repo folder is still `tizziserver`** — the OS rename to `stall`
+is pending (locked in-session; steps in NEXT ACTIONS).
 
 **Phase 0 remains DONE** (branch `phase-0-foundation`). The repo is a pnpm +
 Turborepo **monorepo**: `apps/api` (Next.js **16.3.4**, the old catch-all route + 6 services
@@ -28,18 +32,11 @@ contracts}`, `infra/docker`. Prisma upgraded **6 → 7.10.0** (new `prisma-clien
 ESM, `@prisma/adapter-pg` driver adapter, `prisma.config.ts`); schema still v1 (Tizzi Gas
 baseline). `@stall/config` is a zod env loader; `@stall/tokens` builds the measured
 Figma tokens into `tokens.ts`/`.css`/`mobile/.../tokens.g.dart`; `@stall/contracts` emits
-a starter `openapi.json`. **Phase 0 is COMPLETE and verified running.** Docker Desktop's WSL2 backend is
-broken on this machine (`vpnkit-bridge handshake failed` / `distribution failed to start`), so
-the dev stack runs **without Docker** — native PostgreSQL 16 in `./.pgdata` (`pnpm dev:db`,
-trust auth), `redis-server` from scoop (`pnpm dev:redis`), `maildev` SMTP sandbox
-(`pnpm dev:mail`, UI :1080). Migrations applied to the `stall` DB; Prisma 7 +
-`@prisma/adapter-pg` queries confirmed (`prisma.user.count()` etc). All three services booted
-and health-checked: **api :3000** (`/`, `/api/test`, and a DB-backed `vendor.list` all 200),
-**realtime :3001** `/health`, **worker :3002** `/health` (BullMQ connected to Redis). Email
-verified: nodemailer → maildev → received. **All green:** `pnpm -r build` (fixed: `NODE_ENV`
-must NOT be in `.env` — it broke `next build`), `pnpm -r typecheck`, `@stall/api` lint
-(0 errors), `flutter analyze`, `flutter test`. `docs/DEV_SETUP.md` documents both paths.
-Docker compose file stays valid for when Docker is fixed. **Phase 1 is next.**
+a starter `openapi.json`. **Phase 0 is COMPLETE and verified running** — both via the Docker
+compose stack (default, S5) and the no-Docker fallback (`pnpm dev:db` / `dev:redis` /
+`dev:mail`, S4). **All green:** `pnpm -r build` (note: `NODE_ENV` must NOT be in `.env` — it
+breaks `next build`), `pnpm -r typecheck`, `@stall/api` lint (0 errors), `flutter analyze`,
+`flutter test`. `docs/DEV_SETUP.md` documents both paths. **Phase 1 is next.**
 
 ## ACTIVE PHASE
 
@@ -59,12 +56,11 @@ Session-4 dev-env work, then start **Phase 1**. See `docs/05-ROADMAP.md` §Phase
 - [x] `mobile/` — `flutter create --empty`; deps: riverpod, go_router, dio, font_awesome_flutter, google_maps_flutter; `AppTheme` from `tokens.g.dart`; `lib/{app,design,features,api,core}`; `test/smoke_test.dart` (asserts primary == `#FF6200`)
 - [x] cleanup: 9 legacy `.md` → `docs/legacy/`; removed `package-lock.json`, stale `.next`; `.gitignore` rewritten
 
-**Exit criteria — ALL MET (Session 4):** ✅ `pnpm -r build` · ✅ `pnpm -r typecheck` ·
-✅ `@stall/api` lint (0 err) · ✅ `flutter analyze` · ✅ `flutter test` ·
-✅ `prisma migrate deploy` (native PG) · ✅ api + realtime + worker booted & health-checked ·
-✅ DB-backed request returns real data · ✅ email → maildev round-trip.
-Docker path unverified (Docker Desktop WSL backend broken on this machine — see
-`docs/DEV_SETUP.md`); `docker compose config` passes and it's the intended path once fixed.
+**Exit criteria — ALL MET:** ✅ `pnpm -r build` · ✅ `pnpm -r typecheck` · ✅ `@stall/api`
+lint (0 err) · ✅ `flutter analyze` · ✅ `flutter test` · ✅ `prisma migrate deploy` ·
+✅ api + realtime + worker booted & health-checked · ✅ DB-backed request returns real data ·
+✅ email round-trip. Verified on **both** the Docker compose stack (S5 — Postgres+PostGIS 3.5,
+Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
@@ -79,17 +75,16 @@ Docker path unverified (Docker Desktop WSL backend broken on this machine — se
    with the folder — `pnpm dev:db` restarts it.
    *(Optional, outward-facing — do yourself)* rename the GitHub repo `tizziserver` → `stall`
    (`gh repo rename stall` or repo Settings), then `git remote set-url origin <new-url>`.
-2. Everything else is done + committed on `phase-0-foundation` (3 commits: monorepo, dev-env,
-   rename). Merge `phase-0-foundation → main` when ready.
+2. Everything else is done + committed on `phase-0-foundation` (monorepo → dev-env → rename →
+   Docker verify). Merge `phase-0-foundation → main` when ready.
 3. **Begin Phase 1 — Identity & platform core** (`docs/05-ROADMAP.md` §Phase 1): schema v2 Domain 0 (Platform/FeatureFlag) + Domain 1 (identity, multi-role `UserRole`) + Domain 2 profiles; migration + seed (`grandprice` + `tizzi-gas` platforms, flag registry, gas category). This is where **argon2 + jose** replace bcryptjs/jsonwebtoken and the middleware chain + capability resolver + `/api/v1/config/bootstrap` land.
-3. Wire `@stall/config` into `apps/api` (replace direct `process.env` reads in `lib/constants.ts`, `lib/email.ts`).
-4. Decide **B2** (rename folder `tizziserver` → `grandprice`?). Non-blocking; default = keep.
-5. (later) When Docker Desktop is fixed: `docker compose ... up -d` and confirm the containerized path matches; bring up MinIO for Phase 2 storage work.
-6. (optional, non-blocking) B1c — real Figma Variables if Enterprise/Tokens Studio becomes available.
+4. Wire `@stall/config` into `apps/api` (replace direct `process.env` reads in `lib/constants.ts`, `lib/email.ts`).
+5. (optional, non-blocking) B1c — real Figma Variables if Enterprise/Tokens Studio becomes available.
 
-### To resume the running dev env (native, no Docker)
-`pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (3 terminals) → `pnpm dev`. See `docs/DEV_SETUP.md`.
-(Postgres cluster in `./.pgdata` from Session 4 is likely still running; `pnpm dev:db` is idempotent.)
+### To resume the running dev env
+Docker stack is up (Postgres/Redis/MinIO/Mailpit, `restart: unless-stopped`) — just `pnpm dev`.
+If containers are down: `docker compose -f infra/docker/docker-compose.yml --env-file .env.example up -d`.
+No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ point `.env` DATABASE_URL at `postgres@localhost`). See `docs/DEV_SETUP.md`.
 
 ## BLOCKERS / NEEDS FROM USER
 
@@ -98,7 +93,7 @@ Docker path unverified (Docker Desktop WSL backend broken on this machine — se
 | B1 | ~~GrandPrice reference image / brand guide~~ | ~~Final brand palette~~ | **RESOLVED** by Figma export (S2). Only open bit: no dark theme in Figma — `03-DESIGN-SYSTEM.md` dark columns are derived, need a review pass. |
 | B1b | ~~Populate the Figma file + run `npm run figma:pull`~~ | ~~Locking the design blueprint~~ | **RESOLVED** S2 — 64 frames pulled to `docs/design/Untitled/`, tokens mined, docs reconciled. Re-run `npm run figma:pull` whenever the Figma file changes. |
 | B1c | (optional) Enterprise Figma or a token export plugin (Tokens Studio) for real Variables — REST `variables/local` returned 403 | Formal token collection with Light/Dark modes; not blocking (values were mined from nodes) | OPEN — low priority |
-| B2 | Rename repo folder `tizziserver` → `grandprice`? | Monorepo restructure naming | OPEN (proceeding as "keep") |
+| B2 | ~~Rename repo folder?~~ | — | **DECIDED (S5): rename to `stall`.** OS move is blocked in-session (folder locked); manual steps in NEXT ACTIONS #1. |
 | B3 | GCP project + billing, Cloudflare account | Phase 8 (cloud deploy) only | OPEN (not yet needed) |
 | B4 | Payment provider accounts (Paystack/Flutterwave sandbox) | Phase 3 | OPEN (not yet needed) |
 | B5 | Google Maps Platform API key(s) | Phase 4 | OPEN (not yet needed) |
@@ -108,6 +103,7 @@ Docker path unverified (Docker Desktop WSL backend broken on this machine — se
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-09-01 (S5) | **Docker compose image tags pinned** (`postgis/postgis:16-3.5`, `minio/minio:RELEASE.2025-04-22…`, `minio/mc:RELEASE.2025-04-16…`, `axllent/mailpit:v1.21`, `getmeili/meilisearch:v1.12`). MinIO healthcheck rewritten to `mc alias set … && mc ready`. `.env`/`.env.example` DB default → Docker form (`stall:stall@localhost:5432/stall`). | After the Docker Desktop factory-reset, floating `:latest` tags resolved to corrupt/mismatched layers → containers restart-looped with `exec format error` (even though VM + image arch were both amd64). Fresh pinned tags work; `redis:7-alpine` and `alpine:3` were unaffected. |
 | 2026-09-01 (S5) | **Engine renamed `GrandPrice` → `Stall`.** Stall = the multi-tenant marketplace+delivery engine; **GrandPrice** and **Tizzi Gas** are `Platform` tenants on it. Package scope `@grandprice/*` → `@stall/*`; Flutter `Gp*` → `App*`; root pkg + Flutter pkg name → `stall`; dev DB `grandprice` → `stall`; resume keyword `RESUME/SAVE/STATUS GRANDPRICE` → `… STALL`; memory files `grandprice-*` → `stall-*`; docs prose separates engine vs tenant. **Tenant slugs `grandprice` / `tizzi-gas` unchanged** (they're `Platform.slug` values). | User: the name must be universal — "we strip GrandPrice and TizziGas out"; both are just marketplaces (gas vs general goods) with per-tenant feature switches over the same engine. Data model already used `Platform` for tenants, so this only formalizes naming. |
 | 2026-09-01 (S4) | **Dev stack runs without Docker.** Native PostgreSQL 16 cluster in `./.pgdata` (`scripts/dev-postgres.mjs`, trust auth, `pnpm dev:db`), `redis-server` (scoop, `pnpm dev:redis`), `maildev` (npm devDep, `pnpm dev:mail`, SMTP :1025 / UI :1080). Docker Compose file retained as the intended path. | Docker Desktop's WSL2 backend is broken on the machine (`vpnkit-bridge handshake failed`; `Restart-Service`/service-start need admin). Native services were already installed. |
 | 2026-09-01 (S4) | **`NODE_ENV` must never be in `.env`.** Removed from `.env`/`.env.example`. | `dotenv -e .env` injected `NODE_ENV=development` into `next build`, causing a React dev/prod mismatch → `/_global-error` prerender crash (`useContext` of null). Tooling sets `NODE_ENV` itself. |
@@ -136,6 +132,6 @@ Docker path unverified (Docker Desktop WSL backend broken on this machine — se
 |------|---------|--------------|
 | 2026-09-01 | 1 | Read spec + repo; confirmed Figma file is empty; 4 architecture decisions locked (monorepo / custom JWT / GCP+Cloudflare / master-plan-first). Created `docs/`: PROGRESS, RESUME, 00-MASTER-PLAN, 01-ARCHITECTURE, 02-DATA-MODEL, 03-DESIGN-SYSTEM, 04-SCREEN-CATALOG, 05-ROADMAP. Saved Figma API responses to `docs/design/`. Wrote project memory. Added `scripts/figma-pull.mjs` + `npm run figma:pull` + `docs/design/README.md` — one-pass reproducible Figma export (user will populate the file first). |
 | 2026-09-01 | 2 | User populated the Figma file + gave a new token. Ran `npm run figma:pull` → `docs/design/Untitled/` (64 frames @390×844, `file.json` 31MB, `nodes/Page-1.json`, 64 `renders/*.png`, `manifest.json`; variables 403 — not Enterprise). Wrote `scripts/figma-extract-tokens.mjs` → `extracted-tokens.json` (41 colors, 63 text styles, radii, shadows, spacing). Read 6 key renders. Reconciled `03-DESIGN-SYSTEM.md` (§1–4 + new §9 patterns — real orange/cream/Outfit+Inter system), `02-DATA-MODEL.md` (Domain 7 → Inverse Draw), `04-SCREEN-CATALOG.md` (64-frame → MD-section map). B1/B1b resolved. Still no production code changed. |
-| 2026-09-01 | 5 | **Renamed engine → `Stall`** (`@grandprice/*`→`@stall/*`, Flutter `Gp*`→`App*`, keyword `RESUME STALL`, dev DB `stall`, memory files `stall-*`). `docs/` prose now separates engine (Stall) from tenants (GrandPrice, Tizzi Gas); tenant slugs unchanged. Re-created + migrated `stall` DB; re-verified green: `pnpm -r build/typecheck`, api lint, `flutter analyze/test`, services re-booted. **Repo folder still `tizziserver`** — OS rename to `stall` deferred to next session (needs IDE reopen at new path). |
+| 2026-09-01 | 5 | **Renamed engine → `Stall`** (`@grandprice/*`→`@stall/*`, Flutter `Gp*`→`App*`, keyword `RESUME STALL`, dev DB `stall`, memory files `stall-*`); `docs/` prose separates engine from tenants; tenant slugs unchanged. **Docker Desktop fixed by user → verified the containerized dev path:** brought up the compose stack (had to pin image tags — `:latest` gave `exec format error` after the factory-reset; fixed MinIO healthcheck), enabled PostGIS 3.5, `migrate deploy`, pointed `.env` at Docker PG, re-ran the full smoke (api DB request, realtime/worker health, email→Mailpit) — all pass. `.env`/`.env.example` default → Docker. Re-verified `pnpm -r build/typecheck`, api lint, `flutter analyze/test`. **Repo folder still `tizziserver`** — OS rename locked in-session; manual steps in NEXT ACTIONS. |
 | 2026-09-01 | 4 | **Phase 0 verified running.** Docker Desktop WSL backend broken → built a no-Docker dev path: `scripts/dev-postgres.mjs` (native PG 16 in `./.pgdata`), scoop `redis-server`, `maildev` (new devDep) + `dev:db`/`dev:redis`/`dev:mail` scripts. Patched `.env` → local sandboxes (backup `.env.backup.20260901`). `prisma migrate deploy` → both v1 migrations on fresh `grandprice` DB; Prisma 7 + adapter-pg queries confirmed via `packages/db/scripts/smoke.ts`. Booted api/realtime/worker, health-checked all; `vendor.list` returns real DB data; email → maildev round-trip OK. Fixed `next build` regression (removed `NODE_ENV` from `.env`). Made `lib/email.ts` sandbox-friendly. Added `docs/DEV_SETUP.md`. Removed Next-16 auto `AGENTS.md`/`CLAUDE.md` (gitignored). All checks green. |
 | 2026-09-01 | 3 | **Phase 0 executed** on branch `phase-0-foundation`. Monorepo (pnpm+turbo): `git mv` app → `apps/api`; new `apps/realtime` + `apps/worker` + `packages/{db,config,tokens,contracts}` + `infra/docker`. Next **15.4→16.3.4**, Prisma **6→7.10.0** (driver adapter + `prisma.config.ts`), flat eslint. `packages/tokens` builds measured Figma tokens → ts/css/`tokens.g.dart`. `mobile/` `flutter create` + token theme + smoke test. `docker-compose.yml` (pg+postgis/redis/minio/mailpit). CI workflow. Legacy `.md` → `docs/legacy/`. **Green:** `pnpm -r build/typecheck`, api lint, `flutter analyze/test`, `docker compose config`. Not run: live `docker compose up`, `prisma migrate`. Fixed 4 latent v1 typecheck bugs (`phone1` on Vendor ×2, `'DELIVERED'` order status, unchecked-index). Not yet committed. |
