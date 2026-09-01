@@ -1,15 +1,19 @@
-// TIZZI GAS - Email Service
+// GrandPrice - Email Service
 import nodemailer from 'nodemailer'
 
-// Create transporter using SMTP credentials from .env
+const SMTP_HOST = process.env.SMTP_HOST || 'localhost'
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || '1025', 10)
+const SMTP_USER = process.env.SMTP_USER || ''
+const SMTP_PASS = process.env.SMTP_PASS || ''
+const EMAIL_FROM = process.env.EMAIL_FROM || 'GrandPrice <no-reply@grandprice.local>'
+
+// Create transporter. In dev this targets Mailpit (localhost:1025, no auth);
+// in prod set SMTP_HOST/PORT/USER/PASS to the real provider.
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '465'),
-  secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_PORT === 465, // true for 465, STARTTLS/none otherwise
+  ...(SMTP_USER ? { auth: { user: SMTP_USER, pass: SMTP_PASS } } : {}),
 })
 
 // Verify transporter configuration
@@ -48,7 +52,7 @@ export async function sendEmail(
     }
 
     const info = await transporter.sendMail({
-      from: `TIZZI GAS <${process.env.SMTP_USER}>`,
+      from: EMAIL_FROM,
       to,
       subject: template.subject,
       text: template.text,

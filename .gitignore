@@ -26,6 +26,13 @@ next-env.d.ts
 .env.*
 !.env.example
 
+# local dev postgres cluster (scripts/dev-postgres.mjs) + env backups
+.pgdata/
+
+# Next 16 auto-generated agent rule files
+apps/api/AGENTS.md
+apps/api/CLAUDE.md
+
 # misc
 .DS_Store
 *.pem

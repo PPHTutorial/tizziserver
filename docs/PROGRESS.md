@@ -4,7 +4,7 @@
 > Resume a cleared session by typing **`RESUME GRANDPRICE`** (see `docs/RESUME.md`).
 > Flush state before clearing context by typing **`SAVE GRANDPRICE`**.
 
-Last updated: **2026-09-01** (Session 3)
+Last updated: **2026-09-01** (Session 4)
 
 ---
 
@@ -18,14 +18,23 @@ contracts}`, `infra/docker`. Prisma upgraded **6 → 7.10.0** (new `prisma-clien
 ESM, `@prisma/adapter-pg` driver adapter, `prisma.config.ts`); schema still v1 (Tizzi Gas
 baseline). `@grandprice/config` is a zod env loader; `@grandprice/tokens` builds the measured
 Figma tokens into `tokens.ts`/`.css`/`mobile/.../tokens.g.dart`; `@grandprice/contracts` emits
-a starter `openapi.json`. **All green:** `pnpm -r build`, `pnpm -r typecheck`,
-`@grandprice/api` lint (0 errors), `flutter analyze`, `flutter test`, `docker compose config`.
-Not yet verified: live `docker compose up` (Docker Desktop wasn't running) and DB migrations.
-No feature code written yet — Phase 1 is next.
+a starter `openapi.json`. **Phase 0 is COMPLETE and verified running.** Session 4: Docker Desktop's WSL2 backend is
+broken on this machine (`vpnkit-bridge handshake failed` / `distribution failed to start`), so
+the dev stack now runs **without Docker** — native PostgreSQL 16 in `./.pgdata` (`pnpm dev:db`,
+trust auth), `redis-server` from scoop (`pnpm dev:redis`), `maildev` SMTP sandbox
+(`pnpm dev:mail`, UI :1080). Both migrations applied to a fresh `grandprice` DB; Prisma 7 +
+`@prisma/adapter-pg` queries confirmed (`prisma.user.count()` etc). All three services booted
+and health-checked: **api :3000** (`/`, `/api/test`, and a DB-backed `vendor.list` all 200),
+**realtime :3001** `/health`, **worker :3002** `/health` (BullMQ connected to Redis). Email
+verified: nodemailer → maildev → received. **All green:** `pnpm -r build` (fixed: `NODE_ENV`
+must NOT be in `.env` — it broke `next build`), `pnpm -r typecheck`, `@grandprice/api` lint
+(0 errors), `flutter analyze`, `flutter test`. `docs/DEV_SETUP.md` documents both paths.
+Docker compose file stays valid for when Docker is fixed. **Phase 1 is next.**
 
 ## ACTIVE PHASE
 
-**Phase 0 — Foundation.** ~95% done on branch `phase-0-foundation`. See `docs/05-ROADMAP.md` §Phase 0.
+**Phase 0 — Foundation. ✅ DONE** on branch `phase-0-foundation` (2 commits). Next: commit
+Session-4 dev-env work, then start **Phase 1**. See `docs/05-ROADMAP.md` §Phase 1.
 
 - [x] pnpm + Turborepo monorepo (`apps/*`, `packages/*`, `mobile/`, `infra/`); `tsconfig.base.json`; `.npmrc`, `.nvmrc`, `.gitattributes`
 - [x] `git mv` Next.js app → `apps/api`; upgrade Next **15.4 → 16.3.4** (Turbopack, `typedRoutes`, flat `eslint-config-next`); dropped unused `next-auth`, `socket.io` from api
@@ -40,18 +49,25 @@ No feature code written yet — Phase 1 is next.
 - [x] `mobile/` — `flutter create --empty`; deps: riverpod, go_router, dio, font_awesome_flutter, google_maps_flutter; `GpTheme` from `tokens.g.dart`; `lib/{app,design,features,api,core}`; `test/smoke_test.dart` (asserts primary == `#FF6200`)
 - [x] cleanup: 9 legacy `.md` → `docs/legacy/`; removed `package-lock.json`, stale `.next`; `.gitignore` rewritten
 
-**Exit criteria:** ✅ `pnpm -r build`, ✅ `pnpm -r typecheck`, ✅ `@grandprice/api` lint (0 err),
-✅ `flutter analyze`, ✅ `flutter test`, ✅ `docker compose config`. ⚠️ live `docker compose up`
-+ health checks and `prisma migrate` **still to run once Docker Desktop is up**.
+**Exit criteria — ALL MET (Session 4):** ✅ `pnpm -r build` · ✅ `pnpm -r typecheck` ·
+✅ `@grandprice/api` lint (0 err) · ✅ `flutter analyze` · ✅ `flutter test` ·
+✅ `prisma migrate deploy` (native PG) · ✅ api + realtime + worker booted & health-checked ·
+✅ DB-backed request returns real data · ✅ email → maildev round-trip.
+Docker path unverified (Docker Desktop WSL backend broken on this machine — see
+`docs/DEV_SETUP.md`); `docker compose config` passes and it's the intended path once fixed.
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
-1. `git commit` the Phase 0 branch (240 files). Open a PR `phase-0-foundation → main` (or fast-forward merge).
-2. Start Docker Desktop → `docker compose -f infra/docker/docker-compose.yml --env-file .env.example up -d` → confirm all services healthy. Point `.env` `DATABASE_URL` at the local PG, then `pnpm --filter @grandprice/db migrate` to baseline schema v1 locally.
-3. Decide **B2** (rename folder `tizziserver` → `grandprice`?). Non-blocking; default = keep.
-4. **Begin Phase 1 — Identity & platform core** (`docs/05-ROADMAP.md` §Phase 1): schema v2 Domain 0 (Platform/FeatureFlag) + Domain 1 (identity, multi-role `UserRole`) + Domain 2 profiles; migration + seed (`grandprice` + `tizzi-gas` platforms, flag registry, gas category). This is where **argon2 + jose** replace bcryptjs/jsonwebtoken and the middleware chain + capability resolver + `/api/v1/config/bootstrap` land.
-5. Wire `@grandprice/config` into `apps/api` (replace direct `process.env` reads in `lib/constants.ts`, `lib/email.ts`).
+1. Commit Session-4 dev-env work on `phase-0-foundation` (email.ts Mailpit-friendly, `scripts/dev-postgres.mjs`, `packages/db/scripts/smoke.ts`, `maildev` dep + `dev:db`/`dev:redis`/`dev:mail` scripts, `.env.example` + `.gitignore` updates, `docs/DEV_SETUP.md`). Then merge `phase-0-foundation → main`.
+2. **Begin Phase 1 — Identity & platform core** (`docs/05-ROADMAP.md` §Phase 1): schema v2 Domain 0 (Platform/FeatureFlag) + Domain 1 (identity, multi-role `UserRole`) + Domain 2 profiles; migration + seed (`grandprice` + `tizzi-gas` platforms, flag registry, gas category). This is where **argon2 + jose** replace bcryptjs/jsonwebtoken and the middleware chain + capability resolver + `/api/v1/config/bootstrap` land.
+3. Wire `@grandprice/config` into `apps/api` (replace direct `process.env` reads in `lib/constants.ts`, `lib/email.ts`).
+4. Decide **B2** (rename folder `tizziserver` → `grandprice`?). Non-blocking; default = keep.
+5. (later) When Docker Desktop is fixed: `docker compose ... up -d` and confirm the containerized path matches; bring up MinIO for Phase 2 storage work.
 6. (optional, non-blocking) B1c — real Figma Variables if Enterprise/Tokens Studio becomes available.
+
+### To resume the running dev env (native, no Docker)
+`pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (3 terminals) → `pnpm dev`. See `docs/DEV_SETUP.md`.
+(Postgres cluster in `./.pgdata` from Session 4 is likely still running; `pnpm dev:db` is idempotent.)
 
 ## BLOCKERS / NEEDS FROM USER
 
@@ -70,6 +86,9 @@ No feature code written yet — Phase 1 is next.
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-09-01 (S4) | **Dev stack runs without Docker.** Native PostgreSQL 16 cluster in `./.pgdata` (`scripts/dev-postgres.mjs`, trust auth, `pnpm dev:db`), `redis-server` (scoop, `pnpm dev:redis`), `maildev` (npm devDep, `pnpm dev:mail`, SMTP :1025 / UI :1080). Docker Compose file retained as the intended path. | Docker Desktop's WSL2 backend is broken on the machine (`vpnkit-bridge handshake failed`; `Restart-Service`/service-start need admin). Native services were already installed. |
+| 2026-09-01 (S4) | **`NODE_ENV` must never be in `.env`.** Removed from `.env`/`.env.example`. | `dotenv -e .env` injected `NODE_ENV=development` into `next build`, causing a React dev/prod mismatch → `/_global-error` prerender crash (`useContext` of null). Tooling sets `NODE_ENV` itself. |
+| 2026-09-01 (S4) | `apps/api/lib/email.ts` made sandbox-friendly: defaults to `localhost:1025`, omits SMTP `auth` when `SMTP_USER` empty, `from` uses `EMAIL_FROM`. Expired prod SMTP (`smtp.titam.email`) is no longer referenced. | User's prod SMTP expired; dev uses maildev/Mailpit which need no auth. |
 | 2026-09-01 (S3) | **Prisma 7 uses driver adapters** — `url`/`directUrl` removed from `schema.prisma`; connection string now in `prisma.config.ts` (CLI, loads root `.env` via dotenv) and `new PrismaClient({ adapter: new PrismaPg({ connectionString }) })` (runtime, from `@grandprice/config`). Generator is `prisma-client` (not `-js`), ESM, output `packages/db/src/generated`. | Mandatory in Prisma 7.10; `@prisma/adapter-pg` + `pg`. |
 | 2026-09-01 (S3) | Monorepo uses **pnpm `workspace:*` + package `exports` (raw `.ts`)** for internal packages, resolved via symlinks + Next `transpilePackages` — no TS path aliases for `@grandprice/*`. `tsconfig.base.json` sets `allowImportingTsExtensions` + `noEmit` for all. | Simplest that builds under Next 16 Turbopack + `tsx` for node services. |
 | 2026-09-01 (S3) | **argon2 swap deferred to Phase 1.** Kept `bcryptjs`/`jsonwebtoken` in `apps/api` for Phase 0. | `bcryptjs` is only in `lib/utils.ts` and unused by the live OTP flow; swapping crypto without the Phase 1 auth rebuild is churn. |
@@ -94,4 +113,5 @@ No feature code written yet — Phase 1 is next.
 |------|---------|--------------|
 | 2026-09-01 | 1 | Read spec + repo; confirmed Figma file is empty; 4 architecture decisions locked (monorepo / custom JWT / GCP+Cloudflare / master-plan-first). Created `docs/`: PROGRESS, RESUME, 00-MASTER-PLAN, 01-ARCHITECTURE, 02-DATA-MODEL, 03-DESIGN-SYSTEM, 04-SCREEN-CATALOG, 05-ROADMAP. Saved Figma API responses to `docs/design/`. Wrote project memory. Added `scripts/figma-pull.mjs` + `npm run figma:pull` + `docs/design/README.md` — one-pass reproducible Figma export (user will populate the file first). |
 | 2026-09-01 | 2 | User populated the Figma file + gave a new token. Ran `npm run figma:pull` → `docs/design/Untitled/` (64 frames @390×844, `file.json` 31MB, `nodes/Page-1.json`, 64 `renders/*.png`, `manifest.json`; variables 403 — not Enterprise). Wrote `scripts/figma-extract-tokens.mjs` → `extracted-tokens.json` (41 colors, 63 text styles, radii, shadows, spacing). Read 6 key renders. Reconciled `03-DESIGN-SYSTEM.md` (§1–4 + new §9 patterns — real orange/cream/Outfit+Inter system), `02-DATA-MODEL.md` (Domain 7 → Inverse Draw), `04-SCREEN-CATALOG.md` (64-frame → MD-section map). B1/B1b resolved. Still no production code changed. |
+| 2026-09-01 | 4 | **Phase 0 verified running.** Docker Desktop WSL backend broken → built a no-Docker dev path: `scripts/dev-postgres.mjs` (native PG 16 in `./.pgdata`), scoop `redis-server`, `maildev` (new devDep) + `dev:db`/`dev:redis`/`dev:mail` scripts. Patched `.env` → local sandboxes (backup `.env.backup.20260901`). `prisma migrate deploy` → both v1 migrations on fresh `grandprice` DB; Prisma 7 + adapter-pg queries confirmed via `packages/db/scripts/smoke.ts`. Booted api/realtime/worker, health-checked all; `vendor.list` returns real DB data; email → maildev round-trip OK. Fixed `next build` regression (removed `NODE_ENV` from `.env`). Made `lib/email.ts` sandbox-friendly. Added `docs/DEV_SETUP.md`. Removed Next-16 auto `AGENTS.md`/`CLAUDE.md` (gitignored). All checks green. |
 | 2026-09-01 | 3 | **Phase 0 executed** on branch `phase-0-foundation`. Monorepo (pnpm+turbo): `git mv` app → `apps/api`; new `apps/realtime` + `apps/worker` + `packages/{db,config,tokens,contracts}` + `infra/docker`. Next **15.4→16.3.4**, Prisma **6→7.10.0** (driver adapter + `prisma.config.ts`), flat eslint. `packages/tokens` builds measured Figma tokens → ts/css/`tokens.g.dart`. `mobile/` `flutter create` + token theme + smoke test. `docker-compose.yml` (pg+postgis/redis/minio/mailpit). CI workflow. Legacy `.md` → `docs/legacy/`. **Green:** `pnpm -r build/typecheck`, api lint, `flutter analyze/test`, `docker compose config`. Not run: live `docker compose up`, `prisma migrate`. Fixed 4 latent v1 typecheck bugs (`phone1` on Vendor ×2, `'DELIVERED'` order status, unchecked-index). Not yet committed. |

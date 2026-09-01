@@ -17,11 +17,16 @@
     "db:studio": "pnpm --filter @grandprice/db studio",
     "db:seed": "pnpm --filter @grandprice/db seed",
     "figma:pull": "node scripts/figma-pull.mjs",
-    "figma:tokens": "node scripts/figma-extract-tokens.mjs"
+    "figma:tokens": "node scripts/figma-extract-tokens.mjs",
+    "dev:db": "node scripts/dev-postgres.mjs start",
+    "dev:db:stop": "node scripts/dev-postgres.mjs stop",
+    "dev:mail": "maildev --smtp 1025 --web 1080 --hide-extensions STARTTLS",
+    "dev:redis": "redis-server --port 6379 --save \"\" --appendonly no"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "dotenv-cli": "^8.0.0",
+    "maildev": "^2.2.1",
     "turbo": "^2.5.0",
     "typescript": "^5.7.0"
   },
