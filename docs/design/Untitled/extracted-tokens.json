@@ -1,0 +1,2549 @@
+{
+  "source": "file.json",
+  "fileName": "Untitled",
+  "lastModified": "2026-09-01T10:38:48Z",
+  "nodeCount": 4132,
+  "frameSizes": [
+    {
+      "name": "splash-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "onboarding",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "login-sign-up",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "home-discover",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "categories-browse",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "product-detail",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "inverse-auction-hub",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "auction-detail",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "ticket-purchase",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "cart-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "checkout-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "orders-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "wallet-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "profile-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "search-results",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "seller-store",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "chat-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "notifications-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "image",
+      "w": 400,
+      "h": 300
+    },
+    {
+      "name": "phone-verification",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "otp-entry",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "forgot-password",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "reset-password",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "select-role",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "social-auth",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "account-recovery",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "session-notification",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "account-suspended",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "personalized-home",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "trending-products",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "new-arrivals",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "flash-deals",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "grandprice-deals",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "nearby-vendors",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "recently-viewed",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "featured-vendors",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "marketplace-promotions",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "otp-verification",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "kyc-identity",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "wishlist-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "reviews-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "delivery-tracking",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "draw-stages",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "winner-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "winnings-claim",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "referral-share",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "create-listing",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "edit-listing",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "seller-inventory",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "seller-orders",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "seller-analytics",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "product-boosting",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "coupons-promotions",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "settings-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "help-disputes",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "terms-auction-rules",
+      "w": 390,
+      "h": 1267
+    },
+    {
+      "name": "product-feed",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "empty-cart-state",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "loading-skeleton",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "error-state",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "auction-eligibility",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "payment-methods",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "runner-up-screen",
+      "w": 390,
+      "h": 844
+    },
+    {
+      "name": "transaction-history",
+      "w": 390,
+      "h": 844
+    }
+  ],
+  "colors": [
+    {
+      "value": "#111111",
+      "count": 656,
+      "samples": [
+        "Status-Bar/Time:TEXT",
+        "ios-signal/Vector:VECTOR",
+        "ios-wifi-signal/Vector:VECTOR",
+        "ios-battery-full/Vector:VECTOR",
+        "Text-Group/Win luxury assets at a fraction of the cost:TEXT",
+        "Home-Indicator-Area/Bar:RECTANGLE"
+      ]
+    },
+    {
+      "value": "#FFFFFF",
+      "count": 450,
+      "samples": [
+        "Status-Bar/Time:TEXT",
+        "ios-signal/Vector:VECTOR",
+        "ios-wifi-signal/Vector:VECTOR",
+        "ios-battery-full/Vector:VECTOR",
+        "Emblem-Container/Emblem:FRAME",
+        "Home-Indicator-Area/Bar:RECTANGLE"
+      ]
+    },
+    {
+      "value": "#FF6200",
+      "count": 219,
+      "samples": [
+        "Emblem/G:TEXT",
+        "Badge/How It Works:TEXT",
+        "Steps/Rectangle:RECTANGLE",
+        "Onboarding-Actions/Next-Button:FRAME",
+        "Form/CTA-Button:FRAME",
+        "Grid-Heading/View All:TEXT"
+      ]
+    },
+    {
+      "value": "#8E8E93",
+      "count": 172,
+      "samples": [
+        "Skip/Skip Intro:TEXT",
+        "Divider-Row/or connect with:TEXT",
+        "Footer-Area/By continuing, you agree to our Terms & Conditions:TEXT",
+        "Search-Bar/Placeholder:TEXT",
+        "Rating/(82):TEXT",
+        "Rating/(230):TEXT"
+      ]
+    },
+    {
+      "value": "#555555",
+      "count": 113,
+      "samples": [
+        "Text-Group/Buy a Mercedes S-Class for $10K instead of $250K. Secure your ticket to enter the exclusive inverse auction draw.:TEXT",
+        "Header-Section/Sign in to join active premium draws:TEXT",
+        "Input-Group/Email or Phone Number:TEXT",
+        "Tab-All/All:TEXT",
+        "Tab-Trending/Trending:TEXT",
+        "Tab-New/New:TEXT"
+      ]
+    },
+    {
+      "value": "#FAF9F6",
+      "count": 89,
+      "samples": [
+        "undefined/onboarding:FRAME",
+        "undefined/login-sign-up:FRAME",
+        "undefined/home-discover:FRAME",
+        "undefined/categories-browse:FRAME",
+        "undefined/product-detail:FRAME",
+        "Product-Meta/Seller-Info:FRAME"
+      ]
+    },
+    {
+      "value": "#00B050",
+      "count": 61,
+      "samples": [
+        "Price-Pill/Auction Entry:TEXT",
+        "Price-Pill/$170 Spot:TEXT",
+        "Row/$1,199:TEXT",
+        "Badge/VERIFIED:TEXT",
+        "Target/$10,000:TEXT",
+        "Metric-Row/$10,000:TEXT"
+      ]
+    },
+    {
+      "value": "#E6F7ED",
+      "count": 33,
+      "samples": [
+        "Tags/Price-Pill:FRAME",
+        "Seller-Info/Badge:FRAME",
+        "Detail-Body/Qualification-Pill:FRAME",
+        "Header-Row/Status:FRAME",
+        "Tx-Item/Icon:FRAME",
+        "Name-Row/Verified:FRAME"
+      ]
+    },
+    {
+      "value": "#00000000",
+      "count": 30,
+      "samples": [
+        "Tab-Search/Active-Pill:FRAME",
+        "Tab-Cart/Active-Pill:FRAME",
+        "Tab-Profile/Active-Pill:FRAME"
+      ]
+    },
+    {
+      "value": "#FFF0E6",
+      "count": 26,
+      "samples": [
+        "Brand-Text/Win Big. Pay Less.:TEXT",
+        "Text-Group/Badge:FRAME",
+        "Filter-Tabs/Tab-Auction Eligible:FRAME",
+        "Product-Meta/GrandPrice-Draw-Card:FRAME",
+        "Counter-Controls/Plus:FRAME",
+        "Address-Card/Icon-Box:FRAME"
+      ]
+    },
+    {
+      "value": "#EFECE8",
+      "count": 16,
+      "samples": [
+        "Steps/Ellipse:ELLIPSE",
+        "Bars-Row/Bar-4:RECTANGLE",
+        "Role-Card-vendor/Icon-Hex:FRAME",
+        "Role-Card-courier/Icon-Hex:FRAME",
+        "Stepper/Rectangle:RECTANGLE",
+        "Status-Stepper/Rectangle:RECTANGLE"
+      ]
+    },
+    {
+      "value": "#FFEFE6",
+      "count": 14,
+      "samples": [
+        "Header-Meta/Time-Pill:FRAME",
+        "Driver-Card/Contact-CTA:FRAME",
+        "Standings/Participant-You:FRAME",
+        "Code-Card/Code-Wrap:FRAME",
+        "Card-Header/Badge:FRAME",
+        "Tips-Section/Tips-Card:FRAME"
+      ]
+    },
+    {
+      "value": "#121212",
+      "count": 12,
+      "samples": [
+        "undefined/02 — AUTHENTICATION & ACCOUNT ACCESS:TEXT",
+        "undefined/03 — CUSTOMER HOME & MARKETPLACE:TEXT",
+        "undefined/04 — SEARCH & DISCOVERY:TEXT",
+        "undefined/05 — PRODUCT EXPERIENCE:TEXT",
+        "undefined/06 — CART & CHECKOUT:TEXT",
+        "undefined/07 — ORDERS & FULFILLMENT:TEXT"
+      ]
+    },
+    {
+      "value": "#E9E7E2",
+      "count": 10,
+      "samples": [
+        "Frame/Rectangle:RECTANGLE",
+        "Frame/Frame:FRAME"
+      ]
+    },
+    {
+      "value": "#F2F0EC",
+      "count": 10,
+      "samples": [
+        "Frame/Rectangle:RECTANGLE"
+      ]
+    },
+    {
+      "value": "#FF3B30",
+      "count": 7,
+      "samples": [
+        "Deny-Btn/No, Block This Device:TEXT",
+        "Frame/Ending Soon: 02h 45m 12s:TEXT",
+        "Frame/$19 Spot:TEXT",
+        "Frame/Only 12 spots left!:TEXT",
+        "Frame/$5 Spot:TEXT",
+        "Frame/94% slots sold:TEXT"
+      ]
+    },
+    {
+      "value": "#FFF9E6",
+      "count": 4,
+      "samples": [
+        "Detail-Body/Refund-Alert:FRAME",
+        "Onboarding-Content/Guidelines:FRAME",
+        "Celebration-Card/Trophy-Box:FRAME",
+        "Referral-Content/Explainer:FRAME"
+      ]
+    },
+    {
+      "value": "#FFFFFF30",
+      "count": 3,
+      "samples": [
+        "Hero-Banner/Draw-Tag:FRAME",
+        "Progress-Group/Progress-Bar-Track:FRAME",
+        "Actions-Row/Btn:FRAME"
+      ]
+    },
+    {
+      "value": "#FFFFFFD0",
+      "count": 3,
+      "samples": [
+        "Stats/2,340 of 5,000 seats sold:TEXT",
+        "Card-Header/GrandPrice Secure Wallet:TEXT",
+        "Live-Hub/Next Stage begins in 01:14:TEXT"
+      ]
+    },
+    {
+      "value": "#B38600",
+      "count": 3,
+      "samples": [
+        "Refund-Alert/60% Guarantee Policy:TEXT",
+        "Guidelines/Guideline Tips::TEXT",
+        "Explainer/How does this help me win?:TEXT"
+      ]
+    },
+    {
+      "value": "#FF620014",
+      "count": 3,
+      "samples": [
+        "Content/Illustration-Panel:FRAME",
+        "Option-sms/Icon-Badge:FRAME",
+        "Header-Notification/Warning-Icon:FRAME"
+      ]
+    },
+    {
+      "value": "#FFFFFFCC",
+      "count": 2,
+      "samples": [
+        "Balance/AVAILABLE BALANCE:TEXT",
+        "Promo-Banner/Use coupon code DRW20 for an extra 20% discount on spot purchases.:TEXT"
+      ]
+    },
+    {
+      "value": "#FFFFF0",
+      "count": 2,
+      "samples": [
+        "Frame/Join the Rolex draw now with a 15% discount spot entry.:TEXT",
+        "Frame/Use code WELCOME15 at checkout. Valid on any watch or tech draws.:TEXT"
+      ]
+    },
+    {
+      "value": "#000000",
+      "count": 1,
+      "samples": [
+        "Brand-Text/GrandPrice:TEXT"
+      ]
+    },
+    {
+      "value": "#FFFFFF80",
+      "count": 1,
+      "samples": [
+        "Footer-Splash/Premium Inverse Auction Marketplace:TEXT"
+      ]
+    },
+    {
+      "value": "#00000010",
+      "count": 1,
+      "samples": [
+        "Seats-Progress/Track:FRAME"
+      ]
+    },
+    {
+      "value": "#806000",
+      "count": 1,
+      "samples": [
+        "Refund-Alert/If the draw does not sell out 100% of seats, you receive a guaranteed 60% wallet refund or free rollover tickets.:TEXT"
+      ]
+    },
+    {
+      "value": "#FFFBF7",
+      "count": 1,
+      "samples": [
+        "Content/Role-Card-customer:FRAME"
+      ]
+    },
+    {
+      "value": "#FF3B3014",
+      "count": 1,
+      "samples": [
+        "Header-Suspended/Error-Badge:FRAME"
+      ]
+    },
+    {
+      "value": "#007AFF0D",
+      "count": 1,
+      "samples": [
+        "Content/Info-Banner:FRAME"
+      ]
+    },
+    {
+      "value": "#007AFF",
+      "count": 1,
+      "samples": [
+        "Info-Banner/If you believe this was an error, you can submit an official appeal request.:TEXT"
+      ]
+    },
+    {
+      "value": "#FFEBEB",
+      "count": 1,
+      "samples": [
+        "Content/Frame:FRAME"
+      ]
+    },
+    {
+      "value": "#FFB800",
+      "count": 1,
+      "samples": [
+        "Premium-Banner/GRAND DRAW ELIGIBLE:TEXT"
+      ]
+    },
+    {
+      "value": "#BBBBBB",
+      "count": 1,
+      "samples": [
+        "Premium-Banner/Premium inverse auction format. Spots starting at only $950. Limited to 1,000 entries.:TEXT"
+      ]
+    },
+    {
+      "value": "#111111E0",
+      "count": 1,
+      "samples": [
+        "Map-Placeholder/Route-Card:FRAME"
+      ]
+    },
+    {
+      "value": "#FFFFFF40",
+      "count": 1,
+      "samples": [
+        "Live-Hub/Live-Tag:FRAME"
+      ]
+    },
+    {
+      "value": "#FFFFFF20",
+      "count": 1,
+      "samples": [
+        "Live-Hub/Spinner:FRAME"
+      ]
+    },
+    {
+      "value": "#FDECEF",
+      "count": 1,
+      "samples": [
+        "Actions-Row/Delete-Btn:FRAME"
+      ]
+    },
+    {
+      "value": "#DF2020",
+      "count": 1,
+      "samples": [
+        "Delete-Btn/Delete Listing:TEXT"
+      ]
+    },
+    {
+      "value": "#FFF3CD",
+      "count": 1,
+      "samples": [
+        "Frame/Frame:FRAME"
+      ]
+    },
+    {
+      "value": "#856404",
+      "count": 1,
+      "samples": [
+        "Frame/Under Review:TEXT"
+      ]
+    }
+  ],
+  "strokeColors": [
+    {
+      "value": "#EFECE8",
+      "count": 364,
+      "samples": [
+        "Input-Group/Input-Field w1",
+        "Divider-Row/Line w1",
+        "Social-Logins/Social-Apple w1",
+        "Social-Logins/Social-Google w1",
+        "Screen-Header/Cart-Icon-Wrap w1",
+        "Body-Scroll-Mock/Search-Bar w1"
+      ]
+    },
+    {
+      "value": "#8E8E93",
+      "count": 134,
+      "samples": [
+        "search/Vector w2",
+        "shopping-bag/Vector w2",
+        "user/Vector w2",
+        "home/Vector w2",
+        "circle/Vector w2",
+        "minus/Vector w2"
+      ]
+    },
+    {
+      "value": "#111111",
+      "count": 118,
+      "samples": [
+        "apple/Vector w2",
+        "circle-x/Vector w2",
+        "shopping-cart/Vector w2",
+        "chevron-left/Vector w2",
+        "share/Vector w2",
+        "plus/Vector w2"
+      ]
+    },
+    {
+      "value": "#FF6200",
+      "count": 54,
+      "samples": [
+        "Filter-Tabs/Tab-Auction Eligible w1",
+        "Product-Meta/GrandPrice-Draw-Card w1",
+        "Payment-Methods/Wallet w1.5",
+        "wallet/Vector w2",
+        "map-pin/Vector w2",
+        "Methods-Row/Method-Option-Active w2"
+      ]
+    },
+    {
+      "value": "#FFFFFF",
+      "count": 51,
+      "samples": [
+        "arrow-right/Vector w2",
+        "home/Vector w2",
+        "shopping-bag/Vector w2",
+        "Active-Pill/Vector w2",
+        "credit-card/Vector w2",
+        "plus/Vector w2"
+      ]
+    },
+    {
+      "value": "#FFB800",
+      "count": 35,
+      "samples": [
+        "star/Vector w2",
+        "trophy/Vector w2",
+        "Frame/Vector w2"
+      ]
+    },
+    {
+      "value": "#555555",
+      "count": 24,
+      "samples": [
+        "mic/Vector w2",
+        "camera/Vector w2",
+        "credit-card/Vector w2",
+        "chevron-down/Vector w2",
+        "phone/Vector w2",
+        "mail/Vector w2"
+      ]
+    },
+    {
+      "value": "#00B050",
+      "count": 4,
+      "samples": [
+        "shield-check/Vector w2",
+        "arrow-down/Vector w2",
+        "clock/Vector w2",
+        "wallet/Vector w2"
+      ]
+    },
+    {
+      "value": "#FF3B30",
+      "count": 4,
+      "samples": [
+        "alert-octagon/Vector w2",
+        "timer/Vector w2",
+        "heart/Vector w2"
+      ]
+    },
+    {
+      "value": "#007AFF",
+      "count": 1,
+      "samples": [
+        "info/Vector w2"
+      ]
+    }
+  ],
+  "gradients": [
+    {
+      "value": "GRADIENT_LINEAR #FF5C00 → #C61F00",
+      "count": 3,
+      "samples": [
+        "Body-Scroll-Mock/Hero-Banner",
+        "Wallet-Showcase/Balance-Card",
+        "Content/Personalized-Banner"
+      ]
+    },
+    {
+      "value": "GRADIENT_LINEAR #FF5C00 → #8B2F00",
+      "count": 2,
+      "samples": [
+        "undefined/splash-screen",
+        "Stage-Content/Live-Hub"
+      ]
+    },
+    {
+      "value": "GRADIENT_LINEAR #FF6200 → #FFA100",
+      "count": 1,
+      "samples": [
+        "Content/Frame"
+      ]
+    },
+    {
+      "value": "GRADIENT_LINEAR #FF6200 → #C61F00",
+      "count": 1,
+      "samples": [
+        "Scrollable-Container/Promo-Banner"
+      ]
+    }
+  ],
+  "textStyles": [
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 13,
+        "lineHeight": 16,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 92,
+      "samples": [
+        "Meta/Rolex Submariner Gold",
+        "Meta/iPhone 15 Pro Max",
+        "Seller-Meta/ElectroPremium Store",
+        "Source-Meta/GP Secure Wallet Balance",
+        "Method-Label/Standard",
+        "Method-Label/Express"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 11,
+        "lineHeight": 13,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 77,
+      "samples": [
+        "Rating/(82)",
+        "Rating/(230)",
+        "Seller-Meta/Verified Luxury Merchant",
+        "Row/840 of 2,000 tickets sol",
+        "Original/Original Val",
+        "Target/Win Target"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 600,
+        "size": 15,
+        "lineHeight": 19,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 63,
+      "samples": [
+        "Status-Bar/9:41"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 12,
+        "lineHeight": 15,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 50,
+      "samples": [
+        "Stats/46%",
+        "Label/46%",
+        "Refund-Alert/60% Guarantee Policy",
+        "Item/iPhone 15 Pro Max",
+        "Item/AirPods Max Gray",
+        "Details/iPhone 15 Pro Max"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 13,
+        "lineHeight": 16,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 44,
+      "samples": [
+        "Footer-Splash/Premium Inverse Auction ",
+        "Divider-Row/or connect with",
+        "Footer-Area/By continuing, you agree",
+        "Details/Ticket Price: $50",
+        "Details/Win for: $170",
+        "Header/Draw ID: #GP-MERC-902"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 600,
+        "size": 13,
+        "lineHeight": 16,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 42,
+      "samples": [
+        "Input-Group/Email or Phone Number",
+        "Grid-Heading/View All",
+        "Tab-All/All",
+        "Tab-Trending/Trending",
+        "Tab-New/New",
+        "Tab-Auction Eligible/Auction Eligible"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 14,
+        "lineHeight": 17,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 39,
+      "samples": [
+        "Details/Rolex Submariner Gold Ed",
+        "Stepper-Controls/1",
+        "Details/Mercedes S-Class Draw En",
+        "Stepper-Controls/2",
+        "Apply-Btn/Apply",
+        "Address-Text/Alexander Wright"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 600,
+        "size": 11,
+        "lineHeight": 13,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 37,
+      "samples": [
+        "Cat-0/Vehicles",
+        "Cat-1/Watches",
+        "Cat-2/Gadgets",
+        "Cat-3/Fashion",
+        "Cat-4/Real Estate",
+        "Rating-Row/4.9"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 12,
+        "lineHeight": 15,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 37,
+      "samples": [
+        "Stats/2,340 of 5,000 seats sol",
+        "Label/2,340 of 5,000 sold",
+        "Meta/Ticket cost: $50 / seat",
+        "Strength-Label/Password strength:",
+        "Meta/+234 812 *** 6789",
+        "Meta/h***o@grandprice.com"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 14,
+        "lineHeight": 17,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 34,
+      "samples": [
+        "Input-Field/hello@grandprice.com",
+        "Search-Bar/Search luxury products, ",
+        "Total-Row/Total Cost (3 Entries)",
+        "Input-Wrap/GRANDWIN50",
+        "Row/Subtotal",
+        "Row/Delivery Fee"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 20,
+        "lineHeight": 25,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 33,
+      "samples": [
+        "Row/$1,199",
+        "Selector-Row/$150",
+        "Total-Row/$150.00",
+        "Title-Brand/My Cart",
+        "Row/$12,550",
+        "Title-Brand/Checkout"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 700,
+        "size": 16,
+        "lineHeight": 20,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 32,
+      "samples": [
+        "Next-Button/Get Started",
+        "CTA-Button/Continue with One-Time O",
+        "Buy-Draw/Join Draw • $50",
+        "Buy-Retail/Buy Retail",
+        "Buy-CTA/Get Tickets ($50 each)",
+        "Purchase-CTA/Authorize & Purchase"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 11,
+        "lineHeight": 13,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 25,
+      "samples": [
+        "Draw-Tag/LIVE INVERSE DRAW",
+        "Row/42%",
+        "Time-Pill/2d 14h Left",
+        "Status/IN TRANSIT",
+        "Status/DELIVERED",
+        "Pill/Active"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 24,
+        "lineHeight": 30,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 24,
+      "samples": [
+        "Title-Brand/GrandPrice",
+        "Title-Brand/Browse Categories",
+        "Title-Brand/GrandPrice Draws",
+        "Header-Notification/Security Alert",
+        "Header-Suspended/Account Suspended",
+        "Header-Left/For You"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 14,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 23,
+      "samples": [
+        "Metric-Row/$250,000",
+        "Metric-Row/$10,000",
+        "Metric-Row/$50 / ticket",
+        "Wallet/$2,450",
+        "Frame/01",
+        "Frame/02"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 600,
+        "size": 14,
+        "lineHeight": 17,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 22,
+      "samples": [
+        "Skip/Skip Intro",
+        "Social-Apple/Continue with Apple",
+        "Social-Google/Continue with Google",
+        "Original/$250,000",
+        "Row/$12,600",
+        "Row/Free"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 700,
+        "size": 11,
+        "lineHeight": 14,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 19,
+      "samples": [
+        "Price-Pill/$150 Spot",
+        "Price-Pill/$220 Spot",
+        "Price-Pill/$450 Spot",
+        "Price-Pill/$80 Spot",
+        "Price-Pill/$300 Spot",
+        "Price-Pill/$45 Spot"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 10,
+        "lineHeight": 12,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 16,
+      "samples": [
+        "Content/2 hours ago",
+        "Content/1 day ago",
+        "Tickets/Score: 98%",
+        "Tickets/Score: 94%",
+        "Stat-Box/Total Referrals",
+        "Stat-Box/Active Bidders"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 16,
+        "lineHeight": 20,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 15,
+      "samples": [
+        "Target/$10,000",
+        "Ticket/$50",
+        "Details/$12,500",
+        "Details/$50",
+        "Summary-Card/Order Summary",
+        "Checkout-Section/Delivery Address"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 13,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 14,
+      "samples": [
+        "Bubble/Hi Alexander! Thanks for",
+        "Bubble/Awesome! If I buy 5 tick",
+        "Details/Gain premium inverse auc",
+        "Details/List products, answer in",
+        "Details/Fulfill premium product ",
+        "Review-Card/Incredibly smooth checko"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 700,
+        "size": 14,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 13,
+      "samples": [
+        "CTA/Join Draw now",
+        "Col-Electronics/Electronics",
+        "Col-Vehicles/Vehicles",
+        "Col-Fashion/Fashion",
+        "Col-Jewelry/Jewelry",
+        "Col-Home & Living/Home & Living"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 800,
+        "size": 14,
+        "lineHeight": 17,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 12,
+      "samples": [
+        "Tx-Item/-$50.00",
+        "Tx-Item/+$150.00",
+        "Tab-Header/Products (18)",
+        "Meta/ElectroPremium Store",
+        "Frame/$19 Spot",
+        "Frame/$5 Spot"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 32,
+        "lineHeight": 39,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 12,
+      "samples": [
+        "undefined/02 — AUTHENTICATION & AC",
+        "undefined/03 — CUSTOMER HOME & MAR",
+        "undefined/04 — SEARCH & DISCOVERY",
+        "undefined/05 — PRODUCT EXPERIENCE",
+        "undefined/06 — CART & CHECKOUT",
+        "undefined/07 — ORDERS & FULFILLMEN"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 600,
+        "size": 12,
+        "lineHeight": 15,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 11,
+      "samples": [
+        "Rating/4.9",
+        "Rating/4.8",
+        "Frame/All",
+        "Frame/Recently Added",
+        "Frame/Today",
+        "Frame/This Week"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 10,
+        "lineHeight": 12,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 11,
+      "samples": [
+        "Badge/VERIFIED",
+        "Verified/KYC",
+        "Verify/VERIFIED",
+        "Step-2/ID Upload",
+        "Live-Tag/3,420 WATCHING LIVE",
+        "Status-Badge/Active"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 800,
+        "size": 16,
+        "lineHeight": 19,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 11,
+      "samples": [
+        "Minus/-",
+        "Plus/+",
+        "Row/Total Amount",
+        "Stat/$450.00",
+        "Stat/2 Items",
+        "Stat/14"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 9,
+        "lineHeight": 11,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 11,
+      "samples": [
+        "Custom-Badge/HOT",
+        "Custom-Badge/NEW",
+        "Custom-Badge/GOLD",
+        "Step/Shipped",
+        "Frame/DEFAULT",
+        "Frame/DRAW ENDED"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 12,
+        "lineHeight": 15,
+        "letter": 0,
+        "case": "UPPER"
+      },
+      "count": 10,
+      "samples": [
+        "Badge/How It Works",
+        "Dropdown/Select Document Type",
+        "Standings/Qualified Participants",
+        "Payment-Summary/Payment Breakdown",
+        "Payment-Method/Select Payment Method",
+        "Form/Delivery Address"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 700,
+        "size": 15,
+        "lineHeight": 19,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 10,
+      "samples": [
+        "Meta/Mercedes-Benz S-Class Dr",
+        "Deny-Btn/No, Block This Device",
+        "Frame/How Inverse Auction Work",
+        "Frame/Ticket Purchase Terms",
+        "Frame/Qualification & Scoring",
+        "Frame/Draw Process & Transpare"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 800,
+        "size": 18,
+        "lineHeight": 22,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 9,
+      "samples": [
+        "Name-Row/Alexander Wright",
+        "Name/ElectroPremium Store",
+        "KPI-Card/$12,450",
+        "KPI-Card/156",
+        "KPI-Card/2.3K",
+        "KPI-Card/4.2%"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 32,
+        "lineHeight": 40,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 8,
+      "samples": [
+        "Header-Section/Welcome Back",
+        "Header-Section/Verify Phone",
+        "Header-Section/Enter OTP",
+        "Header-Section/Forgot Password",
+        "Header-Section/New Password",
+        "Header-Section/Select Your Role"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 18,
+        "lineHeight": 23,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 8,
+      "samples": [
+        "Grid-Heading/Featured Premium Items",
+        "Header-Meta/Mercedes-Benz S-Class",
+        "Screen-Header/Purchase Tickets",
+        "Counter-Controls/3",
+        "Frame/Based on your interest i",
+        "Frame/Invite Friends, Earn Fre"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 22,
+        "lineHeight": 28,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 7,
+      "samples": [
+        "Hero-Banner/Win a Mercedes S-Class f",
+        "Title-Block/iPhone 15 Pro Max (Natur",
+        "Header/Mercedes S-Class Draw",
+        "Live-Hub/Mercedes-Benz S-Class",
+        "Code-Wrap/GP-JOHN2024",
+        "Frame/Your cart is empty"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 15,
+        "lineHeight": 21,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 7,
+      "samples": [
+        "Header-Section/We'll send a 6-digit con",
+        "Header-Section/Verification code sent t",
+        "Header-Section/Don't worry, it happens.",
+        "Header-Section/Set a strong password fo",
+        "Header-Section/Choose how you intend to",
+        "Header-Section/Access verified multi-ro"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 15,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 7,
+      "samples": [
+        "Col/iPhone 15 Pro",
+        "Reason-Card/Unusual Bid Cancellation",
+        "Frame/Lucas Thorne",
+        "Publish-CTA/Publish Listing",
+        "Save-CTA/Save Changes",
+        "CTA/Start Boost"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 15,
+        "lineHeight": 19,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 6,
+      "samples": [
+        "GrandPrice-Draw-Card/GrandPrice Inverse Draw ",
+        "Countdown/02d : 14h : 35m",
+        "My-Entries/3 Tickets",
+        "Frame/Mercedes-Benz S-Class Dr",
+        "Frame/Score Breakdown",
+        "Frame/Mercedes S-Class"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 600,
+        "size": 10,
+        "lineHeight": 12,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 6,
+      "samples": [
+        "Content/2 mins ago",
+        "Step-1/Personal",
+        "KPI-Card/+12.4% vs last mo",
+        "KPI-Card/+8.3%",
+        "KPI-Card/+4.1%",
+        "KPI-Card/+0.5%"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 600,
+        "size": 14,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 6,
+      "samples": [
+        "Back-Btn/Back"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 700,
+        "size": 22,
+        "lineHeight": 28,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 6,
+      "samples": [
+        "OTP-Box/4",
+        "OTP-Box/8",
+        "OTP-Box/9",
+        "OTP-Box/2",
+        "OTP-Box/"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 800,
+        "size": 13,
+        "lineHeight": 16,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 5,
+      "samples": [
+        "Item/$1,199",
+        "Item/$549",
+        "Title-Row/Inverse Auction Won!",
+        "Left/#12",
+        "Left/#13"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 800,
+        "size": 12,
+        "lineHeight": 15,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 5,
+      "samples": [
+        "Tickets/15 Tickets",
+        "Frame/1",
+        "Frame/2",
+        "Frame/3",
+        "Frame/4"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 12,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 4,
+      "samples": [
+        "Content/Congratulations! Your sp",
+        "Content/Your order #GP-84920 (Ro",
+        "Content/Top up your secure Grand",
+        "Guidelines/Ensure all details are c"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 700,
+        "size": 28,
+        "lineHeight": 35,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 4,
+      "samples": [
+        "Box-1/4",
+        "Box-2/9",
+        "Box-3/|",
+        "Box-4/ "
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 15,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 3,
+      "samples": [
+        "Header-Section/Sign in to join active p",
+        "Header-Notification/A new connection attempt",
+        "Header-Suspended/Your profile has been te"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 800,
+        "size": 15,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 3,
+      "samples": [
+        "Stat/4.9",
+        "Stat/12K",
+        "Stat/100%"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 800,
+        "size": 11,
+        "lineHeight": 13,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 3,
+      "samples": [
+        "Details/Spot Price: $50",
+        "Code-Badge/GRANDPRICE20",
+        "Code-Badge/GPFIFTEEN"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 900,
+        "size": 32,
+        "lineHeight": 40,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 3,
+      "samples": [
+        "Announcement/CONGRATULATIONS!",
+        "Frame/72",
+        "Frame/$2,450.00"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 700,
+        "size": 12,
+        "lineHeight": 15,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 2,
+      "samples": [
+        "Price-Pill/Auction Entry",
+        "Price-Pill/$170 Spot"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 14,
+        "lineHeight": 20,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 2,
+      "samples": [
+        "Product-Meta/The iPhone 15 Pro Max fe",
+        "Reason-Card/Multiple bid retractions"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 11,
+        "lineHeight": 16,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 2,
+      "samples": [
+        "Refund-Alert/If the draw does not sel",
+        "Explainer/Every active referral gr"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 500,
+        "size": 10,
+        "lineHeight": 12,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 2,
+      "samples": [
+        "Step-3/Selfie",
+        "Step-4/Review"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 600,
+        "size": 9,
+        "lineHeight": 11,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 2,
+      "samples": [
+        "Step/Placed",
+        "Step/Processing"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 700,
+        "size": 10,
+        "lineHeight": 12,
+        "letter": 0,
+        "case": "UPPER"
+      },
+      "count": 2,
+      "samples": [
+        "Badge/Active",
+        "Frame//100 PTS"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 14,
+        "lineHeight": 21,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 2,
+      "samples": [
+        "Frame/Browse our premium inver",
+        "Frame/Please check your intern"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 900,
+        "size": 48,
+        "lineHeight": 60,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 1,
+      "samples": [
+        "Emblem/G"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 36,
+        "lineHeight": 45,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 1,
+      "samples": [
+        "Brand-Text/GrandPrice"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 500,
+        "size": 14,
+        "lineHeight": 17,
+        "letter": 0,
+        "case": "UPPER"
+      },
+      "count": 1,
+      "samples": [
+        "Brand-Text/Win Big. Pay Less."
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 28,
+        "lineHeight": 35,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 1,
+      "samples": [
+        "Text-Group/Win luxury assets at a f"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 400,
+        "size": 15,
+        "lineHeight": 22,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 1,
+      "samples": [
+        "Text-Group/Buy a Mercedes S-Class f"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 900,
+        "size": 36,
+        "lineHeight": 45,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 1,
+      "samples": [
+        "Balance/$2,450.00"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 800,
+        "size": 40,
+        "lineHeight": 50,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 1,
+      "samples": [
+        "Rating-Large/4.5"
+      ]
+    },
+    {
+      "value": {
+        "family": "Inter",
+        "weight": 500,
+        "size": 9,
+        "lineHeight": 11,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 1,
+      "samples": [
+        "Step/On Way"
+      ]
+    },
+    {
+      "value": {
+        "family": "Outfit",
+        "weight": 900,
+        "size": 14,
+        "lineHeight": 18,
+        "letter": 0,
+        "case": "ORIGINAL"
+      },
+      "count": 1,
+      "samples": [
+        "Spinner/ROLLING..."
+      ]
+    }
+  ],
+  "cornerRadii": [
+    {
+      "value": 16,
+      "count": 201,
+      "samples": [
+        "Product-Grid/Product-0",
+        "Product-Grid/Product-1",
+        "Tab-Home/Active-Pill",
+        "Row-0/Col-Electronics",
+        "Row-0/Col-Vehicles",
+        "Row-1/Col-Fashion"
+      ]
+    },
+    {
+      "value": 12,
+      "count": 132,
+      "samples": [
+        "Input-Group/Input-Field",
+        "Social-Logins/Social-Apple",
+        "Social-Logins/Social-Google",
+        "Product-Meta/Seller-Info",
+        "Draw-Card-Mercedes/Rectangle",
+        "Detail-Body/Pricing-Metrics"
+      ]
+    },
+    {
+      "value": 10,
+      "count": 104,
+      "samples": [
+        "Home-Indicator-Area/Bar",
+        "Product-0/Rectangle",
+        "Product-1/Rectangle",
+        "Product-2/Rectangle",
+        "Product-3/Rectangle",
+        "Item/Rectangle"
+      ]
+    },
+    {
+      "value": 20,
+      "count": 104,
+      "samples": [
+        "Screen-Header/Cart-Icon-Wrap",
+        "Body-Scroll-Mock/Hero-Banner",
+        "Filter-Tabs/Tab-All",
+        "Filter-Tabs/Tab-Trending",
+        "Filter-Tabs/Tab-New",
+        "Filter-Tabs/Tab-Auction Eligible"
+      ]
+    },
+    {
+      "value": 6,
+      "count": 43,
+      "samples": [
+        "Tags/Price-Pill",
+        "Header-Meta/Time-Pill",
+        "Header-Row/Status",
+        "Name-Row/Verified",
+        "Option-Row/Pill",
+        "Name/Verify"
+      ]
+    },
+    {
+      "value": 8,
+      "count": 42,
+      "samples": [
+        "Col-Electronics/Rectangle",
+        "Col-Vehicles/Rectangle",
+        "Col-Fashion/Rectangle",
+        "Col-Jewelry/Rectangle",
+        "Col-Home & Living/Rectangle",
+        "Col-Sports/Rectangle"
+      ]
+    },
+    {
+      "value": 26,
+      "count": 29,
+      "samples": [
+        "Onboarding-Actions/Next-Button",
+        "Form/CTA-Button",
+        "Buttons-Row/Buy-Draw",
+        "Buttons-Row/Buy-Retail",
+        "Footer-CTA/Buy-CTA",
+        "Footer-Action/Purchase-CTA"
+      ]
+    },
+    {
+      "value": 14,
+      "count": 24,
+      "samples": [
+        "Options-Section/Option-Row",
+        "Msg-Received/User-Avatar",
+        "Step-1/Icon-Wrap",
+        "Step-2/Icon-Wrap",
+        "Step-3/Icon-Wrap",
+        "Step-4/Icon-Wrap"
+      ]
+    },
+    {
+      "value": 3,
+      "count": 19,
+      "samples": [
+        "Steps/Rectangle",
+        "Progress-Group/Progress-Bar-Track",
+        "Progress-Bar-Track/Rectangle",
+        "Seats-Progress/Track",
+        "Track/Rectangle",
+        "Progress-Bar-Block/Track"
+      ]
+    },
+    {
+      "value": 4,
+      "count": 16,
+      "samples": [
+        "Seller-Info/Badge",
+        "Tags/Custom-Badge",
+        "Acceptance/Frame",
+        "Frame/Rectangle",
+        "Frame/Frame"
+      ]
+    },
+    {
+      "value": 24,
+      "count": 10,
+      "samples": [
+        "Onboarding-Content/Illustration",
+        "Wallet-Showcase/Balance-Card",
+        "Scrollable-Area/Profile-Card",
+        "Emblem-Container/Emblem",
+        "Stage-Content/Live-Hub",
+        "winner-screen/Celebration-Card"
+      ]
+    },
+    {
+      "value": "4,4,0,0",
+      "count": 6,
+      "samples": [
+        "Bar-Col/Rectangle"
+      ]
+    },
+    {
+      "value": 23,
+      "count": 5,
+      "samples": [
+        "Body-Scroll-Mock/Search-Bar",
+        "Category-Body/Search-Bar",
+        "Search-Header/Search-Bar",
+        "Content/Search-Bar",
+        "Frame/Rectangle"
+      ]
+    },
+    {
+      "value": 2,
+      "count": 4,
+      "samples": [
+        "Bars-Row/Bar-1",
+        "Bars-Row/Bar-2",
+        "Bars-Row/Bar-3",
+        "Bars-Row/Bar-4"
+      ]
+    },
+    {
+      "value": 18,
+      "count": 4,
+      "samples": [
+        "Frame/Rectangle",
+        "Frame/Frame"
+      ]
+    },
+    {
+      "value": 32,
+      "count": 3,
+      "samples": [
+        "Emblem-Container/Emblem",
+        "Top-Info/Avatar",
+        "Header-Notification/Warning-Icon"
+      ]
+    },
+    {
+      "value": 100,
+      "count": 3,
+      "samples": [
+        "Text-Group/Badge",
+        "Hero-Banner/Draw-Tag",
+        "Live-Hub/Live-Tag"
+      ]
+    },
+    {
+      "value": "24,24,0,0",
+      "count": 2,
+      "samples": [
+        "Product-Content/Product-Meta",
+        "Detail-Content/Detail-Body"
+      ]
+    },
+    {
+      "value": 22,
+      "count": 2,
+      "samples": [
+        "Details/CTA-Button",
+        "Search-Area/Search-Bar"
+      ]
+    },
+    {
+      "value": 5,
+      "count": 2,
+      "samples": [
+        "Selection-Ring/Rectangle",
+        "Radio/Rectangle"
+      ]
+    },
+    {
+      "value": 70,
+      "count": 2,
+      "samples": [
+        "Frame/Frame"
+      ]
+    },
+    {
+      "value": "16,16,16,4",
+      "count": 1,
+      "samples": [
+        "Msg-Received/Bubble"
+      ]
+    },
+    {
+      "value": "16,16,4,16",
+      "count": 1,
+      "samples": [
+        "Msg-Sent/Bubble"
+      ]
+    },
+    {
+      "value": 25,
+      "count": 1,
+      "samples": [
+        "Footer-Section/Deny-Btn"
+      ]
+    },
+    {
+      "value": 36,
+      "count": 1,
+      "samples": [
+        "Header-Suspended/Error-Badge"
+      ]
+    },
+    {
+      "value": 55,
+      "count": 1,
+      "samples": [
+        "Live-Hub/Spinner"
+      ]
+    },
+    {
+      "value": 40,
+      "count": 1,
+      "samples": [
+        "Celebration-Card/Trophy-Box"
+      ]
+    }
+  ],
+  "shadows": [
+    {
+      "value": "DROP_SHADOW x0 y4 blur12 spread0 #0000000A",
+      "count": 13,
+      "samples": [
+        "Product-List/Inventory-Card",
+        "Orders-List/Order-Card",
+        "Tier-Selection/Tier-Card",
+        "Scrollable-Container/Promo-Banner",
+        "Coupons-List/Coupon-Card",
+        "Quick-Actions/Action-Card"
+      ]
+    },
+    {
+      "value": "DROP_SHADOW x0 y8 blur16 spread0 #FF62002A",
+      "count": 7,
+      "samples": [
+        "Footer-Section/CTA-Button"
+      ]
+    },
+    {
+      "value": "DROP_SHADOW x0 y4 blur8 spread0 #00000004",
+      "count": 3,
+      "samples": [
+        "Content/Role-Card-customer",
+        "Content/Role-Card-vendor",
+        "Content/Role-Card-courier"
+      ]
+    },
+    {
+      "value": "DROP_SHADOW x0 y-8 blur16 spread0 #00000008",
+      "count": 2,
+      "samples": [
+        "Product-Content/Product-Meta",
+        "Detail-Content/Detail-Body"
+      ]
+    },
+    {
+      "value": "DROP_SHADOW x0 y12 blur24 spread0 #00000040",
+      "count": 1,
+      "samples": [
+        "Emblem-Container/Emblem"
+      ]
+    },
+    {
+      "value": "DROP_SHADOW x0 y8 blur16 spread0 #FF5C0020",
+      "count": 1,
+      "samples": [
+        "Body-Scroll-Mock/Hero-Banner"
+      ]
+    },
+    {
+      "value": "DROP_SHADOW x0 y4 blur8 spread0 #FF620040",
+      "count": 1,
+      "samples": [
+        "Step/Frame"
+      ]
+    },
+    {
+      "value": "DROP_SHADOW x0 y8 blur16 spread0 #FF5C0030",
+      "count": 1,
+      "samples": [
+        "Stage-Content/Live-Hub"
+      ]
+    },
+    {
+      "value": "DROP_SHADOW x0 y12 blur24 spread0 #00000008",
+      "count": 1,
+      "samples": [
+        "winner-screen/Celebration-Card"
+      ]
+    }
+  ],
+  "spacingScale": [
+    {
+      "value": 2,
+      "count": 54,
+      "samples": [
+        "Seller-Info/Seller-Meta",
+        "Pricing/Original",
+        "Pricing/Target",
+        "Pricing/Ticket",
+        "Method-Option/Method-Label",
+        "Method-Option-Active/Method-Label"
+      ]
+    },
+    {
+      "value": 4,
+      "count": 237,
+      "samples": [
+        "Emblem-Container/Brand-Text",
+        "Product-0/Meta",
+        "Tags/Rating",
+        "Product-1/Meta",
+        "Tabs/Tab-Home",
+        "Tabs/Tab-Search"
+      ]
+    },
+    {
+      "value": 6,
+      "count": 116,
+      "samples": [
+        "Status-Bar/System-Icons",
+        "Hero-Banner/Progress-Group",
+        "Product-Meta/Title-Block",
+        "Detail-Body/Header",
+        "Header-Section/Back-Btn",
+        "Content/Countdown-Timer"
+      ]
+    },
+    {
+      "value": 8,
+      "count": 155,
+      "samples": [
+        "Onboarding-Content/Steps",
+        "Login-Content/Header-Section",
+        "Form/Input-Group",
+        "Screen-Header/Title-Brand",
+        "Category-Scroll/Cat-0",
+        "Category-Scroll/Cat-1"
+      ]
+    },
+    {
+      "value": 10,
+      "count": 20,
+      "samples": [
+        "Detail-Body/Pricing-Metrics",
+        "Detail-Body/Qualification-Pill",
+        "Msg-Received-Attachment/Product-Attach-Card",
+        "Content/Info-Banner",
+        "Content/Frame",
+        "User-Header/User-Meta"
+      ]
+    },
+    {
+      "value": 12,
+      "count": 215,
+      "samples": [
+        "splash-screen/Footer-Splash",
+        "Onboarding-Content/Text-Group",
+        "Login-Content/Divider-Row",
+        "Login-Content/Social-Logins",
+        "Social-Logins/Social-Apple",
+        "Social-Logins/Social-Google"
+      ]
+    },
+    {
+      "value": 16,
+      "count": 61,
+      "samples": [
+        "splash-screen/Emblem-Container",
+        "onboarding/Onboarding-Actions",
+        "Body-Scroll-Mock/Category-Scroll",
+        "Categories-Content/Category-Body",
+        "Product-Content/Product-Meta",
+        "Hub-Content/Hub-Body"
+      ]
+    },
+    {
+      "value": 20,
+      "count": 6,
+      "samples": [
+        "Login-Content/Form",
+        "Home-Content/Body-Scroll-Mock",
+        "Scrollable-Area/Wallet-Showcase",
+        "reviews-screen/Body-Scroll",
+        "winner-screen/Celebration-Card",
+        "Scrollable-Container/Settings-Body"
+      ]
+    },
+    {
+      "value": 24,
+      "count": 15,
+      "samples": [
+        "Purchase-Content/Purchase-Body",
+        "Wallet-Showcase/Balance-Card",
+        "Frame/Content",
+        "phone-verification/Footer-Section",
+        "otp-entry/Footer-Section",
+        "forgot-password/Footer-Section"
+      ]
+    },
+    {
+      "value": 32,
+      "count": 3,
+      "samples": [
+        "onboarding/Onboarding-Content",
+        "Frame/Content"
+      ]
+    },
+    {
+      "value": 40,
+      "count": 2,
+      "samples": [
+        "login-sign-up/Login-Content",
+        "otp-verification/OTP-Form"
+      ]
+    }
+  ],
+  "paddingValues": [
+    {
+      "value": 2,
+      "count": 27,
+      "samples": [
+        "Name-Row/Verified.paddingTop",
+        "Name-Row/Verified.paddingBottom",
+        "Option-Row/Pill.paddingTop",
+        "Option-Row/Pill.paddingBottom",
+        "Name/Verify.paddingTop",
+        "Name/Verify.paddingBottom"
+      ]
+    },
+    {
+      "value": 3,
+      "count": 6,
+      "samples": [
+        "Details-Block/Status-Badge.paddingTop",
+        "Details-Block/Status-Badge.paddingBottom"
+      ]
+    },
+    {
+      "value": 4,
+      "count": 80,
+      "samples": [
+        "Hero-Banner/Draw-Tag.paddingTop",
+        "Hero-Banner/Draw-Tag.paddingBottom",
+        "Tags/Price-Pill.paddingTop",
+        "Tags/Price-Pill.paddingBottom",
+        "Seller-Info/Badge.paddingTop",
+        "Seller-Info/Badge.paddingBottom"
+      ]
+    },
+    {
+      "value": 6,
+      "count": 64,
+      "samples": [
+        "Text-Group/Badge.paddingTop",
+        "Text-Group/Badge.paddingBottom",
+        "Qty-Stepper/Remove-Btn.paddingLeft",
+        "Qty-Stepper/Remove-Btn.paddingRight",
+        "Qty-Stepper/Remove-Btn.paddingTop",
+        "Qty-Stepper/Remove-Btn.paddingBottom"
+      ]
+    },
+    {
+      "value": 8,
+      "count": 707,
+      "samples": [
+        "Footer-Splash/Home-Indicator-Area.paddingBottom",
+        "Onboarding-Actions/Home-Indicator-Area.paddingBottom",
+        "Footer-Area/Home-Indicator-Area.paddingBottom",
+        "Product-Grid/Product-0.paddingLeft",
+        "Product-Grid/Product-0.paddingRight",
+        "Product-Grid/Product-0.paddingTop"
+      ]
+    },
+    {
+      "value": 10,
+      "count": 294,
+      "samples": [
+        "Screen-Header/Cart-Icon-Wrap.paddingLeft",
+        "Screen-Header/Cart-Icon-Wrap.paddingRight",
+        "Screen-Header/Cart-Icon-Wrap.paddingTop",
+        "Screen-Header/Cart-Icon-Wrap.paddingBottom",
+        "Hero-Banner/Draw-Tag.paddingLeft",
+        "Hero-Banner/Draw-Tag.paddingRight"
+      ]
+    },
+    {
+      "value": 12,
+      "count": 531,
+      "samples": [
+        "Footer-Splash/Home-Indicator-Area.paddingTop",
+        "Text-Group/Badge.paddingLeft",
+        "Text-Group/Badge.paddingRight",
+        "Onboarding-Actions/Home-Indicator-Area.paddingTop",
+        "Footer-Area/Home-Indicator-Area.paddingTop",
+        "Home-Content/Screen-Header.paddingTop"
+      ]
+    },
+    {
+      "value": 14,
+      "count": 149,
+      "samples": [
+        "Filter-Tabs/Tab-All.paddingLeft",
+        "Filter-Tabs/Tab-All.paddingRight",
+        "Filter-Tabs/Tab-Trending.paddingLeft",
+        "Filter-Tabs/Tab-Trending.paddingRight",
+        "Filter-Tabs/Tab-New.paddingLeft",
+        "Filter-Tabs/Tab-New.paddingRight"
+      ]
+    },
+    {
+      "value": 16,
+      "count": 591,
+      "samples": [
+        "Input-Group/Input-Field.paddingLeft",
+        "Input-Group/Input-Field.paddingRight",
+        "Social-Logins/Social-Apple.paddingLeft",
+        "Social-Logins/Social-Apple.paddingRight",
+        "Social-Logins/Social-Google.paddingLeft",
+        "Social-Logins/Social-Google.paddingRight"
+      ]
+    },
+    {
+      "value": 20,
+      "count": 130,
+      "samples": [
+        "splash-screen/Footer-Splash.paddingBottom",
+        "Body-Scroll-Mock/Hero-Banner.paddingLeft",
+        "Body-Scroll-Mock/Hero-Banner.paddingRight",
+        "Body-Scroll-Mock/Hero-Banner.paddingTop",
+        "Body-Scroll-Mock/Hero-Banner.paddingBottom",
+        "Product-Content/Product-Meta.paddingLeft"
+      ]
+    },
+    {
+      "value": 24,
+      "count": 385,
+      "samples": [
+        "splash-screen/Status-Bar.paddingLeft",
+        "splash-screen/Status-Bar.paddingRight",
+        "onboarding/Status-Bar.paddingLeft",
+        "onboarding/Status-Bar.paddingRight",
+        "onboarding/Onboarding-Content.paddingLeft",
+        "onboarding/Onboarding-Content.paddingRight"
+      ]
+    },
+    {
+      "value": 32,
+      "count": 4,
+      "samples": [
+        "Frame/Frame.paddingLeft",
+        "Frame/Frame.paddingRight"
+      ]
+    },
+    {
+      "value": 40,
+      "count": 2,
+      "samples": [
+        "Frame/Content.paddingTop",
+        "Frame/Header-Suspended.paddingTop"
+      ]
+    },
+    {
+      "value": 120,
+      "count": 2,
+      "samples": [
+        "Frame/Frame.paddingTop"
+      ]
+    }
+  ]
+}

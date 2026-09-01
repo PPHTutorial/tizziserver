@@ -1,0 +1,26 @@
+name: grandprice
+description: "GrandPrice — multi-vendor marketplace, inverse draws & delivery."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+  dio: ^5.7.0
+  font_awesome_flutter: ^10.8.0
+  google_maps_flutter: ^2.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  # TODO(phase-1): bundle Outfit + Inter .ttf into assets/fonts/ and declare here
+  # (design system mandates no runtime font fetch — see docs/03-DESIGN-SYSTEM.md §3).

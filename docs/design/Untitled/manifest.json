@@ -1,0 +1,333 @@
+{
+  "file": "l027yH0ARNs9FFYcc3SJ3t",
+  "name": "Untitled",
+  "fetchedAt": "2026-09-01T12:25:28.958Z",
+  "pages": [
+    {
+      "id": "0:1",
+      "name": "Page 1",
+      "frames": [
+        {
+          "id": "3:12",
+          "name": "splash-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:30",
+          "name": "onboarding",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:56",
+          "name": "login-sign-up",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:90",
+          "name": "home-discover",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:179",
+          "name": "categories-browse",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:249",
+          "name": "product-detail",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:300",
+          "name": "inverse-auction-hub",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:363",
+          "name": "auction-detail",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:407",
+          "name": "ticket-purchase",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:657",
+          "name": "cart-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:738",
+          "name": "checkout-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:809",
+          "name": "orders-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:890",
+          "name": "wallet-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:961",
+          "name": "profile-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:1044",
+          "name": "search-results",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:1117",
+          "name": "seller-store",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:1189",
+          "name": "chat-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "3:1240",
+          "name": "notifications-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "16:2",
+          "name": "image",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:24",
+          "name": "phone-verification",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:58",
+          "name": "otp-entry",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:97",
+          "name": "forgot-password",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:128",
+          "name": "reset-password",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:171",
+          "name": "select-role",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:215",
+          "name": "social-auth",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:247",
+          "name": "account-recovery",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:291",
+          "name": "session-notification",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:331",
+          "name": "account-suspended",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:557",
+          "name": "personalized-home",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:637",
+          "name": "trending-products",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:721",
+          "name": "new-arrivals",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:815",
+          "name": "flash-deals",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:869",
+          "name": "grandprice-deals",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:934",
+          "name": "nearby-vendors",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:992",
+          "name": "recently-viewed",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:1069",
+          "name": "featured-vendors",
+          "type": "FRAME"
+        },
+        {
+          "id": "15:1119",
+          "name": "marketplace-promotions",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:12",
+          "name": "otp-verification",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:53",
+          "name": "kyc-identity",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:117",
+          "name": "wishlist-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:193",
+          "name": "reviews-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:278",
+          "name": "delivery-tracking",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:345",
+          "name": "draw-stages",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:413",
+          "name": "winner-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:464",
+          "name": "winnings-claim",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:520",
+          "name": "referral-share",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:664",
+          "name": "create-listing",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:729",
+          "name": "edit-listing",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:785",
+          "name": "seller-inventory",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:863",
+          "name": "seller-orders",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:945",
+          "name": "seller-analytics",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1027",
+          "name": "product-boosting",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1094",
+          "name": "coupons-promotions",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1154",
+          "name": "settings-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1236",
+          "name": "help-disputes",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1479",
+          "name": "terms-auction-rules",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1571",
+          "name": "product-feed",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1650",
+          "name": "empty-cart-state",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1696",
+          "name": "loading-skeleton",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1751",
+          "name": "error-state",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1797",
+          "name": "auction-eligibility",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1854",
+          "name": "payment-methods",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1909",
+          "name": "runner-up-screen",
+          "type": "FRAME"
+        },
+        {
+          "id": "104:1978",
+          "name": "transaction-history",
+          "type": "FRAME"
+        }
+      ]
+    }
+  ]
+}

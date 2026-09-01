@@ -1,0 +1,4 @@
+packages:
+  - apps/*
+  - packages/*
+# mobile/ is a Flutter workspace, not a pnpm package.

@@ -1,0 +1,96 @@
+name: grandprice
+
+# Local cloud stack. `docker compose -f infra/docker/docker-compose.yml up -d`
+# App services (api / realtime / worker) run on the host via `pnpm dev` against these.
+# Bring the whole thing up containerized with:  --profile full
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-grandprice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grandprice}
+      POSTGRES_DB: ${POSTGRES_DB:-grandprice}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grandprice} -d ${POSTGRES_DB:-grandprice}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-grandprice}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-grandprice-secret}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-grandprice} ${MINIO_ROOT_PASSWORD:-grandprice-secret} &&
+      mc mb --ignore-existing local/${S3_BUCKET:-grandprice-media} &&
+      mc anonymous set download local/${S3_BUCKET:-grandprice-media} &&
+      echo 'minio bucket ready'
+      "
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    environment:
+      MP_MAX_MESSAGES: 500
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    profiles: ["search", "full"]
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-grandprice-dev-key}
+      MEILI_ENV: development
+    ports:
+      - "${MEILI_PORT:-7700}:7700"
+    volumes:
+      - meilidata:/meili_data
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  meilidata:

@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ttf binary
+*.otf binary
+pnpm-lock.yaml -diff linguist-generated
+mobile/pubspec.lock -diff linguist-generated
+packages/contracts/openapi.json -diff linguist-generated
+docs/design/** linguist-vendored

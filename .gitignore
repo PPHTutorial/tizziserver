@@ -1,43 +1,51 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
 
-# testing
-/coverage
+# build / cache
+.next/
+out/
+build/
+dist/
+.turbo/
+*.tsbuildinfo
+coverage/
 
-# next.js
-/.next/
-/out/
+# prisma generated client
+packages/db/src/generated/
+packages/db/generated/
 
-# production
-/build
+# next
+next-env.d.ts
+
+# env
+.env
+.env.*
+!.env.example
 
 # misc
 .DS_Store
 *.pem
-
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# flutter (mobile/)
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/**/generated_plugin_registrant.*
 
-/src/generated/prisma
+# generated design tokens (built by packages/tokens/build.mjs)
+packages/tokens/dist/
+mobile/lib/design/tokens.g.dart
+
+# figma export: keep the mined tokens + manifest + renders, drop the giant raw dumps
+docs/design/**/file.json
+docs/design/**/nodes/
