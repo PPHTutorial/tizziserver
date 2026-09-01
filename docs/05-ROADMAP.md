@@ -40,7 +40,7 @@ no-Docker fallback (S4). CI green on the PR still pending push.
 
 **Goal:** Multi-role auth + the capability system. MD §02, §32.
 
-- [ ] Schema v2 Domain 0 (Platform/FeatureFlag/…) + Domain 1 (identity) + Domain 2 profiles; migration + seed (`grandprice`, `tizzi-gas`, flag registry, gas category).
+- [x] Schema v2 Domain 0 (Platform/FeatureFlag/…) + Domain 1 (identity, relational `UserRole`) + Domain 2 profiles; baseline migration `20260901191354_init` (+ PostGIS extension + 5 GiST indexes); seed (`grandprice`, `tizzi-gas`, 12-flag registry, per-platform gating). *Gas `Category` deferred to Phase 2 (Domain 3).* Legacy `{action}`-RPC services archived; catch-all route → `410`.
 - [ ] `apps/api/src/auth`: OTP (phone+email), access JWT (`jose`), rotating refresh + reuse-detection, social sign-in (Google/Apple/Facebook ID-token verify), TOTP 2FA, transaction PIN, session/device list + revoke, role switch.
 - [ ] `apps/api/src/platform`: capability resolver + `ctx.features`; `GET /api/v1/config/bootstrap` (features + nav + theme + minAppVersion).
 - [ ] Middleware chain: parse → authenticate → resolve capabilities → authorize (RBAC guards) → rate-limit/idempotency → handle. Error envelope + codes. `AuditLog` for auth events.

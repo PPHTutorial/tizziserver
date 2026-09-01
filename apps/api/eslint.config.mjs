@@ -8,6 +8,7 @@ const config = [
       "node_modules/**",
       "next-env.d.ts",
       "public/**",
+      "_legacy_services/**",
     ],
   },
   ...(Array.isArray(next) ? next : next.default ?? []),

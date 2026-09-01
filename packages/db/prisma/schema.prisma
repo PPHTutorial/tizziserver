@@ -1,5 +1,7 @@
-// Stall — Prisma Schema (schema v1 = Tizzi Gas baseline; v2 lands incrementally from Phase 1)
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Stall — Prisma Schema (schema v2)
+// Domains 0 (platform/config/system), 1 (identity/access), 2 (profiles).
+// Domains 3–10 (catalog, orders, delivery, wallet, auction, comms, trust) land in Phases 2–6.
+// See docs/02-DATA-MODEL.md. PostGIS geography columns get GiST indexes in the migration SQL.
 
 generator client {
   provider     = "prisma-client"
@@ -13,442 +15,833 @@ datasource db {
   // PrismaClient driver adapter (runtime) — see ../src/index.ts.
 }
 
+// =====================================================================
 // Enums
-enum UserRole {
+// =====================================================================
+
+enum Role {
   CUSTOMER
   VENDOR
   COURIER
+  STAFF
+  ADMIN
+}
+
+enum PlatformStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum FeatureValueType {
+  BOOL
+  NUMBER
+  JSON
+}
+
+enum AppConfigScope {
+  GLOBAL
+  PLATFORM
+}
+
+enum PricingRuleScope {
+  DELIVERY
+  SERVICE_FEE
+  BOOST
+  SURGE
+  TAX
+}
+
+enum FeeParty {
+  VENDOR
+  COURIER
+}
+
+enum FeeKind {
+  COMMISSION
+  PAYOUT
+  LISTING
+  WITHDRAWAL
+}
+
+enum ActorType {
+  USER
+  SYSTEM
   ADMIN
 }
 
 enum UserStatus {
+  PENDING_VERIFICATION
   ACTIVE
   INACTIVE
   SUSPENDED
+  BANNED
+}
+
+enum UserRoleStatus {
   PENDING
-  VERIFIED
+  ACTIVE
+  SUSPENDED
+  DISABLED
 }
 
-enum OrderStatus {
+enum KycStatus {
+  NONE
   PENDING
-  CONFIRMED
-  COURIER_ASSIGNED
-  COURIER_PICKED_UP
-  COURIER_DELIVERED
-  COURIER_RETURNING
-  SUCCESSFUL
-  FAILED
-  CANCELLED
+  IN_REVIEW
+  APPROVED
+  REJECTED
 }
 
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-  REFUNDED
+enum CredentialKind {
+  PASSWORD
+  PIN
+  TOTP
+  RECOVERY
 }
 
-enum PaymentMethod {
-  CASH
-  CARD
-  MOMO
-  WALLET
-}
-
-enum VehicleType {
-  MOTORCYCLE
-  CAR
-  VAN
-  TRUCK
-}
-
-enum NotificationType {
-  ORDER_UPDATE
-  PAYMENT_UPDATE
-  PROMOTIONAL
-  SYSTEM
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
 }
 
 enum SocialProvider {
   GOOGLE
-  FACEBOOK
   APPLE
+  FACEBOOK
 }
 
-enum RateableEntityType {
+enum OtpChannel {
+  SMS
+  EMAIL
+}
+
+enum OtpPurpose {
+  LOGIN
+  VERIFY_PHONE
+  VERIFY_EMAIL
+  RESET_PASSWORD
+  RESET_PIN
+}
+
+enum AuthResult {
+  SUCCESS
+  FAILED
+  BLOCKED
+}
+
+enum AddressKind {
+  HOME
+  WORK
+  OTHER
+}
+
+enum ProfileStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum CourierOnlineStatus {
+  OFFLINE
+  ONLINE
+  ON_JOB
+}
+
+enum PayoutAccountOwner {
   VENDOR
   COURIER
-  ORDER
 }
 
-// Core Models
+enum PayoutMethod {
+  BANK
+  MOMO
+}
+
+enum VehicleKind {
+  BICYCLE
+  MOTORBIKE
+  CAR
+  VAN
+  TRUCK
+  OTHER
+}
+
+enum DocStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// =====================================================================
+// Domain 0 — Platform & configuration
+// =====================================================================
+
+model Region {
+  code         String   @id
+  name         String
+  currencyCode String
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  regionRules RegionRule[]
+
+  @@map("regions")
+}
+
+model Currency {
+  code       String @id // ISO 4217
+  name       String
+  symbol     String
+  minorUnits Int    @default(2)
+
+  @@map("currencies")
+}
+
+model ExchangeRate {
+  id        String   @id @default(cuid(2))
+  baseCode  String
+  quoteCode String
+  rate      Decimal  @db.Decimal(18, 8)
+  asOf      DateTime
+
+  @@unique([baseCode, quoteCode, asOf])
+  @@map("exchange_rates")
+}
+
+model Platform {
+  slug             String         @id
+  name             String
+  defaultCurrency  String         @default("GHS")
+  supportedRegions String[]
+  theme            Json?
+  status           PlatformStatus @default(ACTIVE)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  features PlatformFeature[]
+  configs  AppConfig[]
+
+  @@map("platforms")
+}
+
+model FeatureFlag {
+  key         String           @id
+  description String
+  valueType   FeatureValueType @default(BOOL)
+  createdAt   DateTime         @default(now())
+
+  platformValues PlatformFeature[]
+  roleValues     RoleFeature[]
+  userOverrides  UserFeatureOverride[]
+  regionRules    RegionRule[]
+
+  @@map("feature_flags")
+}
+
+model PlatformFeature {
+  id           String @id @default(cuid(2))
+  platformSlug String
+  flagKey      String
+  value        Json
+
+  platform Platform    @relation(fields: [platformSlug], references: [slug], onDelete: Cascade)
+  flag     FeatureFlag @relation(fields: [flagKey], references: [key], onDelete: Cascade)
+
+  @@unique([platformSlug, flagKey])
+  @@map("platform_features")
+}
+
+model RoleFeature {
+  id      String @id @default(cuid(2))
+  role    Role
+  flagKey String
+  value   Json
+
+  flag FeatureFlag @relation(fields: [flagKey], references: [key], onDelete: Cascade)
+
+  @@unique([role, flagKey])
+  @@map("role_features")
+}
+
+model UserFeatureOverride {
+  id        String    @id @default(cuid(2))
+  userId    String
+  flagKey   String
+  value     Json
+  reason    String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flag FeatureFlag @relation(fields: [flagKey], references: [key], onDelete: Cascade)
+
+  @@unique([userId, flagKey])
+  @@map("user_feature_overrides")
+}
+
+model RegionRule {
+  id         String @id @default(cuid(2))
+  regionCode String
+  flagKey    String
+  value      Json
+
+  region Region      @relation(fields: [regionCode], references: [code], onDelete: Cascade)
+  flag   FeatureFlag @relation(fields: [flagKey], references: [key], onDelete: Cascade)
+
+  @@unique([regionCode, flagKey])
+  @@map("region_rules")
+}
+
+model AppConfig {
+  id           String         @id @default(cuid(2))
+  key          String
+  value        Json
+  description  String?
+  scope        AppConfigScope @default(GLOBAL)
+  platformSlug String?
+  updatedAt    DateTime       @updatedAt
+
+  platform Platform? @relation(fields: [platformSlug], references: [slug], onDelete: Cascade)
+
+  @@unique([key, platformSlug])
+  @@map("app_config")
+}
+
+model PricingRule {
+  id           String           @id @default(cuid(2))
+  scope        PricingRuleScope
+  platformSlug String?
+  regionCode   String?
+  vehicleType  VehicleKind?
+  params       Json
+  priority     Int              @default(0)
+  activeFrom   DateTime?
+  activeTo     DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([scope, platformSlug])
+  @@map("pricing_rules")
+}
+
+model FeeSchedule {
+  id           String    @id @default(cuid(2))
+  party        FeeParty
+  kind         FeeKind
+  params       Json
+  platformSlug String?
+  activeFrom   DateTime?
+  activeTo     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([party, kind, platformSlug])
+  @@map("fee_schedules")
+}
+
+model IdempotencyKey {
+  id               String   @id @default(cuid(2))
+  key              String   @unique
+  principalId      String?
+  route            String
+  requestHash      String
+  responseSnapshot Json?
+  statusCode       Int?
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
+
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+/// Transactional outbox — appended in the same tx as a domain write, relayed to
+/// Redis pub/sub by the worker. Append-only (no updatedAt).
+model OutboxEvent {
+  id            String    @id @default(cuid(2))
+  type          String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  attempts      Int       @default(0)
+  createdAt     DateTime  @default(now())
+  dispatchedAt  DateTime?
+
+  @@index([dispatchedAt, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("outbox_events")
+}
+
+model Webhook {
+  id           String   @id @default(cuid(2))
+  url          String
+  secret       String
+  events       String[]
+  platformSlug String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id            String    @id @default(cuid(2))
+  webhookId     String
+  eventId       String?
+  status        String
+  attempts      Int       @default(0)
+  responseCode  Int?
+  lastAttemptAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, status])
+  @@map("webhook_deliveries")
+}
+
+/// Append-only audit trail for auth events, role/permission changes, money
+/// movement, KYC decisions, admin actions, feature-flag edits.
+model AuditLog {
+  id         String    @id @default(cuid(2))
+  actorId    String?
+  actorType  ActorType @default(USER)
+  action     String
+  targetType String?
+  targetId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  ua         String?
+  at         DateTime  @default(now())
+
+  @@index([targetType, targetId])
+  @@index([actorId, at])
+  @@map("audit_logs")
+}
+
+// =====================================================================
+// Domain 1 — Identity & access
+// =====================================================================
+
 model User {
-  id          String     @id @default(cuid())
-  email       String?    @unique // Optional, only for optional profile information
-  phone       String     @unique // Required - primary authentication method
-  password    String?    // Deprecated - kept for backward compatibility, not used
+  id          String     @id @default(cuid(2))
+  phone       String     @unique
+  email       String?    @unique
   firstName   String?
   lastName    String?
   avatar      String?
-  role           UserRole   @default(CUSTOMER)
-  status         UserStatus @default(PENDING)
-  isVerified     Boolean    @default(false) // Set to true after phone OTP verification
-  isEmailVerified Boolean   @default(false) // Email verification status (separate from phone)
-  deviceToken    String?
-  lastLogin      DateTime?
+  status      UserStatus @default(PENDING_VERIFICATION)
+  locale      String     @default("en")
+  timezone    String?
+  lastLoginAt DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   deletedAt   DateTime?
 
-  // Relations
-  customer          Customer?
-  vendor            Vendor?
-  courier           Courier?
-  notifications     Notification[]
-  payments          Payment[]
-  sessions          Session[]
-  accounts          Account[]
-  otps              OTP[]
-  socialLogins      SocialLogin[]
-  emailVerification EmailVerification?
+  roles            UserRole[]
+  credentials      Credential[]
+  sessions         Session[]
+  devices          Device[]
+  socialIdentities SocialIdentity[]
+  otps             Otp[]
+  loginActivity    LoginActivity[]
+  featureOverrides UserFeatureOverride[]
+  tokenEpoch       TokenEpoch?
+
+  customerProfile CustomerProfile?
+  vendorProfile   VendorProfile?
+  courierProfile  CourierProfile?
+  addresses       Address[]
+  savedLocations  SavedLocation[]
 
   @@map("users")
 }
 
-model Customer {
-  id        String    @id @default(cuid())
-  userId    String    @unique
-  latitude  Float?
-  longitude Float?
-  address   String?
-  city      String?
-  region    String?
-  country   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  // Relations
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders Order[]
-
-  @@map("customers")
-}
-
-model Vendor {
-  id           String    @id @default(cuid())
-  userId       String    @unique
-  businessName String
-  description  String?
-  website      String?
-  phoneNumber  String[]
-  email        String?
-  latitude     Float
-  longitude    Float
-  address      String
-  city         String
-  region       String
-  country      String
-  pricePerKg   Float
-  currency     String    @default("GHS")
-  images       String[]
-  isActive     Boolean   @default(false)
-  isVerified   Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime?
-
-  // Relations
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders       Order[]
-  reviews      Review[]       @relation("VendorReviews")
-  availability Availability[]
-
-  @@map("vendors")
-}
-
-model Courier {
-  id            String      @id @default(cuid())
-  userId        String      @unique
-  firstName     String
-  middleName    String?
-  lastName      String
-  phone1        String
-  phone2        String?
-  email         String?
-  country       String
-  address       String
-  city          String
-  region        String
-  town          String?
-  latitude      Float?
-  longitude     Float?
-  vehicleType   VehicleType
-  licensePlate  String
-  licenseNumber String
-  vehicleMake   String
-  vehicleModel  String
-  vehicleColor  String
-  images        String[]
-  rating        Float       @default(0)
-  totalRatings  Int         @default(0)
-  totalRides    Int         @default(0)
-  totalDistance Float       @default(0)
-  isActive      Boolean     @default(false)
-  isVerified    Boolean     @default(false)
-  isOnline      Boolean     @default(false)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  deletedAt     DateTime?
-
-  // Relations
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders  Order[]
-  reviews Review[] @relation("CourierReviews")
-
-  @@map("couriers")
-}
-
-model Order {
-  id            String        @id @default(cuid())
-  orderNumber   String        @unique
-  customerId    String
-  vendorId      String
-  courierId     String?
-  cylinderType  String
-  weight        Float
-  volume        String
-  amount        Float
-  deliveryFee   Float
-  serviceFee    Float
-  totalAmount   Float
-  status        OrderStatus   @default(PENDING)
-  paymentStatus PaymentStatus @default(PENDING)
-  paymentMethod PaymentMethod @default(CASH)
-  customerLat   Float
-  customerLng   Float
-  customerAddr  String
-  vendorLat     Float
-  vendorLng     Float
-  vendorAddr    String
-  notes         String?
-  estimatedTime Int? // in minutes
-  actualTime    Int? // in minutes
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  deletedAt     DateTime?
-
-  // Relations
-  customer Customer        @relation(fields: [customerId], references: [id])
-  vendor   Vendor          @relation(fields: [vendorId], references: [id])
-  courier  Courier?        @relation(fields: [courierId], references: [id])
-  payments Payment[]
-  timeline OrderTimeline[]
-  reviews  Review[]        @relation("OrderReviews")
-
-  @@map("orders")
-}
-
-model OrderTimeline {
-  id          String   @id @default(cuid())
-  orderId     String
-  status      String
-  title       String
-  description String
-  timestamp   DateTime @default(now())
-  createdAt   DateTime @default(now())
-
-  // Relations
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@map("order_timeline")
-}
-
-model Payment {
-  id              String        @id @default(cuid())
-  userId          String
-  orderId         String
-  amount          Float
-  currency        String        @default("GHS")
-  method          PaymentMethod
-  status          PaymentStatus @default(PENDING)
-  transactionId   String?
-  reference       String?
-  gatewayResponse Json?
-  failureReason   String?
-  processedAt     DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  // Relations
-  user  User  @relation(fields: [userId], references: [id])
-  order Order @relation(fields: [orderId], references: [id])
-
-  @@map("payments")
-}
-
-// Unified Review model for polymorphic rating system
-// This model can be used to rate any entity type (Vendor, Courier, Order, etc.)
-model Review {
-  id         String             @id @default(cuid())
-  entityType RateableEntityType
-  entityId   String // ID of the entity being rated (vendorId, courierId, orderId, etc.)
-  userId     String // User who gave the rating
-  rating     Int                @db.SmallInt // Rating value (typically 1-5)
-  comment    String?
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
-
-  // Polymorphic relations - these are optional and only one should be populated based on entityType
-  // Note: Application logic should ensure entityId matches the correct relation
-  vendorId  String? // Optional: set when entityType is VENDOR
-  courierId String? // Optional: set when entityType is COURIER
-  orderId   String? // Optional: set when entityType is ORDER
-
-  vendor  Vendor?  @relation("VendorReviews", fields: [vendorId], references: [id], onDelete: Cascade)
-  courier Courier? @relation("CourierReviews", fields: [courierId], references: [id], onDelete: Cascade)
-  order   Order?   @relation("OrderReviews", fields: [orderId], references: [id], onDelete: Cascade)
-
-  // Indexes for efficient queries
-  @@unique([entityType, entityId, userId]) // Ensure one rating per user per entity
-  @@index([entityType, entityId]) // Fast lookup of all reviews for an entity
-  @@index([userId]) // Fast lookup of all reviews by a user
-  @@index([vendorId]) // Fast lookup of vendor reviews
-  @@index([courierId]) // Fast lookup of courier reviews
-  @@index([orderId]) // Fast lookup of order reviews
-  @@map("reviews")
-}
-
-model Availability {
-  id        String  @id @default(cuid())
-  vendorId  String
-  dayOfWeek Int // 0 = Sunday, 1 = Monday, etc.
-  openTime  String // Format: "HH:MM"
-  closeTime String // Format: "HH:MM"
-  isOpen    Boolean @default(true)
-
-  // Relations
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-
-  @@unique([vendorId, dayOfWeek])
-  @@map("availability")
-}
-
-model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  type      NotificationType
-  title     String
-  message   String
-  data      Json?
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notifications")
-}
-
-// Authentication models for NextAuth
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@map("accounts")
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("sessions")
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-  @@map("verification_tokens")
-}
-
-model OTP {
-  id          String   @id @default(cuid())
-  phoneNumber String
-  otp         String
+model UserRole {
+  id          String         @id @default(cuid(2))
   userId      String
-  isUsed      Boolean  @default(false)
-  expiresAt   DateTime
-  createdAt   DateTime @default(now())
+  role        Role
+  status      UserRoleStatus @default(PENDING)
+  kycStatus   KycStatus      @default(NONE)
+  activatedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("otps")
+  @@unique([userId, role])
+  @@map("user_roles")
 }
 
-model EmailVerification {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  email     String
-  code      String   // 6-digit verification code
-  expiresAt DateTime
-  attempts  Int      @default(0)
-  isUsed    Boolean  @default(false)
-  usedAt    DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("email_verifications")
-}
-
-model SocialLogin {
-  id         String         @id @default(cuid())
+model Credential {
+  id         String         @id @default(cuid(2))
   userId     String
-  provider   SocialProvider
-  providerId String
-  email      String?
-  name       String?
-  avatar     String?
+  kind       CredentialKind
+  secretHash String
+  params     Json?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerId])
-  @@unique([userId, provider])
-  @@map("social_logins")
+  @@unique([userId, kind])
+  @@map("credentials")
 }
 
-// System models
-model AppConfig {
-  id          String   @id @default(cuid())
-  key         String   @unique
-  value       String
-  description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+/// Rotating refresh-token session. `familyId` groups a rotation chain; presenting
+/// a `rotatedFromId` that is already rotated ⇒ reuse detected ⇒ revoke the family.
+model Session {
+  id            String    @id @default(cuid(2))
+  userId        String
+  deviceId      String?
+  refreshHash   String    @unique
+  familyId      String
+  userAgent     String?
+  ip            String?
+  lastUsedAt    DateTime  @default(now())
+  expiresAt     DateTime
+  rotatedFromId String?   @unique
+  revokedAt     DateTime?
+  revokeReason  String?
+  createdAt     DateTime  @default(now())
 
-  @@map("app_config")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("sessions")
+}
+
+model Device {
+  id         String         @id @default(cuid(2))
+  userId     String
+  deviceId   String         @unique
+  platform   DevicePlatform
+  model      String?
+  pushToken  String?
+  appVersion String?
+  trusted    Boolean        @default(false)
+  lastSeenAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model SocialIdentity {
+  id             String         @id @default(cuid(2))
+  userId         String
+  provider       SocialProvider
+  providerUserId String
+  email          String?
+  createdAt      DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@map("social_identities")
+}
+
+model Otp {
+  id          String     @id @default(cuid(2))
+  target      String // phone or email
+  channel     OtpChannel
+  codeHash    String
+  purpose     OtpPurpose
+  userId      String?
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(5)
+  consumedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime   @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([target, purpose])
+  @@index([expiresAt])
+  @@map("otps")
+}
+
+/// Append-only.
+model LoginActivity {
+  id       String     @id @default(cuid(2))
+  userId   String?
+  deviceId String?
+  ip       String?
+  ua       String?
+  geo      String?
+  result   AuthResult
+  reason   String?
+  at       DateTime   @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, at])
+  @@map("login_activity")
+}
+
+/// Bump `ver` to invalidate every outstanding access token for a user.
+model TokenEpoch {
+  userId    String   @id
+  ver       Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("token_epochs")
+}
+
+// =====================================================================
+// Domain 2 — Profiles
+// =====================================================================
+
+model CustomerProfile {
+  id               String   @id @default(cuid(2))
+  userId           String   @unique
+  defaultAddressId String?
+  marketingOptIn   Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_profiles")
+}
+
+model Address {
+  id            String                                 @id @default(cuid(2))
+  userId        String
+  label         String?
+  recipientName String
+  phone         String
+  line1         String
+  line2         String?
+  city          String
+  region        String?
+  country       String
+  postalCode    String?
+  location      Unsupported("geography(Point, 4326)")?
+  isDefault     Boolean                                @default(false)
+  kind          AddressKind                            @default(HOME)
+  createdAt     DateTime                               @default(now())
+  updatedAt     DateTime                               @updatedAt
+  deletedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+model SavedLocation {
+  id        String                                @id @default(cuid(2))
+  userId    String
+  name      String
+  location  Unsupported("geography(Point, 4326)")
+  address   String?
+  createdAt DateTime                              @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_locations")
+}
+
+model VendorProfile {
+  id          String        @id @default(cuid(2))
+  userId      String        @unique
+  displayName String
+  bio         String?
+  logo        String?
+  banner      String?
+  status      ProfileStatus @default(PENDING)
+  verifiedAt  DateTime?
+  ratingAvg   Float         @default(0)
+  ratingCount Int           @default(0)
+  platformIds String[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business?
+
+  @@map("vendor_profiles")
+}
+
+model Business {
+  id          String                                 @id @default(cuid(2))
+  vendorId    String                                 @unique
+  legalName   String
+  regNumber   String?
+  taxId       String?
+  category    String?
+  phones      String[]
+  email       String?
+  website     String?
+  addressLine String?
+  city        String?
+  region      String?
+  country     String?
+  location    Unsupported("geography(Point, 4326)")?
+  createdAt   DateTime                               @default(now())
+  updatedAt   DateTime                               @updatedAt
+
+  vendor    VendorProfile      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  documents BusinessDocument[]
+
+  @@map("businesses")
+}
+
+model BusinessDocument {
+  id           String    @id @default(cuid(2))
+  businessId   String
+  type         String
+  fileKey      String
+  status       DocStatus @default(PENDING)
+  reviewedById String?
+  note         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("business_documents")
+}
+
+model PayoutAccount {
+  id        String             @id @default(cuid(2))
+  ownerType PayoutAccountOwner
+  ownerId   String
+  method    PayoutMethod
+  details   Json // tokenized
+  verified  Boolean            @default(false)
+  isDefault Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([ownerType, ownerId])
+  @@map("payout_accounts")
+}
+
+model CourierProfile {
+  id                  String                                 @id @default(cuid(2))
+  userId              String                                 @unique
+  status              ProfileStatus                          @default(PENDING)
+  onlineStatus        CourierOnlineStatus                    @default(OFFLINE)
+  lastLocation        Unsupported("geography(Point, 4326)")?
+  lastLocationAt      DateTime?
+  ratingAvg           Float                                  @default(0)
+  ratingCount         Int                                    @default(0)
+  completedDeliveries Int                                    @default(0)
+  acceptanceRate      Float                                  @default(0)
+  cancellationRate    Float                                  @default(0)
+  level               Json?
+  activeVehicleId     String?
+  createdAt           DateTime                               @default(now())
+  updatedAt           DateTime                               @updatedAt
+  deletedAt           DateTime?
+
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicles     CourierVehicle[]
+  availability CourierAvailability[]
+  shifts       CourierShift[]
+  serviceAreas CourierServiceArea[]
+
+  @@map("courier_profiles")
+}
+
+model CourierAvailability {
+  id        String  @id @default(cuid(2))
+  courierId String
+  dayOfWeek Int // 0 = Sunday
+  startTime String // "HH:MM"
+  endTime   String
+  enabled   Boolean @default(true)
+
+  courier CourierProfile @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@unique([courierId, dayOfWeek])
+  @@map("courier_availability")
+}
+
+model CourierShift {
+  id            String    @id @default(cuid(2))
+  courierId     String
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  onlineSeconds Int       @default(0)
+  deliveries    Int       @default(0)
+  earningsMinor Int       @default(0)
+
+  courier CourierProfile @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@index([courierId])
+  @@map("courier_shifts")
+}
+
+model CourierVehicle {
+  id        String      @id @default(cuid(2))
+  courierId String
+  type      VehicleKind
+  make      String?
+  model     String?
+  color     String?
+  plate     String?
+  year      Int?
+  photos    String[]
+  status    DocStatus   @default(PENDING)
+  capacity  Json?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  courier   CourierProfile           @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  documents CourierVehicleDocument[]
+
+  @@index([courierId])
+  @@map("courier_vehicles")
+}
+
+model CourierVehicleDocument {
+  id        String    @id @default(cuid(2))
+  vehicleId String
+  type      String
+  fileKey   String
+  status    DocStatus @default(PENDING)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  vehicle CourierVehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("courier_vehicle_documents")
+}
+
+model CourierServiceArea {
+  id        String                                   @id @default(cuid(2))
+  courierId String
+  name      String
+  area      Unsupported("geography(Polygon, 4326)")?
+  radiusM   Int?
+  centerLat Float?
+  centerLng Float?
+  enabled   Boolean                                  @default(true)
+  createdAt DateTime                                 @default(now())
+  updatedAt DateTime                                 @updatedAt
+
+  courier CourierProfile @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@index([courierId])
+  @@map("courier_service_areas")
 }
