@@ -68,8 +68,19 @@ Docker path unverified (Docker Desktop WSL backend broken on this machine — se
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
-1. **Rename the repo folder** `e:\Projects\NextJs\tizziserver` → `e:\Projects\NextJs\stall` (the OS-level move; do it with nothing running, from the parent dir). Then **reopen the IDE/terminal at the new path** and re-run `pnpm install` if node_modules paths complain. Update the git remote name if there is one.
-2. Commit the Session-5 rename + Session-4 dev-env work on `phase-0-foundation`. Then merge `phase-0-foundation → main`.
+1. **Rename the repo folder** (blocked in-session: the folder is locked by the IDE/agent).
+   Close the IDE + all terminals in the folder, then from PowerShell:
+   ```powershell
+   cd 'E:\Projects\NextJs'
+   Rename-Item tizziserver stall
+   ```
+   Reopen the IDE at `E:\Projects\NextJs\stall`. `node_modules` is path-relative so `pnpm`
+   should be fine; if anything complains, `pnpm install`. Postgres cluster (`.pgdata`) moves
+   with the folder — `pnpm dev:db` restarts it.
+   *(Optional, outward-facing — do yourself)* rename the GitHub repo `tizziserver` → `stall`
+   (`gh repo rename stall` or repo Settings), then `git remote set-url origin <new-url>`.
+2. Everything else is done + committed on `phase-0-foundation` (3 commits: monorepo, dev-env,
+   rename). Merge `phase-0-foundation → main` when ready.
 3. **Begin Phase 1 — Identity & platform core** (`docs/05-ROADMAP.md` §Phase 1): schema v2 Domain 0 (Platform/FeatureFlag) + Domain 1 (identity, multi-role `UserRole`) + Domain 2 profiles; migration + seed (`grandprice` + `tizzi-gas` platforms, flag registry, gas category). This is where **argon2 + jose** replace bcryptjs/jsonwebtoken and the middleware chain + capability resolver + `/api/v1/config/bootstrap` land.
 3. Wire `@stall/config` into `apps/api` (replace direct `process.env` reads in `lib/constants.ts`, `lib/email.ts`).
 4. Decide **B2** (rename folder `tizziserver` → `grandprice`?). Non-blocking; default = keep.
