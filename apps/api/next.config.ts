@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
-  transpilePackages: ["@grandprice/db", "@grandprice/config"],
+  transpilePackages: ["@stall/db", "@stall/config"],
   serverExternalPackages: ["@prisma/client", ".prisma/client"],
 };
 

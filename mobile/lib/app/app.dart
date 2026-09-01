@@ -4,16 +4,16 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../design/theme.dart';
 import '../design/tokens.g.dart';
 
-class GrandPriceApp extends StatelessWidget {
-  const GrandPriceApp({super.key});
+class StallApp extends StatelessWidget {
+  const StallApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GrandPrice',
+      title: 'Stall',
       debugShowCheckedModeBanner: false,
-      theme: GpTheme.light(),
-      darkTheme: GpTheme.dark(),
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
       home: const _Phase0Home(),
     );
   }
@@ -26,24 +26,24 @@ class _Phase0Home extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = Theme.of(context).extension<GpColors>()!;
+    final c = Theme.of(context).extension<AppColors>()!;
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(GpSpace.s24),
+          padding: const EdgeInsets.all(AppSpace.s24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('GrandPrice', style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: GpSpace.s8),
+              Text('Stall', style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: AppSpace.s8),
               Text(
                 'Phase 0 — foundation wired. Design tokens live.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: c.textMed),
               ),
-              const SizedBox(height: GpSpace.s24),
+              const SizedBox(height: AppSpace.s24),
               Wrap(
-                spacing: GpSpace.s8,
-                runSpacing: GpSpace.s8,
+                spacing: AppSpace.s8,
+                runSpacing: AppSpace.s8,
                 children: [
                   for (final e in <(String, Color)>[
                     ('primary', c.primary),
@@ -58,7 +58,7 @@ class _Phase0Home extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: e.$2,
-                        borderRadius: BorderRadius.circular(GpRadius.xl),
+                        borderRadius: BorderRadius.circular(AppRadius.xl),
                         border: Border.all(color: c.border),
                       ),
                       child: Text(e.$1, style: Theme.of(context).textTheme.labelSmall),

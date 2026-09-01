@@ -40,7 +40,7 @@ for (const r of Object.values(routes) as RouteContract[]) {
 
 const doc = {
   openapi: "3.0.3",
-  info: { title: "GrandPrice API", version: "0.0.0-phase0" },
+  info: { title: "Stall API", version: "0.0.0-phase0" },
   servers: [{ url: "http://localhost:3000" }],
   components: {
     securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" } },

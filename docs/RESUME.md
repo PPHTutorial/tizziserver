@@ -1,4 +1,4 @@
-# GRANDPRICE — SESSION RESUME PROTOCOL
+# STALL — SESSION RESUME PROTOCOL
 
 This project is built across many chat sessions. Context gets cleared between them to save
 tokens. This file + `docs/PROGRESS.md` are how a fresh session picks up exactly where the last
@@ -10,12 +10,12 @@ one stopped.
 
 | You type | Claude does |
 |----------|-------------|
-| **`RESUME GRANDPRICE`** | Reads `docs/PROGRESS.md` then this file, then the doc for the ACTIVE PHASE, then the relevant code. Continues from **NEXT ACTIONS** without re-asking for context. |
-| **`RESUME GRANDPRICE — <focus>`** | Same, but prioritizes `<focus>` (e.g. `RESUME GRANDPRICE — courier dispatch engine`). |
-| **`SAVE GRANDPRICE`** | Flushes state to `docs/PROGRESS.md`: rewrites CURRENT STATE + ACTIVE PHASE checklist + NEXT ACTIONS, appends to DECISION LOG and SESSION LOG. Do this before `/clear`. |
-| **`STATUS GRANDPRICE`** | Prints a short summary of CURRENT STATE + ACTIVE PHASE + top 3 NEXT ACTIONS. No file changes. |
+| **`RESUME STALL`** | Reads `docs/PROGRESS.md` then this file, then the doc for the ACTIVE PHASE, then the relevant code. Continues from **NEXT ACTIONS** without re-asking for context. |
+| **`RESUME STALL — <focus>`** | Same, but prioritizes `<focus>` (e.g. `RESUME STALL — courier dispatch engine`). |
+| **`SAVE STALL`** | Flushes state to `docs/PROGRESS.md`: rewrites CURRENT STATE + ACTIVE PHASE checklist + NEXT ACTIONS, appends to DECISION LOG and SESSION LOG. Do this before `/clear`. |
+| **`STATUS STALL`** | Prints a short summary of CURRENT STATE + ACTIVE PHASE + top 3 NEXT ACTIONS. No file changes. |
 
-## Read order on `RESUME GRANDPRICE`
+## Read order on `RESUME STALL`
 
 1. `docs/PROGRESS.md` — **authoritative.** CURRENT STATE, ACTIVE PHASE, NEXT ACTIONS, BLOCKERS, DECISION LOG.
 2. `docs/RESUME.md` — this file (the rules).
@@ -36,11 +36,11 @@ one stopped.
 - **Do not** re-litigate anything in DECISION LOG. If a decision must change, add a new dated entry that supersedes it and say so.
 - **Do not** widen scope past the ACTIVE PHASE without the user asking.
 - Prefer `Grep`/`Glob` over reading whole files. Read the slice you need.
-- **End every working session** by updating `docs/PROGRESS.md` (or when the user types `SAVE GRANDPRICE`): CURRENT STATE, ACTIVE PHASE checkboxes, NEXT ACTIONS, SESSION LOG row, and DECISION LOG if anything was decided.
+- **End every working session** by updating `docs/PROGRESS.md` (or when the user types `SAVE STALL`): CURRENT STATE, ACTIVE PHASE checkboxes, NEXT ACTIONS, SESSION LOG row, and DECISION LOG if anything was decided.
 - Keep `docs/04-SCREEN-CATALOG.md` status columns current as screens get specs / get built.
 - When a phase's exit criteria are met: check every box, move ACTIVE PHASE to the next one, reset NEXT ACTIONS.
 
 ## Memory backup
 
-A `project` memory (`grandprice-overhaul`) points at this protocol, so even a session that
-starts with no key phrase and only recalled memory knows to open `docs/PROGRESS.md` first.
+A `project` memory (`stall-overhaul`) points at this protocol, so even a session that starts
+with no key phrase and only recalled memory knows to open `docs/PROGRESS.md` first.

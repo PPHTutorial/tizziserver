@@ -1,5 +1,5 @@
 {
-  "name": "@grandprice/worker",
+  "name": "@stall/worker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@grandprice/config": "workspace:*",
-    "@grandprice/db": "workspace:*",
+    "@stall/config": "workspace:*",
+    "@stall/db": "workspace:*",
     "bullmq": "^6.3.0",
     "ioredis": "^5.4.1"
   },

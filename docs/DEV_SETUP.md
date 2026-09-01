@@ -1,4 +1,4 @@
-# GrandPrice — local dev setup
+# Stall — local dev setup
 
 Two ways to run the backing services. **Docker is the intended path**; the no-Docker path
 exists because Docker Desktop's WSL2 backend was broken on the dev machine during Phase 0
@@ -25,7 +25,7 @@ pnpm dev:db        # initdb ./.pgdata (first run) + start Postgres on :5432 + cr
 pnpm dev:redis     # redis-server on :6379          (separate terminal)
 pnpm dev:mail      # maildev  SMTP :1025 / UI :1080  (separate terminal)
 
-pnpm --filter @grandprice/db migrate   # apply migrations (deploy in CI: migrate:deploy)
+pnpm --filter @stall/db migrate   # apply migrations (deploy in CI: migrate:deploy)
 ```
 
 `pnpm dev:db:stop` stops Postgres. The cluster lives in `./.pgdata` (gitignored); delete it to
@@ -69,12 +69,12 @@ cd mobile && flutter run
 curl -s -XPOST localhost:3000/api/x -H 'content-type: application/json' -d '{"action":"test"}'
 curl -s localhost:3001/health
 curl -s localhost:3002/health
-pnpm --filter @grandprice/db exec tsx scripts/smoke.ts   # DB connect + counts (needs .env loaded)
+pnpm --filter @stall/db exec tsx scripts/smoke.ts   # DB connect + counts (needs .env loaded)
 ```
 
 ## Checks (also CI)
 
 ```bash
-pnpm -r build && pnpm -r typecheck && pnpm --filter @grandprice/api lint
+pnpm -r build && pnpm -r typecheck && pnpm --filter @stall/api lint
 cd mobile && flutter analyze && flutter test
 ```

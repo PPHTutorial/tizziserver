@@ -18,7 +18,7 @@ import { resolve } from "node:path";
 const ROOT = resolve(import.meta.dirname, "..");
 const DATADIR = resolve(ROOT, ".pgdata");
 const PORT = process.env.PGPORT || "5432";
-const DB = "grandprice";
+const DB = "stall";
 
 function pgBin() {
   if (process.platform === "win32") {

@@ -1,4 +1,4 @@
-# GRANDPRICE — ARCHITECTURE
+# STALL — ARCHITECTURE
 
 Companion to `00-MASTER-PLAN.md`. Covers backend structure, request lifecycle, auth, the
 multi-platform capability system, realtime, geo, background jobs, security, and infra.

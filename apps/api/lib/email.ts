@@ -1,11 +1,11 @@
-// GrandPrice - Email Service
+// Stall — Email Service
 import nodemailer from 'nodemailer'
 
 const SMTP_HOST = process.env.SMTP_HOST || 'localhost'
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || '1025', 10)
 const SMTP_USER = process.env.SMTP_USER || ''
 const SMTP_PASS = process.env.SMTP_PASS || ''
-const EMAIL_FROM = process.env.EMAIL_FROM || 'GrandPrice <no-reply@grandprice.local>'
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Stall <no-reply@stall.local>'
 
 // Create transporter. In dev this targets Mailpit (localhost:1025, no auth);
 // in prod set SMTP_HOST/PORT/USER/PASS to the real provider.

@@ -1,4 +1,4 @@
-name: grandprice
+name: stall
 
 # Local cloud stack. `docker compose -f infra/docker/docker-compose.yml up -d`
 # App services (api / realtime / worker) run on the host via `pnpm dev` against these.
@@ -9,15 +9,15 @@ services:
     image: postgis/postgis:16-3.4
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-grandprice}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grandprice}
-      POSTGRES_DB: ${POSTGRES_DB:-grandprice}
+      POSTGRES_USER: ${POSTGRES_USER:-stall}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stall}
+      POSTGRES_DB: ${POSTGRES_DB:-stall}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grandprice} -d ${POSTGRES_DB:-grandprice}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stall} -d ${POSTGRES_DB:-stall}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -41,8 +41,8 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-grandprice}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-grandprice-secret}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-stall}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-stall-secret}
     ports:
       - "${MINIO_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
@@ -61,9 +61,9 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-grandprice} ${MINIO_ROOT_PASSWORD:-grandprice-secret} &&
-      mc mb --ignore-existing local/${S3_BUCKET:-grandprice-media} &&
-      mc anonymous set download local/${S3_BUCKET:-grandprice-media} &&
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-stall} ${MINIO_ROOT_PASSWORD:-stall-secret} &&
+      mc mb --ignore-existing local/${S3_BUCKET:-stall-media} &&
+      mc anonymous set download local/${S3_BUCKET:-stall-media} &&
       echo 'minio bucket ready'
       "
     restart: "no"
@@ -82,7 +82,7 @@ services:
     profiles: ["search", "full"]
     restart: unless-stopped
     environment:
-      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-grandprice-dev-key}
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-stall-dev-key}
       MEILI_ENV: development
     ports:
       - "${MEILI_PORT:-7700}:7700"

@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 /**
- * Central environment contract for every GrandPrice service.
+ * Central environment contract for every Stall service.
  * Add keys here as phases introduce them — never read `process.env.X` directly
- * in application code; import `env` from `@grandprice/config`.
+ * in application code; import `env` from `@stall/config`.
  */
 const schema = z.object({
   NODE_ENV: z

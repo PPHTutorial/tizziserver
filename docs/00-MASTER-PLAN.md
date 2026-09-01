@@ -1,14 +1,22 @@
-# GRANDPRICE — MASTER PLAN
+# STALL — MASTER PLAN
 
-**Mission:** Elevate `tizziserver` from a single-purpose gas-delivery backend into **GrandPrice**,
-a unified multi-vendor commerce ecosystem — marketplace + ordering + a full delivery/courier
-network (live tracking like Bolt/Uber) + an auction engine + wallet/payments + trust & safety —
-serving **multiple consumer platforms from one backend**, with **Tizzi Gas kept as a
-first-class platform**, not an afterthought.
+**Mission:** Turn `tizziserver` (a single-purpose gas-delivery backend) into **Stall** — a
+multi-**tenant** marketplace + delivery engine. One backend, one codebase, one component
+library; each consumer product is a **`Platform` tenant** with its own name, theme, and
+feature switches. First two tenants:
 
-> One ecosystem: **the customer buys · the vendor sells · the courier delivers · the platform
-> governs · the auction engine creates premium opportunities · the wallet moves money · the
-> trust system protects everyone.**
+- **GrandPrice** — general multi-vendor store marketplace (electronics, fashion, kitchen,
+  vehicles, real estate…) + delivery + the Inverse Draw engine.
+- **Tizzi Gas** — LPG cylinder marketplace + delivery. Same concept, gas-scoped catalog, no
+  auction/advertising. Kept first-class, not an afterthought.
+
+Same domain, different mix: gas ≠ clothes, so pricing, catalog shape, KYC and fulfilment vary
+per tenant via `FeatureFlag`s — but the platform, navigation philosophy, wallet, trust system
+and design tokens are shared.
+
+> **the customer buys · the vendor sells · the courier delivers · the tenant is governed by
+> the platform · the Inverse Draw engine creates premium opportunities · the wallet moves
+> money · the trust system protects everyone.**
 
 ---
 
@@ -107,11 +115,11 @@ tizziserver/                     (repo root — folder name unchanged unless use
 | File | Contents |
 |---|---|
 | `PROGRESS.md` | **Living ledger** — current state, active phase, next actions, decisions, blockers. Read first. |
-| `RESUME.md` | Session resume protocol + key phrases (`RESUME GRANDPRICE`, `SAVE GRANDPRICE`). |
+| `RESUME.md` | Session resume protocol + key phrases (`RESUME STALL`, `SAVE STALL`). |
 | `00-MASTER-PLAN.md` | This file — vision, principles, stack, layout. |
 | `01-ARCHITECTURE.md` | Backend architecture, module boundaries, auth, realtime, geo, infra, security. |
 | `02-DATA-MODEL.md` | Prisma v7 schema redesign — every domain, key entities, gating, migration from gas schema. |
-| `03-DESIGN-SYSTEM.md` | GrandPrice mobile design system — tokens, type scale, components, from MD §01/§29/§31. |
+| `03-DESIGN-SYSTEM.md` | Stall mobile design system (tokens/type/components) — currently seeded from the GrandPrice tenant's Figma; shared by all tenants. |
 | `04-SCREEN-CATALOG.md` | All 34 MD sections → module / roles / feature-gate / realtime / maps, + build-status tracking. |
 | `05-ROADMAP.md` | Phase 0–8 execution plan with checklists and exit criteria. |
 

@@ -1,4 +1,4 @@
-# GRANDPRICE — MOBILE DESIGN SYSTEM
+# STALL — MOBILE DESIGN SYSTEM
 
 Derived from `GrandPrice — Mobile Figma Screen Expansion Specification` §01/§29–§32 **and
 reconciled against the 64-frame Figma export** (`docs/design/Untitled/`, 2026-09-01). This
@@ -141,42 +141,42 @@ Reduce-motion respected.
 Each maps to a Flutter widget in `packages/design` (or `mobile/lib/design/`), themed from
 tokens, `--test`ed as a widget test. From MD §01 + §29.
 
-**Primitives** — `GpButton` (primary/secondary/tonal/ghost/destructive · sizes sm/md/lg ·
-loading/disabled · leading/trailing FA icon), `GpIconButton`, `GpChip` (filter/choice/input),
-`GpBadge` (count/status/dot), `GpTag`, `GpAvatar` (user/vendor/courier · fallback initials ·
-status ring), `GpRating` (stars + count, read/interactive), `GpDivider`, `GpSkeleton`,
-`GpShimmer`.
+**Primitives** — `AppButton` (primary/secondary/tonal/ghost/destructive · sizes sm/md/lg ·
+loading/disabled · leading/trailing FA icon), `AppIconButton`, `AppChip` (filter/choice/input),
+`AppBadge` (count/status/dot), `AppTag`, `AppAvatar` (user/vendor/courier · fallback initials ·
+status ring), `AppRating` (stars + count, read/interactive), `AppDivider`, `AppSkeleton`,
+`AppShimmer`.
 
-**Inputs** — `GpTextField` (with prefix/suffix FA, error, counter), `GpSearchBar` (idle/active/
-voice/visual triggers), `GpDropdown`, `GpSegmentedControl`, `GpStepper` (quantity selector),
-`GpOtpField` (4/6 cells), `GpPinPad`, `GpSlider` (price range), `GpDatePicker`, `GpTimePicker`,
-`GpToggle`, `GpCheckbox`, `GpRadioGroup`.
+**Inputs** — `AppTextField` (with prefix/suffix FA, error, counter), `AppSearchBar` (idle/active/
+voice/visual triggers), `AppDropdown`, `AppSegmentedControl`, `AppStepper` (quantity selector),
+`AppOtpField` (4/6 cells), `AppPinPad`, `AppSlider` (price range), `AppDatePicker`, `AppTimePicker`,
+`AppToggle`, `AppCheckbox`, `AppRadioGroup`.
 
-**Navigation** — `GpBottomNav` (role-driven from `config/bootstrap`), `GpTopAppBar`
-(large/small/search variants), `GpTabs`, `GpBackBar`, `GpNavRail` (tablet).
+**Navigation** — `AppBottomNav` (role-driven from `config/bootstrap`), `AppTopAppBar`
+(large/small/search variants), `AppTabs`, `AppBackBar`, `AppNavRail` (tablet).
 
-**Surfaces** — `GpCard`, `GpListTile`, `GpSection` (header + action), `GpBottomSheet`
-(drag handle, scrim, snap points), `GpDialog` (confirm/destructive/info), `GpActionSheet`,
-`GpSnackbar`, `GpToast`, `GpBanner` (inline info/warning).
+**Surfaces** — `AppCard`, `AppListTile`, `AppSection` (header + action), `AppBottomSheet`
+(drag handle, scrim, snap points), `AppDialog` (confirm/destructive/info), `AppActionSheet`,
+`AppSnackbar`, `AppToast`, `AppBanner` (inline info/warning).
 
-**Commerce cards** (MD §05 card types) — `GpProductCard` variants: standard · sponsored ·
+**Commerce cards** (MD §05 card types) — `AppProductCard` variants: standard · sponsored ·
 boosted · discounted · auction · premium-asset · out-of-stock · verified-vendor ·
-delivery-available · free/discounted-delivery. `GpAuctionCard`, `GpVendorCard`, `GpCourierCard`,
-`GpDeliveryStatusCard`, `GpOrderStatusCard`, `GpCouponCard`, `GpTicketCard`.
+delivery-available · free/discounted-delivery. `AppAuctionCard`, `AppVendorCard`, `AppCourierCard`,
+`AppDeliveryStatusCard`, `AppOrderStatusCard`, `AppCouponCard`, `AppTicketCard`.
 
-**Delivery/map** — `GpDeliveryStatusIndicator` (stepper: searching→assigned→pickup→transit→
-delivered), `GpCourierMiniCard` (masked info pre-arrival), `GpMapView` (wraps
-`google_maps_flutter`), `GpMapMarker` (FA glyph pins: vendor/courier/pickup/dropoff/me),
-`GpRoutePolyline`, `GpEtaPill`, `GpMapBottomSheet`, `GpLocationPicker`, `GpServiceAreaEditor`
-(polygon draw/edit), `GpQrScanner`, `GpQrDisplay`, `GpSignaturePad`.
+**Delivery/map** — `AppDeliveryStatusIndicator` (stepper: searching→assigned→pickup→transit→
+delivered), `AppCourierMiniCard` (masked info pre-arrival), `AppMapView` (wraps
+`google_maps_flutter`), `AppMapMarker` (FA glyph pins: vendor/courier/pickup/dropoff/me),
+`AppRoutePolyline`, `AppEtaPill`, `AppMapBottomSheet`, `AppLocationPicker`, `AppServiceAreaEditor`
+(polygon draw/edit), `AppQrScanner`, `AppQrDisplay`, `AppSignaturePad`.
 
-**Feedback/states** (MD §28) — `GpEmptyState`, `GpErrorState`, `GpOfflineState`,
-`GpPermissionPrimer` (location/camera/notifications), `GpMaintenanceState`, `GpLoading`
-(spinner/skeleton), `GpConfirmationState`, `GpSuccessState`, `GpFailureState`. Each takes an FA
+**Feedback/states** (MD §28) — `AppEmptyState`, `AppErrorState`, `AppOfflineState`,
+`AppPermissionPrimer` (location/camera/notifications), `AppMaintenanceState`, `AppLoading`
+(spinner/skeleton), `AppConfirmationState`, `AppSuccessState`, `AppFailureState`. Each takes an FA
 illustration glyph, title, body, primary/secondary action.
 
-**Money** — `GpMoney` (tabular, currency-aware), `GpAmountBreakdown` (subtotal/discount/coupon/
-delivery/service/tax/total — MD §06), `GpEarningsBreakdown` (gross/deductions/adjustments/net/
+**Money** — `AppMoney` (tabular, currency-aware), `AppAmountBreakdown` (subtotal/discount/coupon/
+delivery/service/tax/total — MD §06), `AppEarningsBreakdown` (gross/deductions/adjustments/net/
 available/pending — MD §14).
 
 ## 6. Layout & responsiveness (MD §30)
@@ -186,18 +186,18 @@ large ≥840`. Rules:
 - Product grid columns: `2 / 2 / 3 / 4`. Grids use `SliverGrid` with proportional aspect.
 - `expanded`+: two-pane where MD calls for it — PDP (gallery ∥ info), delivery tracking
   (map ∥ details), courier dashboard (job list ∥ map), vendor dashboard (panels), auction
-  (asset gallery ∥ auction info). Implement via a `GpTwoPane` that collapses to stacked below
+  (asset gallery ∥ auction info). Implement via a `AppTwoPane` that collapses to stacked below
   `expanded`.
 - Safe areas, notches, foldable hinge (`MediaQuery.displayFeatures`) respected.
-- Bottom nav → `GpNavRail` on `large`.
+- Bottom nav → `AppNavRail` on `large`.
 - Never scale a phone layout by stretching; switch layout composition.
 
 ## 7. Maps screens to design (NOT in MD/Figma — we own these)
 
 | Screen | Contents |
 |---|---|
-| **Map Discovery / Nearby Vendors** | Full-screen `GpMapView`, clustered vendor pins, "search this area", filter chips, bottom sheet vendor list synced to viewport (MD §03 items 33–34). |
-| **Live Delivery Map (customer)** | Courier pin moving in real time, route polyline pickup→me, `GpEtaPill`, `GpCourierMiniCard` (masked), contact/call/message actions, status stepper. Tablet: map ∥ details. (MD §08 items 132–135) |
+| **Map Discovery / Nearby Vendors** | Full-screen `AppMapView`, clustered vendor pins, "search this area", filter chips, bottom sheet vendor list synced to viewport (MD §03 items 33–34). |
+| **Live Delivery Map (customer)** | Courier pin moving in real time, route polyline pickup→me, `AppEtaPill`, `AppCourierMiniCard` (masked), contact/call/message actions, status stepper. Tablet: map ∥ details. (MD §08 items 132–135) |
 | **Courier — Navigate to Pickup** | Map with route to vendor, turn hint banner, "Arrived" CTA, job summary sheet, masked customer area only. |
 | **Courier — Navigate to Drop-off** | Route to customer, full address revealed on "Start delivery", "Arrived" CTA, delivery-verification entry. |
 | **Courier Jobs Map** | Available `DeliveryJob` pins around courier, payout labels, tap → job details sheet, accept/decline. (MD §12) |
@@ -219,11 +219,11 @@ packages/tokens/
 │   └── $themes.json     light / dark
 ├── build.mjs            Style Dictionary config
 └── dist/
-    ├── tokens.dart      → ThemeExtension `GpTokens` + `GpTheme.light/dark`
+    ├── tokens.dart      → ThemeExtension `AppTokens` + `AppTheme.light/dark`
     ├── tokens.ts        → typed object for admin/marketing
     └── tokens.css       → CSS custom properties
 ```
-Flutter consumes `GpTokens` via `Theme.of(context).extension<GpTokens>()`. A CI check fails the
+Flutter consumes `AppTokens` via `Theme.of(context).extension<AppTokens>()`. A CI check fails the
 build if a `mobile/` widget hardcodes a hex color or a raw `fontSize`.
 
 ## 9. Patterns observed in the 64-frame export (build to these)
@@ -232,10 +232,10 @@ build if a `mobile/` widget hardcodes a hex color or a raw `fontSize`.
   (Outfit 800) inline at top-left; a circular white back button (`elevation.2`, radius pill,
   FA `chevron-left`) sits to its left. Right side: circular white icon button(s)
   (cart / share). Content scrolls under; no elevation on the header itself.
-- **Primary button** (`GpButton.primary`): full-width or dual, **pill** radius, `#FF6200` fill,
+- **Primary button** (`AppButton.primary`): full-width or dual, **pill** radius, `#FF6200` fill,
   `label.lg` white, height ~56, `brand-glow` shadow. Label often carries the amount:
   `Place Order • $12,550`, `Join Draw • $50`, `Buy Ticket ($50)`.
-- **Secondary button** (`GpButton.outline`): white fill, `#EFECE8`→ sometimes `#111111` 1px
+- **Secondary button** (`AppButton.outline`): white fill, `#EFECE8`→ sometimes `#111111` 1px
   border, pill, `label.lg` ink. Used beside primary as a dual CTA (`Buy Retail`, `Withdraw`).
 - **Selection card** (radio/choice): white card, radius `lg`; **selected** = `#FF6200` 1.5px
   border + filled `#FF6200` circle (right side); unselected = `#EFECE8` border + hollow ring.
@@ -249,13 +249,13 @@ build if a `mobile/` widget hardcodes a hex color or a raw `fontSize`.
   ink + `(82)` in `text.low`.
 - **Badges/pills**: `label.sm`; status pill uses tinted container + matching text
   (`Auction Entry` green on `#E6F7ED`; `2d 14h Left` orange on `#FFF0E6`; `VERIFIED` green).
-- **Bottom nav** (`GpBottomNav`): white bar, `nav` shadow, 4–5 items; inactive = FA line glyph
+- **Bottom nav** (`AppBottomNav`): white bar, `nav` shadow, 4–5 items; inactive = FA line glyph
   `text.low`; **active = `#FF6200` rounded-square (radius `xl`) with white glyph**, no label
   shift. Item set comes from `config/bootstrap` `nav` (MD §32 lists 5 for customer; the export
   shows 4 — treat count as dynamic).
 - **Wallet / hero card**: brand gradient fill, radius `2xl`, white text, `display` balance,
   translucent-white inset action buttons; below it a row of white stat cards
-  (`GpEarningsBreakdown`-style).
+  (`AppEarningsBreakdown`-style).
 - **Auth screens**: no card — fields sit directly on cream; field label in `label` ink above a
   white pill input (`elevation.1`); full-width primary pill; `— or connect with —` hairline
   divider; white social buttons with FA brand glyphs in ink; T&C `caption` footer.

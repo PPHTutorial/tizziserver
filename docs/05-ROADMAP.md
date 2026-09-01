@@ -1,4 +1,4 @@
-# GRANDPRICE — EXECUTION ROADMAP
+# STALL — EXECUTION ROADMAP
 
 Phased plan. Each phase has a **goal**, a **checklist**, and **exit criteria** that must all be
 true before the next phase becomes ACTIVE in `PROGRESS.md`. Cross-cutting requirements at the
@@ -22,12 +22,12 @@ Phases are scoped so a cleared session can pick up one checklist item at a time.
 - [x] `apps/realtime` skeleton (Fastify + socket.io + 4 namespaces + `/health`); `apps/worker` skeleton (BullMQ `outbox-relay` + `/health`).
 - [x] `packages/tokens`: `tokens.json` (measured) + zero-dep `build.mjs` → `dist/tokens.ts`, `dist/tokens.css`, `mobile/lib/design/tokens.g.dart`. (Style Dictionary = later if needed.)
 - [x] `packages/contracts`: zod envelope + route registry → `openapi.json` (zod v4 `z.toJSONSchema`). Full param generator + Dart client → Phase 1.
-- [x] `mobile/`: `flutter create --empty`; riverpod, go_router, dio, font_awesome_flutter, google_maps_flutter; `GpTheme` from `tokens.g.dart`; `lib/{app,design,features,api,core}`; smoke test.
+- [x] `mobile/`: `flutter create --empty`; riverpod, go_router, dio, font_awesome_flutter, google_maps_flutter; `AppTheme` from `tokens.g.dart`; `lib/{app,design,features,api,core}`; smoke test.
 - [x] `.github/workflows/ci.yml`: node (install → prisma generate → `pnpm -r build` → `pnpm -r typecheck` → api lint) + flutter (analyze + test) + docker-config.
 - [x] Repo cleanup: 9 legacy `.md` → `docs/legacy/`; removed `package-lock.json`, stale `.next`; `.gitignore` + `.gitattributes` rewritten. (`next.svg`/`vercel.svg` still under `apps/api/public` — trim in Phase 2 when the marketing page is redone.)
 - [x] `docs/` committed (this corpus).
 
-**Exit — MET (Session 4):** ✅ `pnpm -r build` · ✅ `pnpm -r typecheck` · ✅ `@grandprice/api`
+**Exit — MET (Session 4):** ✅ `pnpm -r build` · ✅ `pnpm -r typecheck` · ✅ `@stall/api`
 lint (0 err) · ✅ `flutter analyze` · ✅ `flutter test` · ✅ `prisma migrate deploy` (native
 Postgres, no Docker) · ✅ api :3000 + realtime :3001 + worker :3002 booted & health-checked ·
 ✅ DB-backed request returns real data · ✅ email → maildev round-trip.
@@ -46,7 +46,7 @@ Docker path deferred (Docker Desktop WSL backend broken on the dev machine — `
 - [ ] Middleware chain: parse → authenticate → resolve capabilities → authorize (RBAC guards) → rate-limit/idempotency → handle. Error envelope + codes. `AuditLog` for auth events.
 - [ ] `_compat` RPC shim for existing `auth.*` gas-app actions.
 - [ ] Contracts: auth + config schemas → OpenAPI → Dart client.
-- [ ] Mobile: splash, welcome, onboarding, sign-up, login, phone/email verification, OTP + resend, forgot/reset/create password, social auth, account recovery, select-role, role switcher, session/security notices, logout confirm, account disabled/suspended (screens 1–20). `GpBottomNav` rendered from `nav`.
+- [ ] Mobile: splash, welcome, onboarding, sign-up, login, phone/email verification, OTP + resend, forgot/reset/create password, social auth, account recovery, select-role, role switcher, session/security notices, logout confirm, account disabled/suspended (screens 1–20). `AppBottomNav` rendered from `nav`.
 
 **Exit:** New user registers via phone OTP on the Flutter app → receives access+refresh →
 switches between Customer/Vendor/Courier roles → `bootstrap` returns different `features` for
@@ -103,7 +103,7 @@ action work.
 - [ ] `delivery`: creation from `Fulfilment`; **dispatch engine** (Redis GEO shortlist → ranked `DeliveryOffer` waterfall with timeout); `DeliveryJob` marketplace (pre-acceptance PII masking); active-delivery **state machine** (all transitions → `DeliveryEvent` + `OutboxEvent`); pickup verification (OTP/QR/photo/count/condition); delivery verification (OTP/QR/signature/POD photo); ratings; reassignment/reschedule/fail flows.
 - [ ] `apps/realtime` `/tracking`: room entitlement, location ingest (adaptive cadence), Redis GEO write, `delivery:{id}` broadcast, throttled `DeliveryLocation` breadcrumb.
 - [ ] `apps/worker`: outbox-relay, `eta-refresh` (Google Distance Matrix, cached), breadcrumb-compaction, courier earnings posting → ledger, payout/withdrawal jobs.
-- [ ] Maps: server-proxied Directions/Distance Matrix with Redis cache; Flutter `GpMapView` + markers + polyline + camera-follow.
+- [ ] Maps: server-proxied Directions/Distance Matrix with Redis cache; Flutter `AppMapView` + markers + polyline + camera-follow.
 - [ ] Contracts + Dart client for delivery/courier + a typed socket event layer.
 - [ ] Mobile — customer: delivery options/estimate/method + courier assigned/profile/rating/vehicle + **tracking + live map + courier location + ETA** + contact/call/message + arriving/arrived + delivery OTP/verification + completed/receipt + failed/unavailable/reschedule/reassignment + report/dispute + history (124–151).
 - [ ] Mobile — courier: welcome/registration/setup/personal/photo/phone-verify + **KYC** doc select/upload/selfie/review/pending/approved/rejected/resubmit + agreement/terms/complete (152–170); vehicle setup/type/details/registration/photo/docs/insurance/verification/approved/rejected + my/add/edit/remove/active (171–185); dashboard + online toggle + availability + **service areas + add/edit + radius + courier map** + location permission/explanation/disabled + working prefs (186–197); available jobs + job details + fee breakdown + pickup/dropoff + package info + requirements + distance/duration + accept/decline + reason + expired + none + **jobs map** (198–212); active delivery + **navigate to pickup** + arrived + pickup verify/OTP/QR + vendor/package verify + count/condition/photo + confirmed + start + **delivery navigation** + destination + arrived + verify/OTP/QR + recipient + signature + POD photo + notes + completed/failed/unavailable/reassignment/cancel/issue (213–242); earnings dashboard + today/week/month + breakdown + delivery detail + bonuses/tips/fees/adjustments + wallet + balance + transactions + withdrawal method/confirm/processing/success/failed + payout history (243–262); performance + stats + rates + avg time + rating breakdown + history + achievements + level + warning (263–274); courier profile + edit + verification status + documents + vehicle mgmt + service areas + notification/privacy/location/security settings + password + 2FA + help + terms + logout + deactivation (275–290).

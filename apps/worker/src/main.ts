@@ -8,7 +8,7 @@
 import http from "node:http";
 import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
-import { env } from "@grandprice/config";
+import { env } from "@stall/config";
 
 const PORT = Number(process.env.WORKER_PORT ?? 3002);
 const connection = new IORedis(env.REDIS_URL ?? "redis://localhost:6379", {

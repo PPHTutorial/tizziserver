@@ -1,5 +1,5 @@
 {
-  "name": "@grandprice/api",
+  "name": "@stall/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@grandprice/config": "workspace:*",
-    "@grandprice/db": "workspace:*",
+    "@stall/config": "workspace:*",
+    "@stall/db": "workspace:*",
     "@headlessui/react": "^2.2.6",
     "@hookform/resolvers": "^5.2.0",
     "@tanstack/react-query": "^5.83.0",

@@ -1,4 +1,4 @@
-# GRANDPRICE — SCREEN CATALOG & BUILD TRACKER
+# STALL — SCREEN CATALOG & BUILD TRACKER
 
 Maps the 522 numbered screens (34 sections) of `GrandPrice — Mobile Figma Screen Expansion
 Specification` to backend module, roles, feature gate, realtime/map involvement, and build
@@ -47,7 +47,7 @@ capability key in `()`.
 | 29 | Global Overlays & Component Screens | components | `packages/design` | — | all | — | map sheet, QR | 0/ongoing | ⬜ |
 | 30 | Responsive & Tablet | variants | `packages/design` + every screen | — | all | — | two-pane maps | ongoing | ⬜ |
 | 31 | Font & Icon Requirements | rule | `packages/tokens` | — | all | — | FA markers | 0 | ⬜ |
-| 32 | Core Mobile Navigation | 3 nav sets | `platform` bootstrap + `GpBottomNav` | all | all | — | — | 1 | ⬜ |
+| 32 | Core Mobile Navigation | 3 nav sets | `platform` bootstrap + `AppBottomNav` | all | all | — | — | 1 | ⬜ |
 | 33 | Data-Model Awareness | rule | `packages/db` | — | — | — | — | see `02-DATA-MODEL.md` | ✅ (outlined) |
 | 34 | Final Figma Requirement | org rule | design file structure | — | — | — | — | ongoing | ⬜ |
 
@@ -76,17 +76,17 @@ Template for how every section gets expanded. Columns: screen · state(s) · API
 | # | Screen | Key states | API (`/api/v1`) | Entities | RT event | Notes |
 |---|---|---|---|---|---|---|
 | 124 | Delivery Options | loading/empty | `POST delivery/quote` | `PricingRule`,`DeliveryZone` | — | Methods: platform delivery / pickup / vendor logistics. |
-| 125 | Delivery Fee Estimate | — | `POST delivery/quote` | `PricingRule` | — | Distance×vehicle×surge breakdown via `GpAmountBreakdown`. |
+| 125 | Delivery Fee Estimate | — | `POST delivery/quote` | `PricingRule` | — | Distance×vehicle×surge breakdown via `AppAmountBreakdown`. |
 | 126 | Delivery Time Estimate | — | `POST delivery/quote` | Distance Matrix cache | — | Server-proxied Google ETA. |
 | 127 | Delivery Method Selection | selected | `PATCH checkout/{id}/fulfilment` | `Fulfilment` | — | Feeds checkout fee lines. |
-| 128 | Courier Assigned | — | `GET delivery/{id}` | `Delivery`,`CourierProfile` | `delivery.assigned` | Reveal `GpCourierMiniCard` (masked). |
+| 128 | Courier Assigned | — | `GET delivery/{id}` | `Delivery`,`CourierProfile` | `delivery.assigned` | Reveal `AppCourierMiniCard` (masked). |
 | 129 | Courier Profile | — | `GET delivery/{id}/courier` | `CourierProfile` (public DTO) | — | Name, photo, rating, vehicle, trips. No PII. |
 | 130 | Courier Rating | submitted | `POST delivery/{id}/rating` | `DeliveryRating` | — | Post-completion only. |
 | 131 | Courier Vehicle Info | — | in courier DTO | `CourierVehicle` | — | Type, model, color, plate (partial). |
 | 132 | Delivery Tracking | live/offline/ended | `GET delivery/{id}` + WS `/tracking` room `delivery:{id}` | `Delivery`,`DeliveryEvent`,`DeliveryLocation` | `courier.location`,`delivery.status` | Status stepper + map. |
-| 133 | Live Delivery Map | permission/loading/live | WS `/tracking` | `DeliveryLocation` | `courier.location` | `GpMapView` follow camera; polyline. Tablet: map∥details. |
+| 133 | Live Delivery Map | permission/loading/live | WS `/tracking` | `DeliveryLocation` | `courier.location` | `AppMapView` follow camera; polyline. Tablet: map∥details. |
 | 134 | Courier Location | stale/live | WS | `DeliveryLocation` | `courier.location` | Marker rotates to `heading`; "updated Ns ago". |
-| 135 | Courier ETA | — | WS + `GET delivery/{id}` | Distance Matrix cache | `courier.eta` | `GpEtaPill`; recompute on significant deviation. |
+| 135 | Courier ETA | — | WS + `GET delivery/{id}` | Distance Matrix cache | `courier.eta` | `AppEtaPill`; recompute on significant deviation. |
 | 136 | Contact Courier | — | `POST chat/conversations` (kind=CUSTOMER_COURIER) | `Conversation` | `chat` | Opens conversation scoped to delivery. |
 | 137 | Call Courier | — | `POST delivery/{id}/call` | proxy-call provider | — | Masked-number bridge; no raw phone. |
 | 138 | Message Courier | — | `POST chat/{id}/messages` | `Message` | `chat` | Quick replies. |
@@ -94,7 +94,7 @@ Template for how every section gets expanded. Columns: screen · state(s) · API
 | 140 | Courier Arrived | — | — | `DeliveryEvent(ARRIVED_DROPOFF)` | `delivery.status` | Prompt to prepare OTP/QR. |
 | 141 | Delivery OTP | error/success | `GET delivery/{id}/otp` | `DeliveryVerification` | — | 6-digit; shown to customer, entered by courier. |
 | 142 | Delivery Verification | pending/failed/done | `POST delivery/{id}/verify` | `DeliveryVerification`,`ProofOfDelivery` | `delivery.status` | OTP / QR / signature / photo. |
-| 143 | Delivery Completed | — | `GET delivery/{id}` | `Delivery(DELIVERED)` | `delivery.status` | `GpSuccessState` + receipt CTA. |
+| 143 | Delivery Completed | — | `GET delivery/{id}` | `Delivery(DELIVERED)` | `delivery.status` | `AppSuccessState` + receipt CTA. |
 | 144 | Delivery Receipt | — | `GET delivery/{id}/receipt` | `Delivery`,`Fee*` | — | PDF/share. |
 | 145 | Delivery Failed | retry/reschedule | `POST delivery/{id}/report` | `DeliveryEvent(FAILED_*)` | `delivery.status` | Reasons enumerated. |
 | 146 | Customer Unavailable | — | — | `DeliveryEvent` | `delivery.status` | Courier-triggered; offer reschedule. |
@@ -104,9 +104,9 @@ Template for how every section gets expanded. Columns: screen · state(s) · API
 | 150 | Delivery Dispute | open/evidence/resolved/appeal | `POST disputes` (kind=DELIVERY) | `Dispute`,`DisputeEvidence` | `dispute` | Full dispute flow (§27). |
 | 151 | Delivery History | empty/loaded | `GET delivery?role=customer&status=...` | `Delivery` | — | List + filters + re-open. |
 
-Overlays used: `GpMapBottomSheet`, `GpCourierMiniCard`, `GpDeliveryStatusIndicator`,
-`GpOtpField`/`GpQrDisplay`, `GpBottomSheet` (reschedule), `GpReportSheet`.
-Responsive: phone = map full-bleed + draggable sheet; tablet (`expanded`+) = `GpTwoPane`
+Overlays used: `AppMapBottomSheet`, `AppCourierMiniCard`, `AppDeliveryStatusIndicator`,
+`AppOtpField`/`AppQrDisplay`, `AppBottomSheet` (reschedule), `AppReportSheet`.
+Responsive: phone = map full-bleed + draggable sheet; tablet (`expanded`+) = `AppTwoPane`
 map ∥ details.
 
 ---

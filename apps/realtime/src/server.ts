@@ -9,7 +9,7 @@
  */
 import Fastify from "fastify";
 import { Server as IOServer } from "socket.io";
-import { env } from "@grandprice/config";
+import { env } from "@stall/config";
 
 const PORT = Number(process.env.REALTIME_PORT ?? 3001);
 

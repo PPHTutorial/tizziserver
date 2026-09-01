@@ -1,5 +1,5 @@
-name: grandprice
-description: "GrandPrice — multi-vendor marketplace, inverse draws & delivery."
+name: stall
+description: "Stall — multi-tenant marketplace & delivery engine."
 publish_to: 'none'
 version: 0.1.0
 

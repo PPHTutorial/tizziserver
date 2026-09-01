@@ -1,4 +1,4 @@
-// GrandPrice - Prisma Schema (schema v1 — Tizzi Gas baseline; v2 lands incrementally from Phase 1)
+// Stall — Prisma Schema (schema v1 = Tizzi Gas baseline; v2 lands incrementally from Phase 1)
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {

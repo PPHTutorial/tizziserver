@@ -1,4 +1,4 @@
-# GRANDPRICE — DATA MODEL (Prisma v7, schema v2)
+# STALL — DATA MODEL (Prisma v7, schema v2)
 
 Redesign of `prisma/schema.prisma` (currently 452 lines, gas-only) into a domain-partitioned
 schema for the full ecosystem. This is the **entity outline** — field lists are the intended

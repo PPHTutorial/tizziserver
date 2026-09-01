@@ -1,5 +1,5 @@
 {
-  "name": "@grandprice/realtime",
+  "name": "@stall/realtime",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@grandprice/config": "workspace:*",
-    "@grandprice/db": "workspace:*",
+    "@stall/config": "workspace:*",
+    "@stall/db": "workspace:*",
     "@socket.io/redis-adapter": "^8.3.0",
     "fastify": "^5.12.0",
     "ioredis": "^5.4.1",

@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "GrandPrice API",
+    "title": "Stall API",
     "version": "0.0.0-phase0"
   },
   "servers": [

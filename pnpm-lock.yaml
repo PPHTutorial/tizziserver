@@ -26,18 +26,18 @@ importers:
 
   apps/api:
     dependencies:
-      '@grandprice/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@grandprice/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@headlessui/react':
         specifier: ^2.2.6
         version: 2.2.10(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@hookform/resolvers':
         specifier: ^5.2.0
         version: 5.9.1(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@3.20.0)(react-hook-form@7.87.0(react@19.2.0))(valibot@1.4.2(typescript@5.9.3))(zod@4.5.4)
+      '@stall/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@stall/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@tanstack/react-query':
         specifier: ^5.83.0
         version: 5.102.8(react@19.2.0)
@@ -117,15 +117,15 @@ importers:
 
   apps/realtime:
     dependencies:
-      '@grandprice/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@grandprice/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@socket.io/redis-adapter':
         specifier: ^8.3.0
         version: 8.3.0(socket.io-adapter@2.5.8)
+      '@stall/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@stall/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       fastify:
         specifier: ^5.12.0
         version: 5.12.1
@@ -151,10 +151,10 @@ importers:
 
   apps/worker:
     dependencies:
-      '@grandprice/config':
+      '@stall/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@grandprice/db':
+      '@stall/db':
         specifier: workspace:*
         version: link:../../packages/db
       bullmq:
@@ -202,15 +202,15 @@ importers:
 
   packages/db:
     dependencies:
-      '@grandprice/config':
-        specifier: workspace:*
-        version: link:../config
       '@prisma/adapter-pg':
         specifier: 7.10.0
         version: 7.10.0
       '@prisma/client':
         specifier: 7.10.0
         version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3))(typescript@5.9.3)
+      '@stall/config':
+        specifier: workspace:*
+        version: link:../config
       pg:
         specifier: ^8.13.0
         version: 8.23.0

@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'tokens.g.dart';
 
 /// Builds a [ThemeData] from the generated GrandPrice tokens.
-/// Widgets read colours via `Theme.of(context).extension<GpColors>()!`
-/// and text roles via [GpType]. Never hardcode hex or font sizes (CI-enforced later).
-class GpTheme {
-  static ThemeData light() => _base(GpColors.light, Brightness.light);
-  static ThemeData dark() => _base(GpColors.dark, Brightness.dark);
+/// Widgets read colours via `Theme.of(context).extension<AppColors>()!`
+/// and text roles via [AppType]. Never hardcode hex or font sizes (CI-enforced later).
+class AppTheme {
+  static ThemeData light() => _base(AppColors.light, Brightness.light);
+  static ThemeData dark() => _base(AppColors.dark, Brightness.dark);
 
-  static ThemeData _base(GpColors c, Brightness brightness) {
+  static ThemeData _base(AppColors c, Brightness brightness) {
     final scheme = ColorScheme(
       brightness: brightness,
       primary: c.primary,
@@ -24,7 +24,7 @@ class GpTheme {
       onSurface: c.textHi,
     );
 
-    TextStyle role(GpTextRole r) => TextStyle(
+    TextStyle role(AppTextRole r) => TextStyle(
           fontFamily: r.family,
           fontWeight: r.fontWeight,
           fontSize: r.size.toDouble(),
@@ -37,16 +37,16 @@ class GpTheme {
       scaffoldBackgroundColor: c.bg,
       extensions: [c],
       textTheme: TextTheme(
-        displayLarge: role(GpType.display),
-        headlineMedium: role(GpType.headline),
-        titleLarge: role(GpType.titleLg),
-        titleMedium: role(GpType.titleMd),
-        titleSmall: role(GpType.titleSm),
-        bodyLarge: role(GpType.bodyLg),
-        bodyMedium: role(GpType.bodyMd),
-        labelLarge: role(GpType.labelLg),
-        labelMedium: role(GpType.label),
-        labelSmall: role(GpType.labelSm),
+        displayLarge: role(AppType.display),
+        headlineMedium: role(AppType.headline),
+        titleLarge: role(AppType.titleLg),
+        titleMedium: role(AppType.titleMd),
+        titleSmall: role(AppType.titleSm),
+        bodyLarge: role(AppType.bodyLg),
+        bodyMedium: role(AppType.bodyMd),
+        labelLarge: role(AppType.labelLg),
+        labelMedium: role(AppType.label),
+        labelSmall: role(AppType.labelSm),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -54,7 +54,7 @@ class GpTheme {
           foregroundColor: c.onPrimary,
           minimumSize: const Size.fromHeight(56),
           shape: const StadiumBorder(),
-          textStyle: role(GpType.labelLg),
+          textStyle: role(AppType.labelLg),
         ),
       ),
     );

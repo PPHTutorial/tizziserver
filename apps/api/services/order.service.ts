@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import prisma from '@/lib/prisma';
 import { ResponseUtils, AuthUtils } from '@/lib/utils';
-import { OrderStatus } from '@grandprice/db';
+import { OrderStatus } from '@stall/db';
 
 export class OrderService {
   static async createOrder(userId: string, data: any) {
