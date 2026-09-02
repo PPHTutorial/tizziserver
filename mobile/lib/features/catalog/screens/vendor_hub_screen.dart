@@ -161,6 +161,8 @@ class _SellerDashboard extends ConsumerWidget {
         data: (items) => ListView(
           padding: const EdgeInsets.all(AppSpace.s16),
           children: [
+            const _StatsCard(),
+            const SizedBox(height: AppSpace.s16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -173,7 +175,13 @@ class _SellerDashboard extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: AppSpace.s12),
+            const SizedBox(height: AppSpace.s8),
+            TextButton.icon(
+              onPressed: () => context.push('/sell/documents'),
+              icon: const Icon(Icons.description_outlined, size: 18),
+              label: const Text('Verification documents'),
+            ),
+            const SizedBox(height: AppSpace.s8),
             if (items.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: AppSpace.s40),
@@ -197,6 +205,54 @@ class _SellerDashboard extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StatsCard extends ConsumerWidget {
+  const _StatsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    final async = ref.watch(vendorStatsProvider);
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.s16),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: c.border),
+      ),
+      child: async.when(
+        loading: () => const SizedBox(height: 48, child: Center(child: CircularProgressIndicator())),
+        error: (e, _) => Text('Stats unavailable', style: context.text.bodyMedium?.copyWith(color: c.textMed)),
+        data: (s) => Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _Stat(label: 'Live', value: '${s.published}'),
+            _Stat(label: 'Drafts', value: '${s.draft}'),
+            _Stat(label: 'Offers', value: '${s.activeOffers}'),
+            _Stat(label: 'Views', value: '${s.productViews}'),
+            _Stat(label: 'Rating', value: s.reviews == 0 ? '—' : s.ratingAvg.toStringAsFixed(1)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value, style: context.text.titleLarge),
+        Text(label, style: context.text.labelSmall?.copyWith(color: context.colors.textMed)),
+      ],
     );
   }
 }

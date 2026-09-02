@@ -86,11 +86,14 @@ class _DetailState extends ConsumerState<_Detail> {
                   child: PageView.builder(
                     onPageChanged: (i) => setState(() => _gallery = i),
                     itemCount: images.length,
-                    itemBuilder: (context, i) => ProductThumb(
-                      seed: '${p.id}$i',
-                      label: p.brand ?? p.title,
-                      size: double.infinity,
-                      radius: 0,
+                    itemBuilder: (context, i) => GestureDetector(
+                      onTap: () => _openGallery(context, i, images.length),
+                      child: ProductThumb(
+                        seed: '${p.id}$i',
+                        label: p.brand ?? p.title,
+                        size: double.infinity,
+                        radius: 0,
+                      ),
                     ),
                   ),
                 ),
@@ -170,6 +173,8 @@ class _DetailState extends ConsumerState<_Detail> {
                 const SizedBox(height: AppSpace.s24),
                 _ReviewsBlock(product: p, slug: widget.slug),
                 const SizedBox(height: AppSpace.s24),
+                _SimilarRail(slug: widget.slug),
+                const SizedBox(height: AppSpace.s16),
                 Row(
                   children: [
                     Expanded(
@@ -222,6 +227,74 @@ class _DetailState extends ConsumerState<_Detail> {
             .showSnackBar(const SnackBar(content: Text('Couldn\'t send your question.')));
       }
     }
+  }
+
+  void _openGallery(BuildContext context, int start, int count) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            PageView.builder(
+              controller: PageController(initialPage: start),
+              itemCount: count,
+              itemBuilder: (context, i) => InteractiveViewer(
+                child: Center(
+                  child: ProductThumb(seed: '${p.id}$i', label: p.brand ?? p.title, size: 320),
+                ),
+              ),
+            ),
+            Positioned(
+              top: AppSpace.s8,
+              right: AppSpace.s8,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SimilarRail extends ConsumerWidget {
+  const _SimilarRail({required this.slug});
+  final String slug;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(similarProvider(slug));
+    return async.maybeWhen(
+      orElse: () => const SizedBox.shrink(),
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('You might also like', style: context.text.titleMedium),
+            const SizedBox(height: AppSpace.s8),
+            SizedBox(
+              height: 250,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(width: AppSpace.s12),
+                itemBuilder: (context, i) => SizedBox(
+                  width: 160,
+                  child: ProductCardTile(
+                    product: items[i],
+                    onTap: () => context.push(RoutePaths.product(items[i].slug)),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 

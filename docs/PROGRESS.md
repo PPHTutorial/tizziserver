@@ -43,6 +43,26 @@ write-review, ask-question, wishlist), vendor storefront, wishlist, **seller hub
 tabs now render the real catalog/vendor bodies from `bootstrap.nav`. Green: pnpm
 build/typecheck/lint/test (18) · flutter analyze (0) · flutter test (9).
 
+**Session 9 (cont.) — Phase 2 depth: promotions + home rails + the rest of the shopper/seller
+screens.** Schema: `Promotion` (kind FLASH_DEAL/CAMPAIGN/BANNER, `platformSlugs`, window) +
+`PromotionItem` (`discountBps`) — migration `20260901235617_promotions_readside`. Seed: 5 live
+promos (gp + gas scoped), 2 more grandprice products (`orbit-a34-phone`, `nimbus-pro-16-laptop`)
+so "similar" has siblings. `@stall/core/catalog` gained `promotions` (active + by-slug, deal
+price = `price·(1−bps/1e4)`), `home` (`homeRails` — one call: flash/campaign/banner rails +
+newArrivals + topRated + recentlyViewed), `similarProducts` (same-category), vendor
+`addBusinessDocument`/`listBusinessDocuments`/`vendorStats`. **9 new `/api/v1` routes**
+(`catalog/home`, `promotions`, `promotions/[slug]`, `catalog/products/[slug]/similar`,
+`vendors/business/documents` GET+POST, `vendors/stats`) → **36 paths / 42 ops** in `openapi.json`.
+**+5 Vitest** (`promotions.test.ts`: tenant scope, deal-price math, kind filter, home rails,
+similar) — 23 TS tests green. Live-verified: home rails (184900→166410 @10%), gas promos
+scoped, cross-tenant 404, similar returns `orbit-a34-phone`. **Mobile**: home feed rewritten
+onto `homeRails` (flash-deal carousel w/ strikethrough + countdown, banner gradient cards,
+campaign/new/top/recent rails, Flash-deals + Nearby quick actions); new screens — `DealsScreen`,
+`NearbyVendorsScreen` (GoogleMap + list, Accra fallback centre + radius picker),
+`BusinessDocsScreen` (add/list KYC docs); product detail gained a fullscreen gallery viewer +
+"You might also like" rail; search gained a price-range filter sheet + session recent-searches;
+seller dashboard gained a stats card. +4 model tests → **flutter analyze 0 · flutter test 13**.
+
 --- earlier ---
 
 **Session 8 — Phase 1 auth is feature-complete for the backend.** Added the `withApi(opts,
@@ -162,16 +182,17 @@ See `docs/05-ROADMAP.md` §Phase 2 + `docs/02-DATA-MODEL.md` §Domain 3 + `docs/
 - [x] **Contracts** — `packages/contracts/src/catalog.ts` → `openapi.json` **30 paths / 35 ops** (path params emitted).
 - [x] **Vitest** — +9 catalog integration tests (tenant scope, multi-vendor offers, cross-tenant 404, FTS + typo trigram, onboarding→KYC→publish gate). 18 TS tests green.
 - [x] **Mobile** — `lib/api/catalog_models.dart` + `StallApi` catalog methods; `features/catalog/` providers + screens: home feed · category explorer · category grid (sort) · search (query/sort/empty/error) · product detail (gallery, multi-seller offers, variants, reviews, write-review, ask-question, wishlist) · vendor storefront · wishlist · seller hub (onboarding → KYC-pending → dashboard) · add/edit product wizard (+publish). `HomeShell` tabs render real bodies from `bootstrap.nav`. analyze 0 / 9 tests.
-- [ ] **Promotions read-side** — flash deals / campaigns / banners data + endpoints (deferred within Phase 2).
-- [ ] **Mobile depth** — personalised home, trending/new/top/flash rails, nearby-vendors **map**, product gallery fullscreen/video, similar products, search suggestions/recents/filters sheet, vendor onboarding doc upload, product performance stub (screens 21–40, 41–59 remainder, 60–80 remainder).
-- [ ] **Migrate legacy gas listings** into `VendorOffer`/`GasCylinderListing` shape (pre-prod; currently only seed data).
-- [ ] **Device e2e** — run `mobile/` against the live API: browse → search → product → add to wishlist; vendor onboard → (STAFF approve) → add product → publish → see it in the tenant listing. Also closes the deferred Phase-1 device sign-off.
+- [x] **Promotions read-side** (S9 cont.) — `Promotion`/`PromotionItem` (migration `20260901235617_promotions_readside`), `@stall/core/catalog` `promotions` + `home` (`homeRails`) + `similarProducts`, 4 routes (`catalog/home`, `promotions`, `promotions/[slug]`, `catalog/products/[slug]/similar`), 5 seed promos. *Sponsored/boosted cards + `Campaign`/`Advertisement` write-side stay Phase 7.*
+- [x] **Mobile depth** (S9 cont.) — home rails (flash-deal carousel + countdown + strikethrough, banner cards, campaign/new/top/recent rails), `DealsScreen`, `NearbyVendorsScreen` (GoogleMap + list), product fullscreen gallery + "similar" rail, search price-filter sheet + recent searches, `BusinessDocsScreen` (doc upload), seller stats card (`vendors/stats`). Remaining: real geolocation (needs a `geolocator` dep), product video, per-vendor map coords, richer personalisation.
+- [ ] **Migrate legacy gas listings** — **N/A this session**: no production gas listings exist (pre-prod); the gas catalog is seed data in the `VendorOffer`/`GasCylinderListing` shape already. Revisit only if real legacy data appears.
+- [ ] **Device e2e** — run `mobile/` against the live API: home rails → category → search (+filter) → product → similar → wishlist; vendor onboard → (STAFF `POST /vendors/kyc/review`) → add product → publish → appears in `/catalog/products` + seller stats. Also closes the deferred Phase-1 device sign-off.
 
 **Exit:** on both platforms a customer can browse categories, search, filter by location, open
 a product with multiple vendor offers, and view a vendor page; a vendor can register, pass
 business KYC (mock reviewer), and publish a product; all Tizzi-Gas listings visible under
-`catalog.scope='gas'`. **Backend + core mobile flow are code-complete and gate-green (S9);
-the depth screens + device e2e above remain.**
+`catalog.scope='gas'`. **All backend + mobile screens are code-complete and gate-green (S9);
+only a device e2e pass remains before Phase 2 closes.** (Sponsored/advertising write-side and
+real geolocation are explicitly Phase 7 / later.)
 
 ---
 
@@ -232,11 +253,11 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
    `{vendorId, decision:"APPROVED"}` from a STAFF token (or Studio) → add product → publish →
    confirm it appears in `/catalog/products`. Under `--dart-define=STALL_PLATFORM=tizzi-gas`
    confirm only gas categories/products show.
-2. **Phase 2 depth** — promotions read-side (flash deals / campaigns / banners) + endpoints;
-   mobile: personalised home rails, nearby-vendors **map** (`google_maps_flutter`), product
-   gallery fullscreen/video, similar products, search suggestions/recents + filter sheet,
-   vendor doc upload, product performance stub.
-3. **Phase 3 prep** — Domain 4 (cart, orders, fulfilment, payments, wallet); see `docs/05-ROADMAP.md` §Phase 3.
+2. **Phase 3** — Domain 4 (cart, orders, fulfilment, payments, wallet). Expand
+   `docs/04-SCREEN-CATALOG.md` §06–07, §19; schema + `@stall/core` + `/api/v1/{cart,checkout,orders,wallet}`;
+   mobile cart/checkout/orders screens. See `docs/05-ROADMAP.md` §Phase 3.
+3. **Phase 2 polish (non-blocking)** — `geolocator` for real device location + per-vendor map
+   coords; product video media; boosted-card placeholder wiring for Phase 7.
 
 ### Deferred / user-owned
 - Rename repo folder `tizziserver` → `stall` (locked in-session): close IDE, `cd 'E:\Projects\NextJs'; Rename-Item tizziserver stall`, reopen at new path. GitHub repo rename + `git remote set-url` yourself.
@@ -281,6 +302,9 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-09-01 (S9) | **Promotions carry `PromotionItem.discountBps`; deal prices are computed, not stored.** A flash-deal item's `dealPriceMinor = round(minActiveOfferPrice · (1 − bps/10000))` at read time. Offers/variants are never mutated by a promotion. `BANNER` promos have no items (just `imageKey` + `ctaRoute`); `CAMPAIGN`/`FLASH_DEAL` do. | Keeps the offer the single source of truth for price; a promo ending never needs a price rollback. Basis points avoid float drift. Advertising/boost economics (`Campaign`, `AdEvent`) are a separate Phase-7 concern. |
+| 2026-09-01 (S9) | **`GET /api/v1/catalog/home` returns all home rails in one call** (`homeRails`): flash/campaign/banner promos + `newArrivals` + `topRated` + `recentlyViewed`. The mobile home feed is one `FutureProvider`. | One round-trip on the hottest screen; the client doesn't orchestrate 5 requests. Rails can be added server-side without a client release. |
+| 2026-09-01 (S9) | **Nearby-vendors uses a fixed Accra fallback centre (`kDefaultLatLng`), no geolocation dep.** The map fans markers out around the centre (the vendor DTO has distance, not coords). | Avoids pulling `geolocator` + platform permission plumbing into Phase 2; the endpoint already does the PostGIS distance math. A real device-location + per-vendor coords pass is a later refinement. |
 | 2026-09-01 (S9) | **Catalog scoping is by `Product.platformSlugs` (array `has` filter), not the `catalog.scope` flag.** `catalog.scope` (`"all"`/`"gas"`) stays in `bootstrap` for the client to theme/label; server-side tenant isolation is `platformSlugs @> [ctx.platform]` on every catalog query (empty ⇒ all tenants). Cross-tenant reads 404. | The flag is always truthy so `assertFeature` can't gate on it; an explicit per-row tenant list is precise, index-friendly, and lets one product list on several tenants later. |
 | 2026-09-01 (S9) | **Product search = Postgres FTS + `pg_trgm`, maintained by a DB trigger, queried via `$queryRawUnsafe`.** `Product.searchVector` is `Unsupported("tsvector")`; a `BEFORE INSERT/UPDATE` trigger rebuilds it (title A / brand B / description C). Queries use `websearch_to_tsquery('simple', …)` with a `title % :q` trigram fallback for typos. No Meilisearch yet. | Zero extra infra, good enough for Phase 2 scale, survives Prisma migrations (trigger + hand-added GIN indexes live in the migration SQL, documented in `packages/db/README.md`). Meilisearch (compose profile) can front it later without schema change. |
 | 2026-09-01 (S9) | **`KycCase` is a standalone table keyed `@@unique([subjectType, subjectId])`, no FK to the subject.** A mock `reviewVendorKyc` (STAFF/ADMIN route) flips `status` + syncs `VendorProfile.status` + the `UserRole`. | One review-case shape serves vendors now and couriers in Phase 4; skipping the polymorphic FK keeps it simple. Real STAFF console is §24 (Phase 6). |
@@ -318,6 +342,7 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Session | What changed |
 |------|---------|--------------|
+| 2026-09-01 | 9 (cont.) | **Phase 2 depth — promotions + home rails + remaining screens.** Schema: `Promotion` + `PromotionItem` (migration `20260901235617_promotions_readside`). Seed +5 promos, +2 products. `@stall/core/catalog`: `promotions` (active/by-slug, computed deal price), `home` (`homeRails`), `similarProducts`, vendor `addBusinessDocument`/`listBusinessDocuments`/`vendorStats`. 9 new routes → `openapi.json` 36 paths / 42 ops. +5 Vitest (`promotions.test.ts`) → 23 TS green. Mobile: home feed rebuilt on `homeRails` (flash carousel + countdown + strikethrough, banner cards, rails), `DealsScreen`, `NearbyVendorsScreen` (GoogleMap + list), product fullscreen gallery + similar rail, search price-filter sheet + recent searches, `BusinessDocsScreen`, seller stats card. +4 model tests → flutter analyze 0 / 13 tests. Green: pnpm build/typecheck/lint/test (23) · flutter analyze/test (13). |
 | 2026-09-01 | 9 | **Phase 2 — Catalog / vendors / search (backend + mobile slice).** Schema v2 Domain 3 (12 models + `KycCase`) → migration `20260901231947_catalog_domain3` with manual DDL (`pg_trgm`, `searchVector` trigger, 3 GIN indexes; baseline GiST preserved). Seed +vendors/categories/products/offers (multi-vendor phone, gas cylinder + `GasCylinderListing`, Accra locations). New `@stall/core/catalog` (categories/products/search/vendors/engagement). 17 `/api/v1` routes (catalog, search, search/nearby, vendors CRUD + KYC review, me/wishlist, me/recently-viewed); `withApi` gained a `params` arg for `[slug]`/`[id]`. Contracts `catalog.ts` → `openapi.json` 30 paths/35 ops. +9 Vitest catalog tests (18 TS green). Live-verified via curl (tenant scope, multi-vendor detail, gas listing, cross-tenant 404, FTS, nearby 527 m). Mobile: `catalog_models.dart` + `StallApi` methods; `features/catalog/` (home feed, category explorer/grid, search, product detail w/ offers+variants+reviews+Q&A+wishlist, vendor page, wishlist, seller hub onboarding→KYC→dashboard, add/edit product wizard). `HomeShell` tabs render real bodies. flutter analyze 0 / 9 tests. Green: pnpm build/typecheck/lint/test (18) · flutter analyze/test (9). |
 | 2026-09-01 | 8 (cont.) | **Phase 1 client — contracts → OpenAPI → Flutter auth.** `packages/contracts/src/auth.ts` (11 auth ops + bootstrap + `auctions/ping` Zod + shared models); `build-openapi.ts` rewritten → real paths/params/bearer/error-envelope, `openapi.json` 13 paths/14 ops. `mobile/`: hand-written typed dio client (`lib/api/` — `StallApi`, models, envelope unwrap, one-shot 401→refresh→`forceLogout`), `TokenStore` (flutter_secure_storage), Riverpod `AuthController`/`bootstrapProvider`, `go_router` auth+onboarding redirect, **screens 1–20** (splash, onboarding, welcome+social, phone/email OTP, OTP entry w/ resend + TOTP, social, forgot/reset/create password, recovery, select-role + switcher, sessions, security alert, suspended/disabled), **§32** `AppBottomNav` from `bootstrap.nav`, `HomeShell` account tab (sessions/2FA/PIN/password/logout). New dep `flutter_secure_storage`. Hardened storage reads for the test env. Green: pnpm build/typecheck/lint/test (9) · flutter analyze (0) · flutter test (5). ACTIVE PHASE → Phase 2. |
 | 2026-09-01 | 8 (cont.) | **Phase 1 exit gate + test suite.** `GET /api/v1/auctions/ping` (`capability: "auction"` → 200 grandprice / 403 tizzi-gas / 401 no-token). **Vitest** wired repo-wide (`pnpm test` → `turbo run test`; per-pkg `vitest.config.ts` + `test/setup.ts` loading root `.env`; `packages/core` tsconfig widened to typecheck `test/`). 9 integration tests green vs the Docker `stall` DB: refresh rotation (single family/live session), reuse-detection (family revoke), epoch bump (`revokeAllForUser`), capability resolver grandprice/tizzi-gas, and the `/auctions/ping` route through `withApi`. Green: build (13 v1 routes) · typecheck · lint (0) · test (9). |

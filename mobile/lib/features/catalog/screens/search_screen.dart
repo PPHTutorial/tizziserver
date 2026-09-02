@@ -54,6 +54,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           onSubmitted: (_) => ctrl.run(),
         ),
         actions: [
+          IconButton(
+            icon: Badge(
+              isLabelVisible: state.hasFilters,
+              child: const Icon(Icons.tune),
+            ),
+            onPressed: () => _openFilters(context, state, ctrl),
+          ),
           IconButton(icon: const Icon(Icons.search), onPressed: ctrl.run),
         ],
       ),
@@ -92,10 +99,43 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       );
     }
     if (!state.ran) {
-      return const CenteredState(
-        icon: Icons.search,
-        title: 'Find anything',
-        body: 'Search across every product on this marketplace.',
+      final recents = ref.watch(recentSearchesProvider);
+      if (recents.isEmpty) {
+        return const CenteredState(
+          icon: Icons.search,
+          title: 'Find anything',
+          body: 'Search across every product on this marketplace.',
+        );
+      }
+      return ListView(
+        padding: const EdgeInsets.all(AppSpace.s16),
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Recent', style: context.text.titleSmall),
+              TextButton(
+                onPressed: () => ref.read(recentSearchesProvider.notifier).clear(),
+                child: const Text('Clear'),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: AppSpace.s8,
+            children: [
+              for (final term in recents)
+                ActionChip(
+                  label: Text(term),
+                  avatar: const Icon(Icons.history, size: 16),
+                  onPressed: () {
+                    _controller.text = term;
+                    ctrl.setQuery(term);
+                    ctrl.run();
+                  },
+                ),
+            ],
+          ),
+        ],
       );
     }
     if (state.results.isEmpty) {
@@ -120,6 +160,61 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _openFilters(
+    BuildContext context,
+    ProductSearchState state,
+    ProductSearchController ctrl,
+  ) async {
+    final min = TextEditingController(text: state.minPrice?.toString() ?? '');
+    final max = TextEditingController(text: state.maxPrice?.toString() ?? '');
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpace.s16,
+          0,
+          AppSpace.s16,
+          MediaQuery.of(context).viewInsets.bottom + AppSpace.s16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Price range', style: context.text.titleMedium),
+            const SizedBox(height: AppSpace.s12),
+            Row(
+              children: [
+                Expanded(child: AppField(label: 'Min', controller: min, keyboardType: TextInputType.number)),
+                const SizedBox(width: AppSpace.s12),
+                Expanded(child: AppField(label: 'Max', controller: max, keyboardType: TextInputType.number)),
+              ],
+            ),
+            const SizedBox(height: AppSpace.s16),
+            PrimaryButton(
+              label: 'Apply',
+              onPressed: () {
+                ctrl.setPriceRange(
+                  min: int.tryParse(min.text.trim()),
+                  max: int.tryParse(max.text.trim()),
+                );
+                Navigator.of(context).pop();
+              },
+            ),
+            const SizedBox(height: AppSpace.s8),
+            TextButton(
+              onPressed: () {
+                ctrl.clearFilters();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Clear filters'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

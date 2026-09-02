@@ -16,8 +16,11 @@ import '../features/auth/screens/sessions_screen.dart';
 import '../features/auth/screens/social_auth_screen.dart';
 import '../features/auth/screens/welcome_screen.dart';
 import '../features/auth/screens/account_state_screens.dart';
+import '../features/catalog/screens/business_docs_screen.dart';
 import '../features/catalog/screens/categories_screen.dart';
 import '../features/catalog/screens/category_products_screen.dart';
+import '../features/catalog/screens/deals_screen.dart';
+import '../features/catalog/screens/nearby_vendors_screen.dart';
 import '../features/catalog/screens/product_detail_screen.dart';
 import '../features/catalog/screens/product_editor_screen.dart';
 import '../features/catalog/screens/search_screen.dart';
@@ -59,6 +62,9 @@ class RoutePaths {
   static const newProduct = '/sell/product/new';
   static String editProduct(String id) => '/sell/product/$id';
   static const wishlist = '/me/wishlist';
+  static const deals = '/deals';
+  static const nearby = '/nearby';
+  static const sellDocuments = '/sell/documents';
 }
 
 /// Routes reachable while signed out.
@@ -142,7 +148,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => VendorScreen(vendorId: s.pathParameters['id']!),
       ),
       GoRoute(path: RoutePaths.wishlist, builder: (_, __) => const WishlistScreen()),
+      GoRoute(path: RoutePaths.deals, builder: (_, __) => const DealsScreen()),
+      GoRoute(path: RoutePaths.nearby, builder: (_, __) => const NearbyVendorsScreen()),
       GoRoute(path: RoutePaths.sell, builder: (_, __) => const VendorHubScreen()),
+      GoRoute(path: RoutePaths.sellDocuments, builder: (_, __) => const BusinessDocsScreen()),
       GoRoute(path: RoutePaths.newProduct, builder: (_, __) => const ProductEditorScreen()),
       GoRoute(
         path: '/sell/product/:id',

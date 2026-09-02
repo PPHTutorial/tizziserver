@@ -71,18 +71,18 @@ switches between Customer/Vendor/Courier roles → `bootstrap` returns different
 - [x] `catalog` module (`@stall/core/catalog`): categories (tree + materialised `path`), products/variants/media, multi-vendor `VendorOffer`, inventory, reviews/Q&A, wishlist, recently-viewed.
 - [x] Search: Postgres FTS (weighted `tsvector`) + `pg_trgm` typo fallback; sort/price/category filters; nearby vendors via PostGIS `ST_DWithin` (`/api/v1/search/nearby`).
 - [x] `vendors` module: onboarding → `KycCase`, mock `reviewVendorKyc` (STAFF/ADMIN), product draft → update → publish, `listMyProducts`. *Doc upload + performance stub → Phase 2 depth.*
-- [ ] Promotions: flash deals, campaigns, banners (read side); sponsored/boosted card data (write side is Phase 7).
-- [x] Contracts for catalog/search/vendor (`packages/contracts/src/catalog.ts` → `openapi.json` 30 paths / 35 ops). Dart client extended by hand in `mobile/lib/api/`.
-- [~] Mobile: **done** — customer home feed, category explorer + grid (sortable), search (query/sort/empty/error), product detail (gallery, multi-seller offers, variants, reviews + write-review + ask-question, wishlist), vendor storefront, wishlist, seller hub (onboarding → KYC-pending → dashboard), add/edit product wizard + publish. **Remaining (Phase 2 depth):** personalised home + trending/new/top/flash rails, **Nearby Vendors map**, gallery fullscreen/video, similar products, search suggestions/recents + filter sheet, sponsored cards, vendor doc upload.
+- [x] Promotions **read side** — `Promotion`/`PromotionItem`, `@stall/core/catalog` `promotions` + `homeRails`, routes (`catalog/home`, `promotions`, `promotions/{slug}`, `products/{slug}/similar`). Sponsored/boosted card data + `Campaign` write side stay Phase 7.
+- [x] Contracts for catalog/search/vendor/promotions (`packages/contracts/src/catalog.ts` → `openapi.json` 36 paths / 42 ops). Dart client extended by hand in `mobile/lib/api/`.
+- [x] Mobile: customer home feed **with rails** (flash-deal carousel + countdown + strikethrough, banners, campaign/new/top/recent), category explorer + grid (sort), search (query/sort/**price filter**/**recent searches**/empty/error), product detail (**fullscreen gallery**, multi-seller offers, variants, reviews + write-review + ask-question, **similar products**, wishlist), vendor storefront, wishlist, **Deals** screen, **Nearby Vendors** (map + list), seller hub (onboarding → KYC-pending → dashboard + **stats card**), add/edit product wizard + publish, **verification-documents** screen. *Polish left: real geolocation, product video.*
 
 **Exit:** On both platforms a customer can browse categories, search, filter by location, open a
 product with multiple vendor offers, and view a vendor page; a vendor can register, pass
 business KYC (mock reviewer), and publish a product; **all existing Tizzi Gas listings are
 visible and orderable-shaped** under `catalog.scope='gas'`.
 
-> **Status (S9):** backend + core mobile flow **code-complete and gate-green** (18 TS tests,
-> 9 Flutter tests, all curl-verified). Remaining before Phase 2 closes: the depth screens
-> above, the legacy-gas-listing migration, and a device e2e pass.
+> **Status (S9):** all backend + mobile screens **code-complete and gate-green** (23 TS tests,
+> 13 Flutter tests, curl-verified). Legacy-gas migration is N/A (no prod data). Only a device
+> e2e pass remains before Phase 2 closes.
 
 ---
 

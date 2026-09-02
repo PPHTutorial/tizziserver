@@ -319,6 +319,36 @@ class VendorPage {
       );
 }
 
+class NearbyVendorDto {
+  const NearbyVendorDto({
+    required this.id,
+    required this.displayName,
+    this.logo,
+    this.ratingAvg = 0,
+    this.ratingCount = 0,
+    required this.distanceM,
+  });
+
+  final String id;
+  final String displayName;
+  final String? logo;
+  final double ratingAvg;
+  final int ratingCount;
+  final int distanceM;
+
+  String get distanceLabel =>
+      distanceM < 1000 ? '$distanceM m' : '${(distanceM / 1000).toStringAsFixed(1)} km';
+
+  factory NearbyVendorDto.fromJson(Map<String, dynamic> j) => NearbyVendorDto(
+        id: j['id'] as String,
+        displayName: j['displayName'] as String? ?? 'Vendor',
+        logo: j['logo'] as String?,
+        ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
+        ratingCount: _int(j['ratingCount']) ?? 0,
+        distanceM: _int(j['distanceM']) ?? 0,
+      );
+}
+
 class VendorStatus {
   const VendorStatus({required this.onboarded, this.kycStatus, this.profileStatus, this.vendorId, this.note});
   final bool onboarded;
@@ -367,6 +397,185 @@ class MyProduct {
         priceMinor: _int(j['priceMinor']),
         currency: (j['currency'] as String?) ?? 'GHS',
       );
+}
+
+// --- promotions ----------------------------------------------------
+
+class PromotionItemCard {
+  const PromotionItemCard({
+    required this.productId,
+    required this.slug,
+    required this.title,
+    this.brand,
+    this.image,
+    this.currency = 'GHS',
+    this.priceMinor,
+    this.dealPriceMinor,
+    this.discountBps,
+  });
+
+  final String productId;
+  final String slug;
+  final String title;
+  final String? brand;
+  final String? image;
+  final String currency;
+  final int? priceMinor;
+  final int? dealPriceMinor;
+  final int? discountBps;
+
+  int? get effectivePriceMinor => dealPriceMinor ?? priceMinor;
+  double? get discountPct => discountBps == null ? null : discountBps! / 100;
+
+  factory PromotionItemCard.fromJson(Map<String, dynamic> j) => PromotionItemCard(
+        productId: j['productId'] as String,
+        slug: j['slug'] as String,
+        title: j['title'] as String,
+        brand: j['brand'] as String?,
+        image: j['image'] as String?,
+        currency: (j['currency'] as String?) ?? 'GHS',
+        priceMinor: _int(j['priceMinor']),
+        dealPriceMinor: _int(j['dealPriceMinor']),
+        discountBps: _int(j['discountBps']),
+      );
+}
+
+class PromotionView {
+  const PromotionView({
+    required this.slug,
+    required this.kind,
+    required this.title,
+    this.subtitle,
+    this.imageKey,
+    this.ctaRoute,
+    this.endsAt,
+    this.items = const [],
+  });
+
+  final String slug;
+  final String kind; // FLASH_DEAL | CAMPAIGN | BANNER
+  final String title;
+  final String? subtitle;
+  final String? imageKey;
+  final String? ctaRoute;
+  final String? endsAt;
+  final List<PromotionItemCard> items;
+
+  DateTime? get endsAtDate => endsAt == null ? null : DateTime.tryParse(endsAt!);
+
+  factory PromotionView.fromJson(Map<String, dynamic> j) => PromotionView(
+        slug: j['slug'] as String,
+        kind: j['kind'] as String? ?? 'CAMPAIGN',
+        title: j['title'] as String,
+        subtitle: j['subtitle'] as String?,
+        imageKey: j['imageKey'] as String?,
+        ctaRoute: j['ctaRoute'] as String?,
+        endsAt: j['endsAt'] as String?,
+        items: (j['items'] as List<dynamic>? ?? const [])
+            .map((e) => PromotionItemCard.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(growable: false),
+      );
+}
+
+class HomeRails {
+  const HomeRails({
+    this.flashDeals = const [],
+    this.campaigns = const [],
+    this.banners = const [],
+    this.newArrivals = const [],
+    this.topRated = const [],
+    this.recentlyViewed = const [],
+  });
+
+  final List<PromotionView> flashDeals;
+  final List<PromotionView> campaigns;
+  final List<PromotionView> banners;
+  final List<ProductCard> newArrivals;
+  final List<ProductCard> topRated;
+  final List<WishlistItemDto> recentlyViewed;
+
+  bool get isEmpty =>
+      flashDeals.isEmpty &&
+      campaigns.isEmpty &&
+      banners.isEmpty &&
+      newArrivals.isEmpty &&
+      topRated.isEmpty;
+
+  static List<T> _list<T>(dynamic v, T Function(Map<String, dynamic>) map) =>
+      (v as List<dynamic>? ?? const [])
+          .map((e) => map((e as Map).cast<String, dynamic>()))
+          .toList(growable: false);
+
+  factory HomeRails.fromJson(Map<String, dynamic> j) => HomeRails(
+        flashDeals: _list(j['flashDeals'], PromotionView.fromJson),
+        campaigns: _list(j['campaigns'], PromotionView.fromJson),
+        banners: _list(j['banners'], PromotionView.fromJson),
+        newArrivals: _list(j['newArrivals'], ProductCard.fromJson),
+        topRated: _list(j['topRated'], ProductCard.fromJson),
+        recentlyViewed: _list(j['recentlyViewed'], WishlistItemDto.fromJson),
+      );
+}
+
+// --- vendor extras ----------------------------------------------
+
+class BusinessDocumentDto {
+  const BusinessDocumentDto({
+    required this.id,
+    required this.type,
+    required this.fileKey,
+    required this.status,
+    this.note,
+    this.at,
+  });
+
+  final String id;
+  final String type;
+  final String fileKey;
+  final String status;
+  final String? note;
+  final String? at;
+
+  factory BusinessDocumentDto.fromJson(Map<String, dynamic> j) => BusinessDocumentDto(
+        id: j['id'] as String,
+        type: j['type'] as String? ?? '',
+        fileKey: j['fileKey'] as String? ?? '',
+        status: j['status'] as String? ?? 'PENDING',
+        note: j['note'] as String?,
+        at: j['at'] as String?,
+      );
+}
+
+class VendorStats {
+  const VendorStats({
+    this.draft = 0,
+    this.published = 0,
+    this.archived = 0,
+    this.activeOffers = 0,
+    this.reviews = 0,
+    this.ratingAvg = 0,
+    this.productViews = 0,
+  });
+
+  final int draft;
+  final int published;
+  final int archived;
+  final int activeOffers;
+  final int reviews;
+  final double ratingAvg;
+  final int productViews;
+
+  factory VendorStats.fromJson(Map<String, dynamic> j) {
+    final p = (j['products'] as Map<String, dynamic>?) ?? const {};
+    return VendorStats(
+      draft: _int(p['DRAFT']) ?? 0,
+      published: _int(p['PUBLISHED']) ?? 0,
+      archived: _int(p['ARCHIVED']) ?? 0,
+      activeOffers: _int(j['activeOffers']) ?? 0,
+      reviews: _int(j['reviews']) ?? 0,
+      ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
+      productViews: _int(j['productViews']) ?? 0,
+    );
+  }
 }
 
 /// Minor units → "GHS 1,899.00"-ish. Keeps it dependency-free.

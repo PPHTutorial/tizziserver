@@ -205,6 +205,12 @@ enum OfferStatus {
   OUT_OF_STOCK
 }
 
+enum PromotionKind {
+  FLASH_DEAL
+  CAMPAIGN
+  BANNER
+}
+
 // =====================================================================
 // Domain 0 — Platform & configuration
 // =====================================================================
@@ -961,15 +967,16 @@ model Product {
   updatedAt     DateTime                 @updatedAt
   deletedAt     DateTime?
 
-  vendor    VendorProfile     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  category  Category          @relation(fields: [categoryId], references: [id])
-  media     ProductMedia[]
-  variants  ProductVariant[]
-  offers    VendorOffer[]
-  questions ProductQuestion[]
-  reviews   ProductReview[]
-  wishedBy  WishlistItem[]
-  views     RecentlyViewed[]
+  vendor     VendorProfile     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  category   Category          @relation(fields: [categoryId], references: [id])
+  media      ProductMedia[]
+  variants   ProductVariant[]
+  offers     VendorOffer[]
+  questions  ProductQuestion[]
+  reviews    ProductReview[]
+  wishedBy   WishlistItem[]
+  views      RecentlyViewed[]
+  promoItems PromotionItem[]
 
   @@index([vendorId])
   @@index([categoryId])
@@ -1151,4 +1158,46 @@ model GasCylinderListing {
   offer VendorOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
 
   @@map("gas_cylinder_listings")
+}
+
+// =====================================================================
+// Domain 8 (read side) — Promotions: flash deals, campaigns, banners
+// =====================================================================
+
+model Promotion {
+  id            String        @id @default(cuid(2))
+  slug          String        @unique
+  kind          PromotionKind
+  title         String
+  subtitle      String?
+  imageKey      String?
+  ctaRoute      String?
+  platformSlugs String[]
+  priority      Int           @default(0)
+  isActive      Boolean       @default(true)
+  startsAt      DateTime?
+  endsAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items PromotionItem[]
+
+  @@index([kind])
+  @@map("promotions")
+}
+
+model PromotionItem {
+  id          String @id @default(cuid(2))
+  promotionId String
+  productId   String
+  /// flash-deal discount in basis points (500 = 5%); null for campaigns/banners.
+  discountBps Int?
+  sortOrder   Int    @default(0)
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([promotionId, productId])
+  @@index([productId])
+  @@map("promotion_items")
 }

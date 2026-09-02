@@ -45,3 +45,7 @@ The 5 baseline GiST indexes live in `migrations/20260901191354_init/migration.sq
 Query it from `@stall/core/catalog` via `$queryRawUnsafe` (`websearch_to_tsquery('simple', …)`
 with a `title % :q` trigram fallback). If you add searchable columns, extend the trigger
 function and the `UPDATE "products" SET "title"="title"` backfill line.
+
+**Every subsequent `migrate dev`** also emits `DROP INDEX` for
+`products_search_vector_gin` / `products_title_trgm` / `products_brand_trgm` (same blind spot
+as the GiST indexes). Strip those lines too — 8 `DROP INDEX`s total to remove per migration.

@@ -47,12 +47,66 @@ final wishlistProvider = FutureProvider.autoDispose<List<WishlistItemDto>>(
   (ref) => ref.watch(stallApiProvider).wishlist(),
 );
 
+final homeRailsProvider = FutureProvider.autoDispose<HomeRails>(
+  (ref) => ref.watch(stallApiProvider).home(),
+);
+
+final promotionProvider =
+    FutureProvider.autoDispose.family<PromotionView, String>(
+  (ref, slug) => ref.watch(stallApiProvider).promotion(slug),
+);
+
+final promotionsProvider =
+    FutureProvider.autoDispose.family<List<PromotionView>, String?>(
+  (ref, kind) => ref.watch(stallApiProvider).promotions(kind: kind),
+);
+
+final similarProvider =
+    FutureProvider.autoDispose.family<List<ProductCard>, String>(
+  (ref, slug) => ref.watch(stallApiProvider).similar(slug),
+);
+
+final vendorStatsProvider = FutureProvider.autoDispose<VendorStats>(
+  (ref) => ref.watch(stallApiProvider).vendorStats(),
+);
+
+final businessDocsProvider = FutureProvider.autoDispose<List<BusinessDocumentDto>>(
+  (ref) => ref.watch(stallApiProvider).businessDocuments(),
+);
+
+/// Accra fallback centre; a geolocator dep can replace this later.
+const kDefaultLatLng = (lat: 5.6037, lng: -0.187);
+
+final nearbyVendorsProvider = FutureProvider.autoDispose
+    .family<List<NearbyVendorDto>, ({double lat, double lng, int radiusM})>(
+  (ref, a) => ref.watch(stallApiProvider).nearbyVendors(lat: a.lat, lng: a.lng, radiusM: a.radiusM),
+);
+
+/// Recent search terms — session-local (kept alive across screen visits), newest first.
+class RecentSearches extends Notifier<List<String>> {
+  @override
+  List<String> build() => const [];
+
+  void add(String term) {
+    final t = term.trim();
+    if (t.isEmpty) return;
+    state = [t, ...state.where((s) => s.toLowerCase() != t.toLowerCase())].take(8).toList();
+  }
+
+  void clear() => state = const [];
+}
+
+final recentSearchesProvider =
+    NotifierProvider<RecentSearches, List<String>>(RecentSearches.new);
+
 // --- search --------------------------------------------------------
 
 class ProductSearchState {
   const ProductSearchState({
     this.query = '',
     this.sort = 'relevance',
+    this.minPrice,
+    this.maxPrice,
     this.loading = false,
     this.results = const [],
     this.total = 0,
@@ -62,15 +116,21 @@ class ProductSearchState {
 
   final String query;
   final String sort;
+  final int? minPrice; // major units (whole currency)
+  final int? maxPrice;
   final bool loading;
   final List<ProductCard> results;
   final int total;
   final String? error;
   final bool ran;
 
+  bool get hasFilters => minPrice != null || maxPrice != null;
+
   ProductSearchState copyWith({
     String? query,
     String? sort,
+    Object? minPrice = _sentinel,
+    Object? maxPrice = _sentinel,
     bool? loading,
     List<ProductCard>? results,
     int? total,
@@ -80,6 +140,8 @@ class ProductSearchState {
       ProductSearchState(
         query: query ?? this.query,
         sort: sort ?? this.sort,
+        minPrice: minPrice == _sentinel ? this.minPrice : minPrice as int?,
+        maxPrice: maxPrice == _sentinel ? this.maxPrice : maxPrice as int?,
         loading: loading ?? this.loading,
         results: results ?? this.results,
         total: total ?? this.total,
@@ -87,6 +149,8 @@ class ProductSearchState {
         ran: ran ?? this.ran,
       );
 }
+
+const _sentinel = Object();
 
 class ProductSearchController extends AutoDisposeNotifier<ProductSearchState> {
   @override
@@ -99,15 +163,31 @@ class ProductSearchController extends AutoDisposeNotifier<ProductSearchState> {
     if (state.query.trim().isNotEmpty) run();
   }
 
+  void setPriceRange({int? min, int? max}) {
+    state = state.copyWith(minPrice: min, maxPrice: max);
+    if (state.query.trim().isNotEmpty) run();
+  }
+
+  void clearFilters() {
+    state = state.copyWith(minPrice: null, maxPrice: null);
+    if (state.query.trim().isNotEmpty) run();
+  }
+
   Future<void> run() async {
     final q = state.query.trim();
     if (q.isEmpty) {
       state = state.copyWith(results: const [], total: 0, ran: false, error: null);
       return;
     }
+    ref.read(recentSearchesProvider.notifier).add(q);
     state = state.copyWith(loading: true, error: null);
     try {
-      final res = await ref.read(stallApiProvider).search(q, sort: state.sort);
+      final res = await ref.read(stallApiProvider).search(
+            q,
+            sort: state.sort,
+            minPrice: state.minPrice == null ? null : state.minPrice! * 100,
+            maxPrice: state.maxPrice == null ? null : state.maxPrice! * 100,
+          );
       state = state.copyWith(loading: false, results: res.items, total: res.total, ran: true);
     } catch (_) {
       state = state.copyWith(loading: false, error: 'Search failed. Try again.', ran: true);

@@ -121,6 +121,29 @@ export async function resolveProductId(slugOrId: string, platformSlug: string): 
   return p.id;
 }
 
+/** Other published products in the same category (for "You might also like"). */
+export async function similarProducts(
+  slugOrId: string,
+  platformSlug: string,
+  limit = 8,
+): Promise<ProductCard[]> {
+  const base = await prisma.product.findFirst({
+    where: { AND: [{ OR: [{ slug: slugOrId }, { id: slugOrId }] }, platformFilter(platformSlug)] },
+    select: { id: true, categoryId: true },
+  });
+  if (!base) return [];
+  const rows = await prisma.product.findMany({
+    where: { ...platformFilter(platformSlug), categoryId: base.categoryId, id: { not: base.id } },
+    orderBy: [{ ratingAvg: "desc" }, { publishedAt: "desc" }],
+    take: Math.min(Math.max(limit, 1), 20),
+    include: {
+      media: { orderBy: { sortOrder: "asc" }, take: 1, select: { fileKey: true } },
+      offers: { where: { status: "ACTIVE" }, select: { priceMinor: true, currency: true, vendorId: true } },
+    },
+  });
+  return rows.map(toCard);
+}
+
 export async function getProductDetail(slugOrId: string, platformSlug: string) {
   const product = await prisma.product.findFirst({
     where: {

@@ -255,6 +255,28 @@ class StallApi {
     return ProductDetail.fromJson(d);
   }
 
+  Future<List<ProductCard>> similar(String slug, {int limit = 8}) async {
+    final d = await _send('GET', '/api/v1/catalog/products/$slug/similar',
+        auth: false, query: {'limit': '$limit'});
+    return _items(d, ProductCard.fromJson);
+  }
+
+  Future<HomeRails> home() async {
+    final d = await _send('GET', '/api/v1/catalog/home', auth: false);
+    return HomeRails.fromJson(d);
+  }
+
+  Future<List<PromotionView>> promotions({String? kind}) async {
+    final d = await _send('GET', '/api/v1/promotions',
+        auth: false, query: {if (kind != null) 'kind': kind});
+    return _items(d, PromotionView.fromJson);
+  }
+
+  Future<PromotionView> promotion(String slug) async {
+    final d = await _send('GET', '/api/v1/promotions/$slug', auth: false);
+    return PromotionView.fromJson(d);
+  }
+
   Future<({List<ProductCard> items, int total, int page})> search(
     String q, {
     String? category,
@@ -276,6 +298,19 @@ class StallApi {
       total: (d['total'] as num?)?.toInt() ?? 0,
       page: (d['page'] as num?)?.toInt() ?? 1,
     );
+  }
+
+  Future<List<NearbyVendorDto>> nearbyVendors({
+    required double lat,
+    required double lng,
+    int radiusM = 5000,
+  }) async {
+    final d = await _send('GET', '/api/v1/search/nearby', auth: false, query: {
+      'lat': '$lat',
+      'lng': '$lng',
+      'radius': '$radiusM',
+    });
+    return _items(d, NearbyVendorDto.fromJson);
   }
 
   Future<VendorPage> vendor(String id) async {
@@ -376,4 +411,17 @@ class StallApi {
 
   Future<void> publishProduct(String id) =>
       _send('POST', '/api/v1/vendors/products/$id/publish');
+
+  Future<VendorStats> vendorStats() async {
+    final d = await _send('GET', '/api/v1/vendors/stats');
+    return VendorStats.fromJson(d);
+  }
+
+  Future<List<BusinessDocumentDto>> businessDocuments() async {
+    final d = await _send('GET', '/api/v1/vendors/business/documents');
+    return _items(d, BusinessDocumentDto.fromJson);
+  }
+
+  Future<void> addBusinessDocument({required String type, required String fileKey}) =>
+      _send('POST', '/api/v1/vendors/business/documents', body: {'type': type, 'fileKey': fileKey});
 }

@@ -243,6 +243,26 @@ async function seedCatalog() {
       priceMinor: 649900,
       image: "seed/laptop.jpg",
     },
+    {
+      slug: "orbit-a34-phone",
+      platform: "grandprice",
+      categorySlug: "phones",
+      title: "Orbit A34 Smartphone",
+      brand: "Orbit",
+      description: "6.1-inch LCD, 5000 mAh, 64/128 GB. The budget pick in the Orbit A-series.",
+      priceMinor: 129900,
+      image: "seed/phone-a34.jpg",
+    },
+    {
+      slug: "nimbus-pro-16-laptop",
+      platform: "grandprice",
+      categorySlug: "laptops",
+      title: "Nimbus Pro 16 Laptop",
+      brand: "Nimbus",
+      description: "16-inch 2.5K, 32 GB RAM, 1 TB SSD, discrete graphics. For heavy workloads.",
+      priceMinor: 1149900,
+      image: "seed/laptop-pro.jpg",
+    },
   ];
 
   for (const p of products) {
@@ -360,6 +380,113 @@ async function seedCatalog() {
     prisma.vendorOffer.count(),
   ]);
   console.log(`  catalog — ${cats} categories, ${prods} products, ${offers} offers`);
+
+  await seedPromotions();
+}
+
+async function seedPromotions() {
+  const bySlug = async (slug: string) =>
+    (await prisma.product.findUnique({ where: { slug }, select: { id: true } }))?.id;
+
+  const promos: {
+    slug: string;
+    kind: "FLASH_DEAL" | "CAMPAIGN" | "BANNER";
+    title: string;
+    subtitle?: string;
+    imageKey?: string;
+    ctaRoute?: string;
+    platform: string;
+    priority?: number;
+    endsInHours?: number;
+    items?: { slug: string; discountBps?: number }[];
+  }[] = [
+    {
+      slug: "gp-weekend-flash",
+      kind: "FLASH_DEAL",
+      title: "Weekend Flash Sale",
+      subtitle: "Up to 10% off — ends Sunday",
+      platform: "grandprice",
+      priority: 10,
+      endsInHours: 72,
+      items: [
+        { slug: "orbit-a54-phone", discountBps: 1000 },
+        { slug: "nimbus-14-laptop", discountBps: 500 },
+      ],
+    },
+    {
+      slug: "gp-back-to-work",
+      kind: "CAMPAIGN",
+      title: "Back to Work",
+      subtitle: "Kit out your home office",
+      platform: "grandprice",
+      priority: 5,
+      items: [{ slug: "nimbus-14-laptop" }, { slug: "orbit-a54-phone" }],
+    },
+    {
+      slug: "gp-electronics-banner",
+      kind: "BANNER",
+      title: "New in Electronics",
+      subtitle: "Fresh arrivals every week",
+      imageKey: "banners/electronics.jpg",
+      ctaRoute: "/category/electronics",
+      platform: "grandprice",
+      priority: 1,
+    },
+    {
+      slug: "gas-refill-deal",
+      kind: "FLASH_DEAL",
+      title: "Refill & Save",
+      subtitle: "8% off cylinder exchanges today",
+      platform: "tizzi-gas",
+      priority: 10,
+      endsInHours: 24,
+      items: [{ slug: "swiftgas-12kg-exchange", discountBps: 800 }],
+    },
+    {
+      slug: "gas-safety-banner",
+      kind: "BANNER",
+      title: "Gas safety checklist",
+      subtitle: "Keep your home safe",
+      imageKey: "banners/gas-safety.jpg",
+      ctaRoute: "/category/gas-accessories",
+      platform: "tizzi-gas",
+      priority: 1,
+    },
+  ];
+
+  for (const p of promos) {
+    const endsAt = p.endsInHours ? new Date(Date.now() + p.endsInHours * 3_600_000) : null;
+    const promo = await prisma.promotion.upsert({
+      where: { slug: p.slug },
+      create: {
+        slug: p.slug,
+        kind: p.kind,
+        title: p.title,
+        subtitle: p.subtitle,
+        imageKey: p.imageKey,
+        ctaRoute: p.ctaRoute,
+        platformSlugs: [p.platform],
+        priority: p.priority ?? 0,
+        startsAt: new Date(Date.now() - 3_600_000),
+        endsAt,
+      },
+      update: { title: p.title, subtitle: p.subtitle, priority: p.priority ?? 0, endsAt },
+    });
+
+    let order = 0;
+    for (const item of p.items ?? []) {
+      const productId = await bySlug(item.slug);
+      if (!productId) continue;
+      await prisma.promotionItem.upsert({
+        where: { promotionId_productId: { promotionId: promo.id, productId } },
+        create: { promotionId: promo.id, productId, discountBps: item.discountBps, sortOrder: order++ },
+        update: { discountBps: item.discountBps },
+      });
+    }
+  }
+
+  const promoCount = await prisma.promotion.count();
+  console.log(`  promotions — ${promoCount} live`);
 }
 
 async function main() {

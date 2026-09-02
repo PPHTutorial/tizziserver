@@ -243,3 +243,71 @@ export const WishlistResponse = ok(z.object({ items: z.array(WishlistItem) }));
 export const WishlistMutationRequest = z.object({ productId: z.string() });
 export const WishlistToggleResponse = ok(z.object({ wished: z.boolean() }));
 export const RecentlyViewedResponse = ok(z.object({ items: z.array(WishlistItem) }));
+
+// --- promotions (Domain 8 read side) -------------------------------
+export const PromotionKind = z.enum(["FLASH_DEAL", "CAMPAIGN", "BANNER"]);
+
+export const PromotionItemCard = z.object({
+  productId: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  brand: z.string().nullable(),
+  image: z.string().nullable(),
+  currency: z.string(),
+  priceMinor: z.number().int().nullable(),
+  dealPriceMinor: z.number().int().nullable(),
+  discountBps: z.number().int().nullable(),
+});
+
+export const PromotionView = z.object({
+  slug: z.string(),
+  kind: PromotionKind,
+  title: z.string(),
+  subtitle: z.string().nullable(),
+  imageKey: z.string().nullable(),
+  ctaRoute: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  items: z.array(PromotionItemCard),
+});
+
+export const PromotionListResponse = ok(z.object({ items: z.array(PromotionView) }));
+export const PromotionDetailResponse = ok(PromotionView);
+
+export const HomeRailsResponse = ok(
+  z.object({
+    flashDeals: z.array(PromotionView),
+    campaigns: z.array(PromotionView),
+    banners: z.array(PromotionView),
+    newArrivals: z.array(ProductCard),
+    topRated: z.array(ProductCard),
+    recentlyViewed: z.array(WishlistItem),
+  }),
+);
+
+export const SimilarResponse = ok(z.object({ items: z.array(ProductCard) }));
+
+// --- vendor: KYC documents + stats -------------------------------
+export const BusinessDocument = z.object({
+  id: z.string(),
+  type: z.string(),
+  fileKey: z.string(),
+  status: z.string(),
+  note: z.string().nullable(),
+  at: z.string(),
+});
+export const BusinessDocumentsResponse = ok(z.object({ items: z.array(BusinessDocument) }));
+export const AddBusinessDocumentRequest = z.object({
+  type: z.string().min(2).max(60),
+  fileKey: z.string().min(3).max(300),
+});
+export const AddBusinessDocumentResponse = ok(z.object({ id: z.string(), status: z.string() }));
+
+export const VendorStatsResponse = ok(
+  z.object({
+    products: z.record(z.string(), z.number().int()),
+    activeOffers: z.number().int(),
+    reviews: z.number().int(),
+    ratingAvg: z.number(),
+    productViews: z.number().int(),
+  }),
+);

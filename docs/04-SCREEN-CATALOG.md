@@ -18,9 +18,9 @@ capability key in `()`.
 |---|---|---|---|---|---|---|---|---|---|
 | 01 | Design System | components | `packages/tokens` + `packages/design` | — | all | — | — | 0 | ⬜ |
 | 02 | Authentication & Account Access | 1–20 | `auth`, identity | all | all | — | — | 1 | 🔨 (built S8, pending device e2e) |
-| 03 | Customer Home & Marketplace | 21–40 | `catalog`, `promotions` | Customer | all (`catalog.scope`) | notif | nearby | 2 | 🔨 (home feed + category grid built S9; rails/map/promos = depth) |
-| 04 | Search & Discovery | 41–59 | `catalog/search` | Customer | all | — | location filter | 2 | 🔨 (FTS+trigram search + sort built S9; suggestions/recents/filter sheet = depth) |
-| 05 | Product Experience | 60–80 | `catalog`, `reviews` | Customer | all | — | — | 2 | 🔨 (detail: gallery/offers/variants/reviews/Q&A/wishlist built S9; fullscreen/video/similar = depth) |
+| 03 | Customer Home & Marketplace | 21–40 | `catalog`, `promotions` | Customer | all (`catalog.scope`) | notif | nearby | 2 | 🔨 (S9: home rails, flash deals, banners, nearby-vendors map, quick actions — personalisation depth remains) |
+| 04 | Search & Discovery | 41–59 | `catalog/search` | Customer | all | — | location filter | 2 | 🔨 (S9: FTS+trigram search, sort, price-filter sheet, recent searches — suggestions/autocomplete remain) |
+| 05 | Product Experience | 60–80 | `catalog`, `reviews` | Customer | all | — | — | 2 | 🔨 (S9: detail, fullscreen gallery, offers/variants/reviews/Q&A, similar products, wishlist — video remains) |
 | 06 | Cart & Checkout | 81–103 | `cart`, `checkout`, `payments`, `coupons` | Customer | all | — | address picker | 3 | ⬜ |
 | 07 | Orders & Fulfilment | 104–123 | `orders`, `returns`, `refunds` | Customer | all | order events | — | 3 | ⬜ |
 | 08 | Delivery & Courier — Customer | 124–151 | `delivery` | Customer | all (`delivery.live_tracking`) | **tracking** | **live map** | 4 | ⬜ |
@@ -35,7 +35,7 @@ capability key in `()`.
 | 17 | GrandPrice Auction System | 291–321 | `auctions` | Customer | **gp** (`auction`) | draw live | prize delivery map | 5 | ⬜ |
 | 18 | Tickets, Qualification & Ranking | 322–338 | `auctions/tickets`, `qualification` | Customer | **gp** (`auction`) | qualification push | — | 5 | ⬜ |
 | 19 | Wallet & Financial System | 339–356 | `wallet`, `payments`, `security` | Customer | all (`wallet`) | balance push | — | 3 | ⬜ |
-| 20 | Coupons & Promotions | 357–368 | `coupons`, `promotions`, `referrals` | Customer | all (`coupons`) | — | — | 3 | ⬜ |
+| 20 | Coupons & Promotions | 357–368 | `coupons`, `promotions`, `referrals` | Customer | all (`coupons`) | — | — | 3 | 🔨 (S9: promotions read-side — flash deals / campaigns / banners live; coupons + referrals = Phase 3) |
 | 21 | Chat & Communication | 369–382 | `chat` | Customer/Vendor/Courier | all (`chat`) | **chat** | share location | 6 | ⬜ |
 | 22 | Notifications | 383–394 | `notifications` | all | all | **notifications** | — | 6 | ⬜ |
 | 23 | Customer Profile | 395–415 | identity, `users`, addresses | Customer | all | — | saved locations | 2/6 | ⬜ |

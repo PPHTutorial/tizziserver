@@ -69,4 +69,56 @@ void main() {
     expect(VendorStatus.fromJson({'onboarded': true, 'kycStatus': 'PENDING'}).isPending, isTrue);
     expect(VendorStatus.fromJson({'onboarded': false}).onboarded, isFalse);
   });
+
+  test('PromotionItemCard computes the effective (deal) price', () {
+    final withDeal = PromotionItemCard.fromJson({
+      'productId': 'p1',
+      'slug': 's1',
+      'title': 'Phone',
+      'currency': 'GHS',
+      'priceMinor': 184900,
+      'dealPriceMinor': 166410,
+      'discountBps': 1000,
+    });
+    expect(withDeal.effectivePriceMinor, 166410);
+    expect(withDeal.discountPct, 10);
+
+    final noDeal = PromotionItemCard.fromJson({
+      'productId': 'p2',
+      'slug': 's2',
+      'title': 'Laptop',
+      'currency': 'GHS',
+      'priceMinor': 649900,
+      'dealPriceMinor': null,
+      'discountBps': null,
+    });
+    expect(noDeal.effectivePriceMinor, 649900);
+    expect(noDeal.discountPct, isNull);
+  });
+
+  test('HomeRails.fromJson splits promo rails by kind and keeps product rails', () {
+    final rails = HomeRails.fromJson({
+      'flashDeals': [
+        {'slug': 'fd', 'kind': 'FLASH_DEAL', 'title': 'Flash', 'items': <dynamic>[]},
+      ],
+      'campaigns': <dynamic>[],
+      'banners': [
+        {'slug': 'b', 'kind': 'BANNER', 'title': 'Banner', 'items': <dynamic>[]},
+      ],
+      'newArrivals': [
+        {'id': 'x', 'slug': 's', 'title': 'T'},
+      ],
+      'topRated': <dynamic>[],
+      'recentlyViewed': <dynamic>[],
+    });
+    expect(rails.flashDeals.single.slug, 'fd');
+    expect(rails.banners.single.kind, 'BANNER');
+    expect(rails.newArrivals.single.slug, 's');
+    expect(rails.isEmpty, isFalse);
+  });
+
+  test('NearbyVendorDto distance label', () {
+    expect(NearbyVendorDto.fromJson({'id': 'v', 'displayName': 'V', 'distanceM': 527}).distanceLabel, '527 m');
+    expect(NearbyVendorDto.fromJson({'id': 'v', 'displayName': 'V', 'distanceM': 3400}).distanceLabel, '3.4 km');
+  });
 }

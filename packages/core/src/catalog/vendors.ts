@@ -299,6 +299,68 @@ export async function publishProduct(userId: string, productId: string) {
   return { id: product.id, status: "PUBLISHED" as const };
 }
 
+// --- business documents (KYC evidence) ----------------------------
+
+export async function addBusinessDocument(userId: string, type: string, fileKey: string) {
+  const vendor = await prisma.vendorProfile.findUnique({
+    where: { userId },
+    include: { business: true },
+  });
+  if (!vendor?.business) throw new AppError("FORBIDDEN", "Complete vendor onboarding first");
+  const doc = await prisma.businessDocument.create({
+    data: { businessId: vendor.business.id, type, fileKey, status: "PENDING" },
+  });
+  return { id: doc.id, status: doc.status };
+}
+
+export async function listBusinessDocuments(userId: string) {
+  const vendor = await prisma.vendorProfile.findUnique({
+    where: { userId },
+    include: { business: { include: { documents: { orderBy: { createdAt: "desc" } } } } },
+  });
+  return (vendor?.business?.documents ?? []).map((d) => ({
+    id: d.id,
+    type: d.type,
+    fileKey: d.fileKey,
+    status: d.status,
+    note: d.note,
+    at: d.createdAt.toISOString(),
+  }));
+}
+
+// --- vendor analytics stub (MD §25 "product performance") -----------
+
+export async function vendorStats(userId: string) {
+  const vendor = await prisma.vendorProfile.findUnique({ where: { userId } });
+  if (!vendor) throw new AppError("FORBIDDEN", "Not a vendor");
+
+  const [byStatus, offerCount, reviewAgg, viewCount] = await Promise.all([
+    prisma.product.groupBy({
+      by: ["status"],
+      where: { vendorId: vendor.id, deletedAt: null },
+      _count: true,
+    }),
+    prisma.vendorOffer.count({ where: { vendorId: vendor.id, status: "ACTIVE" } }),
+    prisma.productReview.aggregate({
+      where: { product: { vendorId: vendor.id } },
+      _avg: { rating: true },
+      _count: true,
+    }),
+    prisma.recentlyViewed.count({ where: { product: { vendorId: vendor.id } } }),
+  ]);
+
+  const counts: Record<string, number> = { DRAFT: 0, PUBLISHED: 0, ARCHIVED: 0, SUSPENDED: 0 };
+  for (const row of byStatus) counts[row.status] = row._count;
+
+  return {
+    products: counts,
+    activeOffers: offerCount,
+    reviews: reviewAgg._count,
+    ratingAvg: Number((reviewAgg._avg.rating ?? 0).toFixed(2)),
+    productViews: viewCount,
+  };
+}
+
 export async function listMyProducts(userId: string, status?: "DRAFT" | "PUBLISHED" | "ARCHIVED") {
   const vendor = await prisma.vendorProfile.findUnique({ where: { userId } });
   if (!vendor) return [];
