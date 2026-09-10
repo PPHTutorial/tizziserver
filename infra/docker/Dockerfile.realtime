@@ -1,0 +1,24 @@
+# Stall realtime gateway (Fastify + socket.io, run via tsx).
+FROM node:22-slim AS base
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+RUN corepack enable
+WORKDIR /app
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
+COPY packages ./packages
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/realtime/package.json ./apps/realtime/package.json
+COPY apps/worker/package.json ./apps/worker/package.json
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
+COPY . .
+RUN pnpm --filter @stall/db generate
+
+FROM base AS runner
+ENV NODE_ENV=production
+COPY --from=build /app ./
+WORKDIR /app/apps/realtime
+EXPOSE 3001
+CMD ["pnpm", "run", "start:prod"]

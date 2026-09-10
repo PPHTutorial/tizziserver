@@ -7,14 +7,16 @@ import '../../../app/router.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
+import '../../../design/components.dart';
 import '../auth_util.dart';
+import '../../../design/icons.dart';
 
 const _roleMeta = <String, (IconData, String, String)>{
-  'CUSTOMER': (Icons.shopping_bag_outlined, 'Shop', 'Browse, order, and track deliveries.'),
-  'VENDOR': (Icons.storefront_outlined, 'Sell', 'Manage products, orders, and payouts.'),
-  'COURIER': (Icons.two_wheeler_outlined, 'Deliver', 'Accept jobs and earn on deliveries.'),
-  'STAFF': (Icons.headset_mic_outlined, 'Operations', 'Support, KYC, and disputes.'),
-  'ADMIN': (Icons.tune, 'Admin', 'Platform console.'),
+  'CUSTOMER': (AppIcons.shopping_bag_outlined, 'Shop', 'Browse, order, and track deliveries.'),
+  'VENDOR': (AppIcons.storefront_outlined, 'Sell', 'Manage products, orders, and payouts.'),
+  'COURIER': (AppIcons.two_wheeler_outlined, 'Deliver', 'Accept jobs and earn on deliveries.'),
+  'STAFF': (AppIcons.headset_mic_outlined, 'Operations', 'Support, KYC, and disputes.'),
+  'ADMIN': (AppIcons.tune, 'Admin', 'Platform console.'),
 };
 
 /// Screens 15–16 — Select role after sign-in when the account holds more than
@@ -68,7 +70,7 @@ class _SelectRoleScreenState extends ConsumerState<SelectRoleScreen> {
         for (final role in roles) ...[
           _RoleCard(
             role: role,
-            meta: _roleMeta[role] ?? (Icons.person_outline, role, ''),
+            meta: _roleMeta[role] ?? (AppIcons.person_outline, role, ''),
             selected: role == auth.activeRole,
             loading: _pending == role,
             onTap: _pending == null ? () => _pick(role) : null,
@@ -105,8 +107,46 @@ class _RoleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final (icon, label, desc) = meta;
+    final content = Row(
+      children: [
+        Icon(icon, color: selected ? c.onPrimaryContainer : c.textHi),
+        const SizedBox(width: AppSpace.s12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: context.text.titleMedium),
+              if (desc.isNotEmpty) ...[
+                const SizedBox(height: AppSpace.s2),
+                Text(desc, style: context.text.bodyMedium?.copyWith(color: c.textMed)),
+              ],
+            ],
+          ),
+        ),
+        if (loading)
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else
+          Icon(selected ? AppIcons.check_circle : AppIcons.chevron_right,
+              color: selected ? c.primary : c.textLow),
+      ],
+    );
+
+    // AppCard covers the default (unselected) look; the selected state needs
+    // a distinct fill + border that AppCard doesn't parameterize, so it keeps
+    // a thin custom wrapper using the same shape token (AppRadius.lg).
+    if (!selected) {
+      return AppCard(
+        padding: const EdgeInsets.all(AppSpace.s16),
+        onTap: onTap,
+        child: content,
+      );
+    }
     return Material(
-      color: selected ? c.primaryContainer : c.surface,
+      color: c.primaryContainer,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -115,36 +155,9 @@ class _RoleCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpace.s16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: selected ? c.primary : c.border),
+            border: Border.all(color: c.primary),
           ),
-          child: Row(
-            children: [
-              Icon(icon, color: selected ? c.onPrimaryContainer : c.textHi),
-              const SizedBox(width: AppSpace.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: context.text.titleMedium),
-                    if (desc.isNotEmpty) ...[
-                      const SizedBox(height: AppSpace.s2),
-                      Text(desc,
-                          style: context.text.bodyMedium?.copyWith(color: c.textMed)),
-                    ],
-                  ],
-                ),
-              ),
-              if (loading)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              else
-                Icon(selected ? Icons.check_circle : Icons.chevron_right,
-                    color: selected ? c.primary : c.textLow),
-            ],
-          ),
+          child: content,
         ),
       ),
     );
@@ -167,9 +180,9 @@ Future<void> showRoleSwitcher(BuildContext context, WidgetRef ref) async {
           ),
           for (final role in auth.roles)
             ListTile(
-              leading: Icon((_roleMeta[role] ?? (Icons.person, '', '')).$1),
-              title: Text((_roleMeta[role] ?? (Icons.person, role, '')).$2),
-              trailing: role == auth.activeRole ? const Icon(Icons.check) : null,
+              leading: Icon((_roleMeta[role] ?? (AppIcons.person, '', '')).$1),
+              title: Text((_roleMeta[role] ?? (AppIcons.person, role, '')).$2),
+              trailing: role == auth.activeRole ? const Icon(AppIcons.check) : null,
               onTap: () async {
                 Navigator.of(context).pop();
                 if (role != auth.activeRole) {

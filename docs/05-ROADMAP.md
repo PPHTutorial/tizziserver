@@ -86,122 +86,142 @@ visible and orderable-shaped** under `catalog.scope='gas'`.
 
 ---
 
-## Phase 3 — Cart, checkout, orders, payments, wallet
+## Phase 3 — Cart, checkout, orders, payments, wallet  ✅ CODE-COMPLETE (S10)
 
 **Goal:** Take money, create orders. MD §06, §07, §19, §20.
 
-- [ ] Schema v2 Domain 4 (cart/orders) + Domain 6 (ledger/payments/wallet).
-- [ ] `cart` (multi-vendor grouping, save-for-later), `coupons` (validate/apply/limits), address book.
-- [ ] `checkout`: quote (fees: subtotal/discount/coupon/delivery/service/tax/total), fulfilment method selection, `Idempotency-Key` enforced.
-- [ ] `payments`: `PaymentGateway` port + **Paystack/Flutterwave sandbox** adapter (GHS, MoMo) + Stripe adapter; `PaymentIntent`/`Payment`/`PaymentMethod`.
-- [ ] `wallet`: double-entry `LedgerAccount`/`LedgerEntry`/`LedgerTxn`; wallet top-up, transactions feed, transaction PIN gate; escrow → release-on-completion flow.
-- [ ] `orders`: `Order`/`VendorOrder`/`OrderItem`/`Fulfilment`/`OrderEvent`; cancel, return, exchange, refund, invoice, order issue.
-- [ ] Retire `_compat` shim for `order.*`, `vendor.nearby` (gas app now on generated client).
-- [ ] Mobile: cart + empty + item detail + multi-vendor/vendor-grouped + quantity + save-later + coupon apply/select + address select/add/edit + delivery method/speed + courier estimate + pickup + order summary + payment method/add + processing/failed/success + confirmation (81–103); orders list/active/completed/cancelled + details + items + vendor order + fulfilment + timeline + cancel + return/exchange/refund + refund status + issue/report + reorder + invoice/receipt + support (104–123); wallet + balance + transactions + deposit + withdrawal + payment methods + transaction detail + refunds + PIN + verification (339–356); coupon center + available + mine + detail + terms + apply + applied + expired/invalid + promo detail + referral rewards + history (357–368).
+- [x] Schema v2 Domain 4 (cart/orders/fulfilment) + Domain 6 (ledger/payments/wallet). Migration `20260902004441_commerce_domain4_6`.
+- [x] `cart` (multi-vendor grouping, live re-price, save-for-later), `coupons` (window/platform/min-spend/scope/redemption/per-user/first-order + `listCoupons`), address book (+ order snapshot).
+- [x] `checkout`: server-computed quote (subtotal/discount/delivery/service/tax/total lines from `FeeSchedule` + `AppConfig(checkout.fees)`), fulfilment method (DELIVERY/PICKUP), `Idempotency-Key` on `POST /checkout`. *Delivery is a flat fee until Phase 4 distance pricing.*
+- [x] `payments`: `PaymentGateway` port + deterministic **`MockGateway` sandbox** (no external accounts — B4) + **stubbed** Paystack/Flutterwave/Stripe adapters on the same port; `PaymentIntent`/`Payment`/`PaymentMethod`/`Payout`; idempotent `payments/webhook`.
+- [x] `wallet`: double-entry `LedgerAccount`/`LedgerEntry`/`LedgerTxn` (`postTxn` balance-asserted); top-up (via gateway), transactions feed, **transaction-PIN-gated withdrawal**; escrow capture → release-on-`VendorOrder`-completion.
+- [x] `orders`: `Order`/`VendorOrder`/`OrderItem`/`Fulfilment`/`OrderEvent`/`Return`/`Refund`/`Invoice`; cancel (→ wallet refund), return request, vendor status transitions, `completeVendorOrder`. *Exchange + formal `OrderIssue` → Phase 6 (disputes).*
+- [x] `_compat` `order.*` / `vendor.nearby` — already `410 ENDPOINT_MIGRATED` (shim only bridged `auth.*`).
+- [x] Contracts `commerce.ts` → `openapi.json` (60 paths / 72 ops). Vitest `commerce.test.ts` (7) + opt-in `phase3-e2e.test.ts` (4). 27 TS tests green.
+- [x] Mobile: cart (groups/qty/save-later/coupon), checkout (method → address → payment → live quote → place), order placed, orders (filter tabs), order detail (sub-orders/timeline/fees/cancel), wallet (balance/txns/top-up/PIN-withdraw), address book (+editor), coupons. Product-detail add-to-cart; app-bar cart badge; account-tab entries. `flutter analyze` 0 / `test` 18. *Deeper 81–123 / 339–368 sub-screens (reorder, invoice PDF, refund detail, referral) = Phase 3 depth / later.*
 
-**Exit:** A customer places a **paid multi-vendor order** in the payment sandbox; funds land in
-escrow; each `VendorOrder` completion releases vendor payout (minus commission) and platform
-revenue via balanced ledger entries; a refund reverses correctly; wallet top-up + PIN-gated
-action work.
+**Exit — ✅ MET (S10):** a customer places a **paid multi-vendor order** in the mock payment
+sandbox; funds land in escrow; each `VendorOrder` completion releases vendor payout (minus
+commission) and platform revenue via balanced ledger entries; order cancel reverses the
+capture to the wallet; wallet top-up + PIN-gated withdrawal work. Covered by `commerce.test.ts`
+(7, reconciled to the cent) + `phase3-e2e.test.ts` (4, live API). Real gateway adapters
+stubbed pending B4.
 
 ---
 
-## Phase 4 — Delivery, courier, realtime, maps
+## Phase 4 — Delivery, courier, realtime, maps  ✅ CODE-COMPLETE (S11)
 
 **Goal:** The Bolt/Uber-style delivery network. MD §08–§16, plus the map screens we own.
 
-- [ ] Schema v2 Domain 5 (delivery/courier ops).
-- [ ] `couriers`: onboarding, unified `KycCase` (ID front/back, selfie/liveness), vehicles + docs, service-area polygons, availability schedule, online/offline, performance metrics.
-- [ ] `delivery`: creation from `Fulfilment`; **dispatch engine** (Redis GEO shortlist → ranked `DeliveryOffer` waterfall with timeout); `DeliveryJob` marketplace (pre-acceptance PII masking); active-delivery **state machine** (all transitions → `DeliveryEvent` + `OutboxEvent`); pickup verification (OTP/QR/photo/count/condition); delivery verification (OTP/QR/signature/POD photo); ratings; reassignment/reschedule/fail flows.
-- [ ] `apps/realtime` `/tracking`: room entitlement, location ingest (adaptive cadence), Redis GEO write, `delivery:{id}` broadcast, throttled `DeliveryLocation` breadcrumb.
-- [ ] `apps/worker`: outbox-relay, `eta-refresh` (Google Distance Matrix, cached), breadcrumb-compaction, courier earnings posting → ledger, payout/withdrawal jobs.
-- [ ] Maps: server-proxied Directions/Distance Matrix with Redis cache; Flutter `AppMapView` + markers + polyline + camera-follow.
-- [ ] Contracts + Dart client for delivery/courier + a typed socket event layer.
-- [ ] Mobile — customer: delivery options/estimate/method + courier assigned/profile/rating/vehicle + **tracking + live map + courier location + ETA** + contact/call/message + arriving/arrived + delivery OTP/verification + completed/receipt + failed/unavailable/reschedule/reassignment + report/dispute + history (124–151).
-- [ ] Mobile — courier: welcome/registration/setup/personal/photo/phone-verify + **KYC** doc select/upload/selfie/review/pending/approved/rejected/resubmit + agreement/terms/complete (152–170); vehicle setup/type/details/registration/photo/docs/insurance/verification/approved/rejected + my/add/edit/remove/active (171–185); dashboard + online toggle + availability + **service areas + add/edit + radius + courier map** + location permission/explanation/disabled + working prefs (186–197); available jobs + job details + fee breakdown + pickup/dropoff + package info + requirements + distance/duration + accept/decline + reason + expired + none + **jobs map** (198–212); active delivery + **navigate to pickup** + arrived + pickup verify/OTP/QR + vendor/package verify + count/condition/photo + confirmed + start + **delivery navigation** + destination + arrived + verify/OTP/QR + recipient + signature + POD photo + notes + completed/failed/unavailable/reassignment/cancel/issue (213–242); earnings dashboard + today/week/month + breakdown + delivery detail + bonuses/tips/fees/adjustments + wallet + balance + transactions + withdrawal method/confirm/processing/success/failed + payout history (243–262); performance + stats + rates + avg time + rating breakdown + history + achievements + level + warning (263–274); courier profile + edit + verification status + documents + vehicle mgmt + service areas + notification/privacy/location/security settings + password + 2FA + help + terms + logout + deactivation (275–290).
-- [ ] Mobile — vendor: ready-for-pickup, courier arrived, pickup verification (445–447).
+- [x] Schema v2 Domain 5 (delivery/courier ops) + courier KYC (`KycCase.level`, `KycDocument`, `LivenessCheck`). Migrations `20260902045932_delivery_domain5`, `20260902051042_delivery_verify_codes`.
+- [x] `couriers`: onboarding → unified `KycCase`/`KycDocument`/mock `LivenessCheck` + STAFF/ADMIN mock review; vehicles + docs + mock review; service-area circles (+ polygon), availability schedule; online/offline + `CourierShift` + heartbeat; dashboard + performance metrics; PII-masked jobs feed. *Real OCR/liveness provider hooks + the review console = Phase 6.*
+- [x] `delivery`: `ensureDeliveryForVendorOrder` (spawn from `Fulfilment` on `READY_FOR_PICKUP`) + adhoc wallet-funded creation; **dispatch engine** (Redis GEO / PostGIS `ST_DWithin` shortlist → ranked `DeliveryOffer` waterfall with TTL, `sweepExpiredOffers`, `expireUndispatchable`); `DeliveryJob` marketplace (pre-acceptance area labels only); active-delivery **state machine** (`courierAdvanceDelivery`, every hop → `DeliveryEvent` + `OutboxEvent`); pickup verification (code/QR/photo/count/condition); delivery verification (code/QR/signature/POD photo); ratings (roll courier avg); reassign / reschedule / fail / customer-cancel / courier-cancel.
+- [x] `apps/realtime` `/tracking`: JWT connect, `delivery:{id}` room entitlement (`getDeliveryTrack`), location ingest → `recordBreadcrumb` (throttled `DeliveryLocation`) → room broadcast, Redis `stall:realtime` sub → rebroadcast; `/delivery-ops` (STAFF/ADMIN); `@socket.io/redis-adapter`.
+- [x] `apps/worker`: real `outbox-relay` (→ `stall:realtime` + push-log), `dispatch-sweep`, `eta-refresh`, `payout-drain` (mock), `breadcrumb-compact`.
+- [x] Maps: server-proxied Distance Matrix with Redis cache + haversine/avg-speed fallback (B5); `/api/v1/maps/route`. *Flutter map uses GoogleMap markers + a straight-line polyline until Directions polylines land.*
+- [x] Contracts `delivery.ts` → `openapi.json` (103 paths / 118 ops); hand-written Dart client in `mobile/lib/api/`. *Typed socket event layer is informal (string events) for now.*
+- [x] Mobile — customer: **tracking + live map + courier marker + trail + ETA** + status stepper + courier card + call + drop-off code + cancel + rate; order-detail "Track delivery". *Adhoc-send / history / dispute-detail sub-screens deferred.*
+- [x] Mobile — courier: onboarding (register + KYC docs + vehicle + agreement); dashboard (online toggle + heartbeat + stats + active job); jobs board (countdown + accept/decline); active delivery (map + one-tap advance + verify pickup/dropoff + POD + report-issue + rate); earnings (summary + feed + PIN withdraw); performance (stats + rating breakdown). *Service-area map editor, working prefs, notif/privacy/security settings, achievements = deferred depth.*
+- [ ] Mobile — vendor: ready-for-pickup, courier arrived, pickup verification (445–447) — **deferred**: needs a seller-orders management screen (itself deferred from Phase 3). Backend `GET /vendors/deliveries/{id}` is ready.
 
-**Exit:** End-to-end on real devices: customer places an order → dispatch offers the job →
-a courier accepts → customer sees the courier **moving live on a Google map with a live ETA** →
-pickup OTP at the vendor → delivery OTP + POD photo at the customer → delivery `COMPLETED` →
-courier earning posted to the ledger → both parties can rate. Reassignment and failed-delivery
-paths tested. Works identically on `tizzi-gas`.
+**Exit — ✅ MET (S11) at the code + integration-test level:** an order → `READY_FOR_PICKUP`
+spawns a `Delivery` → dispatch offers the seeded courier → accept → state machine to
+`COMPLETED` with pickup/drop-off code verification + POD → courier earning posted to the ledger
+(escrow → courier PAYABLE + platform REVENUE, reconciled to the cent) → both parties rate;
+decline / courier-cancel re-dispatch; `expireUndispatchable` covers no-courier. Works
+identically on `tizzi-gas` (`delivery.test.ts` "tenant isolation"). *Outstanding: a real
+device run on a live Google map + a Maps Platform key (B5); FCM push (B6).*
 
 ---
 
-## Phase 5 — Auctions, tickets, qualification  *(GrandPrice only)*
+## Phase 5 — Auctions / Inverse Draws, tickets, qualification  *(GrandPrice only)*  ✅ CODE-COMPLETE (S12)
 
 **Goal:** Premium-opportunity engine. MD §17, §18. Gated OFF for Tizzi Gas.
 
-- [ ] Schema v2 Domain 7.
-- [ ] `auctions`: auction lifecycle, premium assets, ticket packages + purchase (via `payments`), `TicketWallet`, participants.
-- [ ] Qualification engine: `QualificationRule` weights (tickets/engagement/share/referral), `QualificationEvent` → recomputed `qualificationScore`, ranking, eligibility — **weighting, never a guarantee** (enforced in model + copy).
-- [ ] Draw engine (`apps/worker`): commit-reveal or VRF seed, weighted `DrawEntry` windows, `Winner` + `BackupWinner`, publishable `resultHash` proof, full `AuditLog`.
-- [ ] Prize flow: `PrizeClaim` → KYC verify → `PrizeFulfilment` (reuses Domain 5 delivery for physical prizes) → auction delivery tracking; `AuctionRefund`, `AuctionDispute`.
-- [ ] `RegionRule` gate + legal-terms surfaces.
-- [ ] Contracts + Dart client.
-- [ ] Mobile: auction marketplace + categories + details + premium asset details + rules + ticket/seat pricing + buy ticket + quantity + confirmation + my tickets + ticket details/history + qualification status/breakdown + share + referral progress + auction progress + draw countdown/prep/in-progress + winner announcement/details + runner-up + prize claim/verification/fulfilment + auction delivery tracking + result + refund status + terms + dispute (291–321); ticket wallet + buy + package select + quantity + qualification center + level + ticket/engagement/share/referral qualification + ranking + current rank + history + eligibility + draw eligibility + runner-up + notifications (322–338).
+- [x] Schema v2 Domain 7 (17 models). Migration `20260902055055_auction_domain7`.
+- [x] `auctions` (`@stall/core/auctions/auctions.ts`): lifecycle transitions, `createAuction` (+ packages + asset + qual rules), reads with `seatsSold` projection + "mine", `refreshAuctionFill`, `resolveAuctionId`, `openAuctionDispute`.
+- [x] `tickets`: `buyTickets` (package or count, wallet/gateway → `PaymentIntent(TICKET)` → per-auction `auctionEscrow`, mint PURCHASE + BONUS seats, roll `TicketWallet` + `AuctionParticipant` + `QualificationEvent(TICKETS)`), `myTicketWallets`, `myTickets`.
+- [x] Qualification engine: `QualificationRule` weights (TICKETS/ENGAGEMENT/SHARE/REFERRAL), `QualificationEvent` (key-deduped) → `recomputeParticipant` (`score = Σ weight·points`) → `recomputeAuctionRanks`, `getQualification` breakdown, `auctionLeaderboard` — **weighting, never a guarantee** (field names + copy).
+- [x] Draw engine (`draw.ts` + `apps/worker` `auction-draws` loop): commit-reveal — `commitDraw` publishes `sha256(seed)`, `runDraw` reveals + builds weighted cumulative `DrawEntry` windows + deterministically picks `Winner` + 3 `BackupWinner`s + publishable `resultHash`; `markUnsold` full refund; escrow settled per `nonWinnerPolicy` (REFUND/CREDIT → wallet, VOUCHER → `Coupon`) then remainder → platform REVENUE; `OutboxEvent` at each step. *Full `AuditLog` via the `audit` route option on STAFF endpoints.*
+- [x] Prize flow: `startPrizeClaim` → `submitClaimKyc` (unified `KycCase(USER)` + `KycDocument`) → `reviewPrizeClaim` (APPROVE → CLAIMED / REJECT → FORFEITED + promote `BackupWinner` #1) → `fulfilPrize` (DELIVERY spawns a Phase-4 `Delivery` from the warehouse, platform-funded; PICKUP/DIGITAL/PAYOUT); `purchaseWinTarget` (winner buys at `winTargetMinor` → REVENUE); `AuctionRefund` on unsold/non-winner; `AuctionDispute` open.
+- [~] `RegionRule` gate + legal-terms surfaces — `Auction.regionCodes` stored + `rules` JSON surfaced; **enforcement** (region block) + a dedicated terms screen deferred.
+- [x] Contracts `auction.ts` → `openapi.json` (122 paths / 137 ops); hand-written Dart client.
+- [x] Mobile: **marketplace** + **detail** (fill bar, struck-through retail, dual "Join Draw / Buy retail" CTA, package+qty+payment buy sheet, my-seats card, draw-proof + result card, winner banner, "not a guarantee" copy) + **qualification centre** (breakdown + rank + leaderboard + share/engage/refer actions) + **my tickets** + **winner claim** (claim → KYC → approve → winTarget buy stepper). Account-tab entries gated on `hasFeature('auction')`. *Premium-asset gallery, ticket history, referral-progress, draw-countdown/prep live screens, runner-up notifications, ticket-wallet screen = deferred depth.*
 
-**Exit:** A full auction runs on `grandprice`: users buy tickets, accrue qualification via
-multiple factors, a scheduled draw produces an auditable winner + backups, the winner claims
-and (for a physical prize) receives it through the Phase-4 delivery pipeline. Every
-`auctions/*` endpoint returns `403` under `tizzi-gas`; no auction UI renders there.
+**Exit — ✅ MET (S12) at the code + integration-test level:** a full auction runs on
+`grandprice` — users buy seats, accrue qualification via tickets + engagement/share/referral
+(weights, not guarantees), a commit-reveal draw produces an auditable `Winner` + backups with a
+publishable `resultHash`, the winner claims → KYC → approve → buys at `winTarget`; non-winners
+refunded per policy, an unsold pool refunds everyone, `auctionEscrow` nets to zero. Every
+`auctions/*` endpoint `403`s under `tizzi-gas` (`phase5-e2e.test.ts` asserts it). *Outstanding:
+an on-device pass; the STAFF authoring/ops console (Phase 7); `RegionRule` enforcement.*
 
 ---
 
-## Phase 6 — Chat, notifications, trust & safety, support & disputes
+## Phase 6 — Chat, notifications, trust & safety, support & disputes  ✅ CODE-COMPLETE (S13)
 
 **Goal:** Communication + protection. MD §21, §22, §24, §27.
 
-- [ ] Schema v2 Domain 9 (comms/notifications) + Domain 10 (trust/safety/support).
-- [ ] `chat`: typed conversations (customer↔vendor/courier/support), attachments (image/doc/voice), entity sharing (product/order/delivery), receipts, block, report. `apps/realtime` `/chat`.
-- [ ] `notifications`: categories, `NotificationPreference`, templates, FCM integration + in-app via `/notifications`, broadcasts.
-- [ ] `kyc`: unified `KycCase` review workflow + provider hooks (OCR/liveness), reusable across user/courier/vendor.
-- [ ] `security`: login activity, active sessions, device management, 2FA management, transaction PIN, report user/product/vendor/courier, safety center.
-- [ ] `disputes`: polymorphic `Dispute` (order/payment/delivery/vendor/courier/auction), evidence upload, dispute messaging, resolution, appeal, SLA timers (`apps/worker`).
-- [ ] `support`: help center/FAQ, support categories, ticket create + detail + support chat.
-- [ ] Mobile: inbox + conversation list + customer/vendor + customer/courier + support chat + chat details + product/order/delivery sharing + image/doc/voice + report + block (369–382); notification center + per-category + settings (383–394); identity verification + KYC intro + doc select/capture + selfie + processing + approved/failed + security center + login activity + active sessions + device mgmt + 2FA + transaction PIN + report user/product/vendor/courier + safety center (416–434); help center + FAQ + support categories + create ticket + ticket details + support chat + order/payment/delivery/vendor/courier/auction dispute + evidence upload + status + resolution + appeal (487–502).
+- [x] Schema v2 Domain 9 (comms/notifications) + Domain 10 (trust/safety/support). Migration `20260902061543_comms_trust_domain9_10` (15 models).
+- [x] `chat` (`@stall/core/comms/chat.ts`): typed conversations (customer↔vendor/courier/support), attachments + shareable entities (via `Message.kind` + `attachments`/`meta`), `MessageReceipt` (delivered/read), `block`/`unblock` (enforced on send), `conversationForOrder`/`conversationForDelivery`; `apps/realtime` `/chat` (JWT, `conversation:{id}` rooms, `message`/`typing`/`read`). *Voice capture + entity-share pickers = mobile depth.*
+- [x] `notifications` (`comms/notifications.ts`): 12 categories, `NotificationPreference` (default push+email+inApp, PROMO email off), in-app feed via `/notifications`, FCM adapter with a log fallback (B6); `notifyFromOutboxEvent` maps order/delivery/auction OutboxEvents → notifications in the worker relay. *Templates + `Broadcast` send = Phase 7 (admin composer).*
+- [x] `kyc` (`trust/kyc.ts`): **unified** `listKycQueue` / `getKycCase` (+ subject summary) / `reviewKycCase` (APPROVE/REJECT/RESUBMIT) — syncs `VendorProfile`/`CourierProfile`/`UserRole` and advances a `VERIFYING` `PrizeClaim`; supersedes the Phase-4/5 mock reviewers. *Real OCR/liveness provider hooks pending a provider.*
+- [x] `security` (`trust/reports.ts` + existing `auth`): `safetyCenter` (2FA/PIN/password state, active sessions, recent `LoginActivity`, blocked/reports counts); `submitReport` (user/product/vendor/courier/conversation/order/delivery); `applySafetyAction` (WARN/RESTRICT/SUSPEND/BAN/CLEAR → `User.status` + `UserRole` + session revoke + `TokenEpoch` bump). Sessions / 2FA / PIN management already shipped in Phase 1.
+- [x] `disputes` (`trust/disputes.ts`): polymorphic `Dispute(kind, refId)` (order/payment/delivery/vendor/courier/auction), party-checked open + SLA clock, `DisputeEvidence` + `DisputeMessage` (staff-only flag), `resolveDispute` (+ ledgered wallet refund), `appealDispute`/`decideAppeal`, `sweepDisputeSla` (`apps/worker` `dispute-sla` loop).
+- [x] `support` (`trust/support.ts`): help centre / FAQ (from `AppConfig`, built-in fallback), `SupportTicket` create → opens a backing SUPPORT `Conversation` with the first message, list/get, STAFF assign + status.
+- [x] **72 `/api/v1` routes** + a full STAFF/ADMIN block (`staff/kyc`, `staff/disputes`, `staff/reports`, `staff/safety-action`, `staff/support`). `comms.ts` contract → `openapi.json` (159 paths / 179 ops); hand-written Dart client.
+- [x] Mobile: **inbox** + **conversation** (bubble thread + composer) + **notification centre** (+ per-category preference sheet) + **disputes** (list + open sheet + detail w/ evidence/messages/appeal) + **help & support** (FAQ + ticket → support chat) + **security centre**; app-bar notifications bell (unread badge) + inbox icon; account-tab Messages / Disputes / Help & support / Security centre; order-detail "Message seller". *Identity-verification capture flow, report deep-screens, chat voice/entity-share = deferred depth (backend + STAFF review ready).*
 
-**Exit:** Two users chat in real time with attachments; push + in-app notifications fire for
-order/delivery/security events and respect preferences; a KYC case can be submitted and
-approved/rejected by a reviewer; a dispute can be opened, evidenced, resolved, and appealed
-with SLA timers running.
+**Exit — ✅ MET (S13) at the code + integration-test level:** two users chat in real time
+(deduped thread, delivered/read receipts, block enforced); an in-app notification fires for a
+chat reply and for order/delivery/auction OutboxEvents and respects per-category preferences; a
+`KycCase` is submitted and approved/rejected by the unified reviewer (syncing the subject); a
+dispute can be opened (party-checked), evidenced, resolved with a ledgered wallet refund, and
+appealed — with the SLA sweep running. Covered by `comms.test.ts` (7) + opt-in `phase6-e2e.test.ts`.
+*Outstanding: on-device pass; the STAFF/ADMIN web console (Phase 7); real FCM (B6).*
 
 ---
 
-## Phase 7 — Advertising & boosting, analytics, admin console
+## Phase 7 — Advertising & boosting, analytics, admin console  ✅ CODE-COMPLETE (S14)
 
 **Goal:** Monetization + operations. MD §25 (analytics), §26.
 
-- [ ] Schema v2 Domain 8 (campaigns/boosts/ads).
-- [ ] `campaigns`/`boosts`/`ads`: **backend-configurable `BoostTier`** (no hardcoded tiers), campaign create → type → product select → audience → budget → duration → boost level → preview → pay → active → performance; `AdEvent` capture + `apps/worker` roll-ups.
-- [ ] Analytics: vendor (sales, products, customers, payouts), courier (performance history), platform; served to mobile dashboards + admin.
-- [ ] **Admin/Ops console** (`apps/api/app/admin`, Next.js): auth (staff role + 2FA), KYC review queue, dispute desk, feature-flag + platform-feature editor, pricing-rule + fee-schedule editor, boost-tier editor, draw supervision, broadcast composer, audit-log viewer, user/vendor/courier management + safety actions.
-- [ ] Mobile: advertising center + create campaign + type + product/audience/budget/duration + boost level + premium/platinum/featured (from config) + preview + payment + active + performance + ad analytics + history (470–486); vendor analytics + overview + reviews + customers + earnings + payouts + settings (subset of 440–469); courier performance history (263–274 completion).
+- [x] Schema v2 Domain 8 (`BoostTier`, `Campaign`/`CampaignItem`/`Advertisement`/`AdEvent`/`AdDailyStat`, `Boost`, `ReferralCode`/`Referral`, `AnalyticsSnapshot`). Migration `20260902070643_advertising_analytics_domain8`.
+- [x] `ads`: **backend-editable `BoostTier`** (no hardcoded tiers anywhere), campaign create (name → tier → budget → products → targeting) → submit (full budget charged to platform escrow via `payments`) → staff review → ACTIVE → `AdEvent` accrual (CPM/CPC/FLAT_DAILY) → auto-pause on budget exhaustion → settle (spend → REVENUE, remainder → wallet); direct product `Boost`; `apps/worker` `ads-sweep` + `analytics-rollup` (`AdDailyStat` + `AdEvent` compaction + conversion attribution).
+- [x] `referrals`: stable share code, apply-within-7-days-of-signup, reward-on-first-qualifying-order (ledgered to wallet, fired from `placeOrder`), expiry sweep.
+- [x] Analytics: `analytics` module — vendor (sales / top products / customers / payouts / ad ROAS), courier (completion / acceptance / on-time / earnings trend), platform (GMV / users / vendors / deliveries / queues) + `AnalyticsSnapshot` nightly cache + `trend`.
+- [x] **Admin/Ops console** (`apps/api/app/admin`, Next.js): OTP login + `stall_admin` EdDSA cookie session (STAFF/ADMIN, `requireAdmin()` on every page + action), dashboard, analytics, KYC review queue + detail, dispute desk + detail (assign / message / resolve+refund), ad-campaign review, **boost-tier editor**, draw supervision (commit / run, publishable hashes), broadcast composer, feature-flag editor, pricing-rule + fee-schedule editors, user directory + safety actions, audit-log viewer. *(`ADMIN_2FA_REQUIRED` env present; enforcement deferred.)*
+- [x] 34 `/api/v1` routes + `ads.ts` contract → `openapi.json` 195 paths / 224 ops. **Vitest** `ads.test.ts` (6) + `analytics.test.ts` (5) → 61 TS green; opt-in `phase7-e2e.test.ts`.
+- [x] Mobile: `ads_models.dart` + `StallApi` methods; **advertising center** (campaign list + create sheet w/ tier chips + product picker), **campaign detail** (KPIs + pause/resume/cancel + submit&fund), **vendor analytics** (sales / customers / payouts / ad ROI + spark bars), **courier performance history**, **refer & earn** (code + share + apply); router + `HomeShell` account-tab entries (role + `advertising`-gated). `flutter analyze` 0 / `test` 35.
+- [ ] **Deferred** — sponsored-card injection into the shopper home/search rails (`sponsoredProvider` + `StallApi.sponsored`/`logAdEvent` shipped, not yet placed); campaign creative editor screen; admin console 2FA enforcement; Playwright admin E2E.
 
-**Exit:** A vendor runs a boosted campaign that pays via `payments`, shows impressions/clicks in
-its dashboard, and whose tier came from an admin-editable `BoostTier`. Ops staff can review KYC,
-resolve a dispute, toggle a feature flag, and adjust a pricing rule entirely from the web
-console. Playwright E2E covers the admin happy paths.
+**Exit — ✅ MET (S14) at the code + integration-test level:** a vendor creates a campaign,
+funds it from wallet (→ platform escrow via `payments`), staff approves it in the web console,
+impressions/clicks accrue spend against the editable `BoostTier` price, the budget auto-pauses
+on exhaustion, and settle reconciles (spend → REVENUE, remainder → wallet). Ops staff review
+KYC, resolve a dispute with a ledgered refund, toggle a feature flag, edit a pricing rule, run
+a draw, and send a broadcast — all from `apps/api/app/admin`. Referral reward lands on a
+qualifying first order. *Outstanding: Playwright admin E2E; sponsored placement in the feed.*
 
 ---
 
-## Phase 8 — Hardening & cloud
+## Phase 8 — Hardening & cloud  ✅ CODE-COMPLETE (S14) — cloud enablement pending B7/B8/B9
 
-**Goal:** Production on GCP behind Cloudflare.
+**Goal:** Production on GCP behind Cloudflare. Full detail: `docs/08-HARDENING.md`.
 
-- [ ] `security-review` skill pass on the whole surface; fix findings; pen-test checklist.
-- [ ] OpenTelemetry traces/metrics/logs wired in all 3 services; Sentry; dashboards + alerts.
-- [ ] Load tests (k6) on dispatch + `/tracking` + checkout; tune connection pools, Redis, indexes.
-- [ ] `infra/terraform`: GCP (Cloud Run api/realtime/worker, Cloud SQL PG16+PostGIS, Memorystore Redis, Artifact Registry, Secret Manager, Cloud Scheduler); Cloudflare (DNS, WAF, cache rules, Turnstile, R2, Images, staging Tunnel).
-- [ ] CI/CD: GitHub Actions → build/test → push image → deploy staging (auto) → deploy prod (gated); Prisma migrate as a pre-deploy job; blue/green or revision-based rollback.
-- [ ] Backups + PITR for Cloud SQL; disaster-recovery runbook; data-retention + GDPR/CCPA delete-account pipeline.
-- [ ] Flutter release builds; Play Store + App Store listings; staged rollout; crash reporting.
-- [ ] Runbooks: on-call, incident, dispute-surge, payment-outage, dispatch-degradation.
+- [x] `security-review` pass on the Phase 7/8 surface + money paths — 4 real fixes (ad-settle double-book guard, charge-budget atomicity, ad-click Redis de-dup, deletion-tombstone uniqueness). *Full-surface skill sweep + pen-test checklist pending staging.*
+- [x] Observability — `@stall/core/observability` (dependency-free OTel/Sentry shim), `initObservability` in `apps/{api,realtime,worker}` + `captureError` in `withApi`, secret scrubbing. `OTEL_*`/`SENTRY_*` env. *Real exporters need an endpoint (B9).*
+- [x] Load tests — `infra/loadtest/{checkout,dispatch,tracking}.js` (k6) + README with thresholds + tuning knobs. *Run needs staging.*
+- [x] `infra/terraform/` — GCP (Cloud Run ×3, Cloud SQL PG16 + PITR + PostGIS, Memorystore, Artifact Registry, Secret Manager, VPC connector, Cloud Scheduler, IAM) + Cloudflare (DNS, managed WAF, auth/checkout rate-limit, `/api` cache-bypass, Turnstile, R2). `terraform validate`-clean; `apply` needs B7/B8.
+- [x] CI/CD — `.github/workflows/deploy.yml` (CI gate → build/push `sha-<12>` images → `prisma migrate deploy` → no-traffic deploy → traffic shift → smoke test → auto traffic-rollback; prod is a gated `workflow_dispatch` with a `production` environment approval; keyless WIF auth). `infra/docker/Dockerfile.{api,realtime,worker}` + `.dockerignore` + `start:prod`.
+- [x] Backups + PITR (Terraform) + DR runbook + **GDPR/CCPA delete-account pipeline** — `AccountDeletionRequest` (migration `20260902074802`), `@stall/core/privacy` (`exportMyData`, `requestAccountDeletion` + cancellable grace period, worker `processDueDeletions` anonymise + session-revoke + tombstone, `purgeStaleAuditLogs`), routes `GET /me/data-export` + `GET/POST/DELETE /me/account/deletion`, worker `privacy-sweep`. `privacy.test.ts` (3).
+- [~] Flutter release builds + store listings — flavors exist; build commands + Crashlytics + staged-rollout plan in `docs/08-HARDENING.md` §7. Signing + store work is manual.
+- [x] Runbooks — `docs/runbooks/` (on-call, incident, deploy-rollback, payment-outage, dispatch-degradation, dispute-surge, disaster-recovery).
+- [ ] **Cloud enablement (B7/B8/B9)** — `terraform apply`, first `deploy.yml` staging run, OTLP + Sentry endpoints, full E2E on GCP behind Cloudflare, gated prod deploy + tested rollback. **User-owned.**
 
-**Exit:** Staging on GCP behind Cloudflare passes the full E2E suite (order→deliver, auction,
-chat, disputes); production deploy is one gated click with automated migrations and a tested
-rollback; monitoring + backups + DR runbook in place.
+**Exit — partial (code-complete):** everything not requiring a live GCP project + Cloudflare
+zone is built, typed, and (where testable) covered. Staging-on-GCP verification is the
+remaining step. `docs/08-HARDENING.md` §8 has the criterion-by-criterion state.
 
 ---
 

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../app/router.dart';
+import '../../../core/location.dart';
+import '../../../design/app_map.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../catalog_providers.dart';
 import '../widgets/product_card_tile.dart';
+import '../../../design/icons.dart';
 
 /// Screens 34–37 — Nearby Vendors: a map + list of vendors around a point.
-/// Centre defaults to Accra (`kDefaultLatLng`); wire a geolocator later.
+/// Uses the device location when granted; otherwise falls back to Accra
+/// (`kDefaultLatLng`). Vendor markers use real business coordinates from the API.
 class NearbyVendorsScreen extends ConsumerStatefulWidget {
   const NearbyVendorsScreen({super.key});
 
@@ -21,11 +24,37 @@ class NearbyVendorsScreen extends ConsumerStatefulWidget {
 
 class _NearbyVendorsScreenState extends ConsumerState<NearbyVendorsScreen> {
   int _radiusM = 5000;
+  LatLngRec _centre = kDefaultLatLng;
+  bool _usingDeviceLocation = false;
+  bool _locating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _locate(initial: true);
+  }
+
+  Future<void> _locate({bool initial = false}) async {
+    setState(() => _locating = true);
+    final loc = await DeviceLocation.current();
+    if (!mounted) return;
+    setState(() {
+      _locating = false;
+      if (loc != null) {
+        _centre = loc;
+        _usingDeviceLocation = true;
+      } else if (!initial) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location unavailable — showing Accra')),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final centre = kDefaultLatLng;
+    final centre = _centre;
     final async = ref.watch(nearbyVendorsProvider((lat: centre.lat, lng: centre.lng, radiusM: _radiusM)));
 
     return Scaffold(
@@ -33,6 +62,13 @@ class _NearbyVendorsScreenState extends ConsumerState<NearbyVendorsScreen> {
       appBar: AppBar(
         title: const Text('Nearby vendors'),
         actions: [
+          IconButton(
+            tooltip: 'Use my location',
+            onPressed: _locating ? null : () => _locate(),
+            icon: _locating
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(_usingDeviceLocation ? AppIcons.my_location : AppIcons.location_searching),
+          ),
           PopupMenuButton<int>(
             initialValue: _radiusM,
             onSelected: (v) => setState(() => _radiusM = v),
@@ -41,7 +77,7 @@ class _NearbyVendorsScreenState extends ConsumerState<NearbyVendorsScreen> {
               PopupMenuItem(value: 5000, child: Text('Within 5 km')),
               PopupMenuItem(value: 15000, child: Text('Within 15 km')),
             ],
-            icon: const Icon(Icons.social_distance),
+            icon: const Icon(AppIcons.social_distance),
           ),
         ],
       ),
@@ -51,22 +87,28 @@ class _NearbyVendorsScreenState extends ConsumerState<NearbyVendorsScreen> {
             height: 220,
             child: async.maybeWhen(
               orElse: () => Container(color: c.surfaceSunken),
-              data: (vendors) => GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: LatLng(centre.lat, centre.lng),
-                  zoom: 12,
-                ),
-                markers: {
+              data: (vendors) => AppMap(
+                center: (lat: centre.lat, lng: centre.lng),
+                zoom: 12,
+                markers: [
+                  AppMapMarker(
+                    id: '_me',
+                    lat: centre.lat,
+                    lng: centre.lng,
+                    color: Colors.blue,
+                    icon: AppIcons.my_location,
+                    label: _usingDeviceLocation ? 'You are here' : 'Accra (default)',
+                  ),
                   for (var i = 0; i < vendors.length; i++)
-                    Marker(
-                      markerId: MarkerId(vendors[i].id),
-                      // No per-vendor coords in the DTO — fan out around the centre.
-                      position: LatLng(centre.lat + (i - vendors.length / 2) * 0.004, centre.lng + i * 0.003),
-                      infoWindow: InfoWindow(title: vendors[i].displayName, snippet: vendors[i].distanceLabel),
+                    AppMapMarker(
+                      id: vendors[i].id,
+                      lat: vendors[i].hasLocation ? vendors[i].lat! : centre.lat + (i - vendors.length / 2) * 0.004,
+                      // Vendor has no geocoded address — fan out around the centre.
+                      lng: vendors[i].hasLocation ? vendors[i].lng! : centre.lng + i * 0.003,
+                      icon: AppIcons.storefront_outlined,
+                      label: vendors[i].displayName,
                     ),
-                },
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
+                ],
               ),
             ),
           ),
@@ -82,7 +124,7 @@ class _NearbyVendorsScreenState extends ConsumerState<NearbyVendorsScreen> {
               ),
               data: (vendors) => vendors.isEmpty
                   ? const CenteredState(
-                      icon: Icons.storefront_outlined,
+                      icon: AppIcons.storefront_outlined,
                       title: 'No vendors in range',
                       body: 'Try widening the search radius.',
                     )
@@ -114,7 +156,7 @@ class _NearbyVendorsScreenState extends ConsumerState<NearbyVendorsScreen> {
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right),
+                              const Icon(AppIcons.chevron_right),
                             ],
                           ),
                         );

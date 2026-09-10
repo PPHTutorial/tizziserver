@@ -6,8 +6,10 @@ import '../../../app/router.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
+import '../../ads/widgets/sponsored_rail.dart';
 import '../catalog_providers.dart';
 import '../widgets/product_card_tile.dart';
+import '../../../design/icons.dart';
 
 const _sorts = <(String, String)>[
   ('relevance', 'Best match'),
@@ -57,11 +59,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           IconButton(
             icon: Badge(
               isLabelVisible: state.hasFilters,
-              child: const Icon(Icons.tune),
+              child: const Icon(AppIcons.tune),
             ),
             onPressed: () => _openFilters(context, state, ctrl),
           ),
-          IconButton(icon: const Icon(Icons.search), onPressed: ctrl.run),
+          IconButton(icon: const Icon(AppIcons.search), onPressed: ctrl.run),
         ],
       ),
       body: Column(
@@ -102,7 +104,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       final recents = ref.watch(recentSearchesProvider);
       if (recents.isEmpty) {
         return const CenteredState(
-          icon: Icons.search,
+          icon: AppIcons.search,
           title: 'Find anything',
           body: 'Search across every product on this marketplace.',
         );
@@ -126,7 +128,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               for (final term in recents)
                 ActionChip(
                   label: Text(term),
-                  avatar: const Icon(Icons.history, size: 16),
+                  avatar: const Icon(AppIcons.history, size: 16),
                   onPressed: () {
                     _controller.text = term;
                     ctrl.setQuery(term);
@@ -140,7 +142,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
     if (state.results.isEmpty) {
       return CenteredState(
-        icon: Icons.search_off,
+        icon: AppIcons.search_off,
         title: 'No matches for “${state.query}”',
         body: 'Check the spelling or try a broader term.',
       );
@@ -153,6 +155,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           child: Text('${state.total} result${state.total == 1 ? '' : 's'}',
               style: context.text.bodyMedium?.copyWith(color: context.colors.textMed)),
         ),
+        const SponsoredRail(slot: 'SEARCH_TOP'),
         Expanded(
           child: ProductGrid(
             items: state.results,

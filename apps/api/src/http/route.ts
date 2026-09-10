@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { prisma, type Role } from "@stall/db";
-import { AppError, isAppError, sha256Hex, rateLimit, platform as corePlatform } from "@stall/core";
+import { AppError, isAppError, sha256Hex, rateLimit, platform as corePlatform, initObservability, captureError } from "@stall/core";
+
+initObservability("stall-api");
 import type { Features } from "@stall/core";
 import { getContext, type RequestContext } from "./context";
 import { ok, fail } from "./envelope";
@@ -150,7 +152,7 @@ export function withApi<B = undefined, Q = undefined, R = unknown>(
       if (e instanceof ZodError) {
         return fail("VALIDATION", "Request validation failed", 400, e.issues.map((i) => ({ path: i.path.join("."), message: i.message })));
       }
-      console.error("[api] unhandled:", e);
+      captureError(e, { route: req.nextUrl.pathname, method: req.method });
       return fail("INTERNAL", "Internal server error", 500);
     }
   };

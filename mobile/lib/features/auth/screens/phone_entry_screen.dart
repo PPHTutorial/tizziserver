@@ -9,6 +9,7 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../auth_util.dart';
 import '../otp_flow.dart';
+import '../../../design/icons.dart';
 
 /// Screen 6 — Phone sign-up / login. Sends an OTP then routes to entry.
 class PhoneEntryScreen extends ConsumerStatefulWidget {
@@ -83,7 +84,7 @@ class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[\d+ ]')),
           ],
-          prefix: const Icon(Icons.smartphone, size: 18),
+          prefix: const Icon(AppIcons.smartphone, size: 18),
         ),
         InlineError(_error),
         const SizedBox(height: AppSpace.s16),

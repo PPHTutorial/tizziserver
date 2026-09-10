@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'context_ext.dart';
 import 'tokens.g.dart';
+import 'icons.dart';
 
 /// Standard auth-flow page chrome: back button, optional title/subtitle, a
 /// scrollable body, and a bottom-pinned action area.
@@ -107,9 +108,10 @@ class PrimaryButton extends StatelessWidget {
 }
 
 class SecondaryButton extends StatelessWidget {
-  const SecondaryButton({super.key, required this.label, required this.onPressed});
+  const SecondaryButton({super.key, required this.label, required this.onPressed, this.icon});
   final String label;
   final VoidCallback? onPressed;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +124,13 @@ class SecondaryButton extends StatelessWidget {
         foregroundColor: c.textHi,
         shape: const StadiumBorder(),
       ),
-      child: Text(label),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: AppSpace.s8)],
+          Text(label),
+        ],
+      ),
     );
   }
 }
@@ -141,6 +149,7 @@ class AppField extends StatelessWidget {
     this.textInputAction,
     this.onSubmitted,
     this.inputFormatters,
+    this.maxLines = 1,
   });
 
   final String label;
@@ -154,6 +163,7 @@ class AppField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
   final List<TextInputFormatter>? inputFormatters;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +182,8 @@ class AppField extends StatelessWidget {
           onChanged: onChanged,
           onSubmitted: onSubmitted,
           inputFormatters: inputFormatters,
+          maxLines: obscureText ? 1 : maxLines,
+          minLines: maxLines > 1 ? 3 : null,
           decoration: InputDecoration(
             hintText: hintText,
             prefixIcon: prefix,
@@ -288,7 +300,7 @@ class InlineError extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline, size: 16, color: c.error),
+          Icon(AppIcons.error_outline, size: 16, color: c.error),
           const SizedBox(width: AppSpace.s6),
           Expanded(
             child: Text(message!,
@@ -318,7 +330,7 @@ class CenteredState extends StatelessWidget {
     Widget? action,
   }) : this(
           key: key,
-          icon: Icons.error_outline,
+          icon: AppIcons.error_outline,
           title: title,
           body: body,
           action: action,

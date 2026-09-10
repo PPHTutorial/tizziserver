@@ -9,6 +9,7 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../../shell/app_bottom_nav.dart';
 import '../catalog_providers.dart';
+import '../../../design/icons.dart';
 
 /// Screens 23–25 — category explorer (server-driven tree).
 class CategoriesScreen extends ConsumerWidget {
@@ -47,14 +48,14 @@ class CategoriesScreen extends ConsumerWidget {
                     ListTile(
                       dense: true,
                       title: Text('All ${root.name}'),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: const Icon(AppIcons.chevron_right),
                       onTap: () => context.push(RoutePaths.category(root.slug)),
                     ),
                     for (final child in root.children)
                       ListTile(
                         dense: true,
                         title: Text(child.name),
-                        trailing: const Icon(Icons.chevron_right),
+                        trailing: const Icon(AppIcons.chevron_right),
                         onTap: () => context.push(RoutePaths.category(child.slug)),
                       ),
                   ],

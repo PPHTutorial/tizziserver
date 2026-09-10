@@ -1,0 +1,158 @@
+name: stall-prod
+
+# Full self-hosted production stack: Postgres+PostGIS, Redis, MinIO (S3-
+# compatible object storage), Meilisearch, the three app services
+# (api/realtime/worker, built from the existing Dockerfiles — the same
+# images the GCP Cloud Run path uses), and Caddy as a reverse proxy with
+# automatic HTTPS. Runs on a single VPS instead of GCP Cloud Run + Cloud SQL
+# + Memorystore; put Cloudflare (proxied DNS + WAF + rate-limiting) in front
+# — see infra/terraform/selfhost/.
+#
+# Usage:
+#   cp .env.example .env.prod   # fill in REAL secrets — never commit .env.prod
+#   docker compose -f infra/docker/docker-compose.prod.yml --env-file ../../.env.prod up -d --build
+#
+# .env.prod supplies everything (JWT keys, SMTP, Nalo SMS, Firebase/FCM,
+# Sentry, OTEL, POSTGRES_PASSWORD, REDIS_PASSWORD, MINIO_ROOT_PASSWORD,
+# MEILI_MASTER_KEY, DOMAIN, ...) except DATABASE_URL/REDIS_URL/S3_ENDPOINT,
+# which are pinned below to the in-network service names — a value for those
+# three in .env.prod would point at localhost and never resolve inside Docker.
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.5
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-stall}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      POSTGRES_DB: ${POSTGRES_DB:-stall}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stall} -d ${POSTGRES_DB:-stall}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env.prod}"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env.prod}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env.prod}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc alias set h http://localhost:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD && mc ready h"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${S3_BUCKET:-stall-media} &&
+      echo 'minio bucket ready'
+      "
+    restart: "no"
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in .env.prod}
+      MEILI_ENV: production
+    volumes:
+      - meilidata:/meili_data
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    restart: unless-stopped
+    env_file: [../../.env.prod]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stall}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stall}?schema=public
+      DATABASE_POOLING_URL: postgresql://${POSTGRES_USER:-stall}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stall}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      S3_ENDPOINT: http://minio:9000
+      STORAGE_PROVIDER: s3
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    expose: ["3000"]
+
+  realtime:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.realtime
+    restart: unless-stopped
+    env_file: [../../.env.prod]
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    depends_on:
+      redis: { condition: service_healthy }
+    expose: ["3001"]
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.worker
+    restart: unless-stopped
+    env_file: [../../.env.prod]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stall}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stall}?schema=public
+      DATABASE_POOLING_URL: postgresql://${POSTGRES_USER:-stall}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stall}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      S3_ENDPOINT: http://minio:9000
+      STORAGE_PROVIDER: s3
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.prod, e.g. stall.example}
+    depends_on:
+      - api
+      - realtime
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  meilidata:
+  caddydata:
+  caddyconfig:

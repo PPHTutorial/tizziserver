@@ -9,6 +9,7 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../catalog_providers.dart';
 import '../widgets/product_card_tile.dart';
+import '../../../design/icons.dart';
 
 /// Screens 32–33, 39–40 — all running flash deals, grouped by promotion.
 class DealsScreen extends ConsumerWidget {
@@ -29,7 +30,7 @@ class DealsScreen extends ConsumerWidget {
           action: PrimaryButton(label: 'Retry', onPressed: () => ref.invalidate(promotionsProvider)),
         ),
         data: (promos) => promos.isEmpty
-            ? const CenteredState(icon: Icons.bolt, title: 'No deals right now', body: 'Check back soon.')
+            ? const CenteredState(icon: AppIcons.bolt, title: 'No deals right now', body: 'Check back soon.')
             : ListView(
                 padding: const EdgeInsets.all(AppSpace.s16),
                 children: [
@@ -53,7 +54,7 @@ class _DealGroup extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(Icons.bolt, color: c.primary, size: 18),
+            Icon(AppIcons.bolt, color: c.primary, size: 18),
             const SizedBox(width: AppSpace.s4),
             Expanded(child: Text(promo.title, style: context.text.titleMedium)),
           ],

@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../api/catalog_models.dart';
 import '../../../app/providers.dart';
 import '../../../app/router.dart';
+import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../../auth/auth_util.dart';
 import '../catalog_providers.dart';
+import '../../../design/icons.dart';
 
 /// §25 (vendor) screens 435–462 subset — the seller hub: onboarding →
 /// KYC-pending → product management. Used both as a pushed screen and a
@@ -19,10 +21,10 @@ class VendorHubScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: context.colors.bg,
-        appBar: AppBar(title: const Text('Sell on Stall')),
-        body: const VendorHubBody(),
-      );
+    backgroundColor: context.colors.bg,
+    appBar: AppBar(title: const Text('Sell on Stall')),
+    body: const VendorHubBody(),
+  );
 }
 
 class VendorHubBody extends ConsumerWidget {
@@ -35,10 +37,17 @@ class VendorHubBody extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => CenteredState.error(
         title: 'Couldn\'t load your seller account',
-        action: PrimaryButton(label: 'Retry', onPressed: () => ref.invalidate(vendorStatusProvider)),
+        action: PrimaryButton(
+          label: 'Retry',
+          onPressed: () => ref.invalidate(vendorStatusProvider),
+        ),
       ),
       data: (status) {
-        if (!status.onboarded) return _OnboardingForm(onDone: () => ref.invalidate(vendorStatusProvider));
+        if (!status.onboarded) {
+          return _OnboardingForm(
+            onDone: () => ref.invalidate(vendorStatusProvider),
+          );
+        }
         if (status.isApproved) return const _SellerDashboard();
         return _KycPending(status: status);
       },
@@ -54,8 +63,10 @@ class _KycPending extends StatelessWidget {
   Widget build(BuildContext context) {
     final rejected = status.kycStatus == 'REJECTED';
     return CenteredState(
-      icon: rejected ? Icons.gpp_bad : Icons.hourglass_top,
-      title: rejected ? 'Your application needs changes' : 'We\'re reviewing your application',
+      icon: rejected ? AppIcons.gpp_bad : AppIcons.hourglass_top,
+      title: rejected
+          ? 'Your application needs changes'
+          : 'We\'re reviewing your application',
       body: rejected
           ? (status.note ?? 'Please review your business details and resubmit.')
           : 'This usually takes under a business day. You\'ll be able to list products once approved.',
@@ -87,7 +98,8 @@ class _OnboardingFormState extends ConsumerState<_OnboardingForm> {
     super.dispose();
   }
 
-  bool get _valid => _display.text.trim().length >= 2 && _legal.text.trim().length >= 2;
+  bool get _valid =>
+      _display.text.trim().length >= 2 && _legal.text.trim().length >= 2;
 
   Future<void> _submit() async {
     if (!_valid) return;
@@ -96,15 +108,17 @@ class _OnboardingFormState extends ConsumerState<_OnboardingForm> {
       _error = null;
     });
     final err = await runCatching(() async {
-      await ref.read(stallApiProvider).vendorOnboard(
-        displayName: _display.text.trim(),
-        business: {
-          'legalName': _legal.text.trim(),
-          if (_reg.text.trim().isNotEmpty) 'regNumber': _reg.text.trim(),
-          if (_city.text.trim().isNotEmpty) 'city': _city.text.trim(),
-          'country': 'GH',
-        },
-      );
+      await ref
+          .read(stallApiProvider)
+          .vendorOnboard(
+            displayName: _display.text.trim(),
+            business: {
+              'legalName': _legal.text.trim(),
+              if (_reg.text.trim().isNotEmpty) 'regNumber': _reg.text.trim(),
+              if (_city.text.trim().isNotEmpty) 'city': _city.text.trim(),
+              'country': 'GH',
+            },
+          );
     });
     if (!mounted) return;
     setState(() {
@@ -121,19 +135,35 @@ class _OnboardingFormState extends ConsumerState<_OnboardingForm> {
       children: [
         Text('Set up your store', style: context.text.titleLarge),
         const SizedBox(height: AppSpace.s6),
-        Text('We\'ll open a KYC review. Approved stores can list products right away.',
-            style: context.text.bodyMedium?.copyWith(color: context.colors.textMed)),
+        Text(
+          'We\'ll open a KYC review. Approved stores can list products right away.',
+          style: context.text.bodyMedium?.copyWith(
+            color: context.colors.textMed,
+          ),
+        ),
         const SizedBox(height: AppSpace.s20),
-        AppField(label: 'Store name', controller: _display, onChanged: (_) => setState(() {})),
+        AppField(
+          label: 'Store name',
+          controller: _display,
+          onChanged: (_) => setState(() {}),
+        ),
         const SizedBox(height: AppSpace.s16),
-        AppField(label: 'Registered business name', controller: _legal, onChanged: (_) => setState(() {})),
+        AppField(
+          label: 'Registered business name',
+          controller: _legal,
+          onChanged: (_) => setState(() {}),
+        ),
         const SizedBox(height: AppSpace.s16),
         AppField(label: 'Business reg. number (optional)', controller: _reg),
         const SizedBox(height: AppSpace.s16),
         AppField(label: 'City (optional)', controller: _city),
         InlineError(_error),
         const SizedBox(height: AppSpace.s24),
-        PrimaryButton(label: 'Submit for review', loading: _busy, onPressed: _valid ? _submit : null),
+        PrimaryButton(
+          label: 'Submit for review',
+          loading: _busy,
+          onPressed: _valid ? _submit : null,
+        ),
       ],
     );
   }
@@ -151,13 +181,18 @@ class _SellerDashboard extends ConsumerWidget {
       onRefresh: () async => ref.invalidate(myProductsProvider(null)),
       child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ListView(children: [
-          const SizedBox(height: 120),
-          CenteredState.error(
-            title: 'Couldn\'t load your products',
-            action: PrimaryButton(label: 'Retry', onPressed: () => ref.invalidate(myProductsProvider(null))),
-          ),
-        ]),
+        error: (e, _) => ListView(
+          children: [
+            const SizedBox(height: 120),
+            CenteredState.error(
+              title: 'Couldn\'t load your products',
+              action: PrimaryButton(
+                label: 'Retry',
+                onPressed: () => ref.invalidate(myProductsProvider(null)),
+              ),
+            ),
+          ],
+        ),
         data: (items) => ListView(
           padding: const EdgeInsets.all(AppSpace.s16),
           children: [
@@ -166,26 +201,41 @@ class _SellerDashboard extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Your products (${items.length})', style: context.text.titleMedium),
+                Text(
+                  'Your products (${items.length})',
+                  style: context.text.titleMedium,
+                ),
                 FilledButton.icon(
                   onPressed: () => context.push(RoutePaths.newProduct),
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: const Icon(AppIcons.add, size: 18),
                   label: const Text('Add'),
                   style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
                 ),
               ],
             ),
             const SizedBox(height: AppSpace.s8),
+            OutlinedButton.icon(
+              onPressed: () => context.push(RoutePaths.sellOrders),
+              icon: const Icon(AppIcons.receipt_long_outlined, size: 18),
+              label: const Text('Incoming orders'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(44),
+              ),
+            ),
+            const SizedBox(height: AppSpace.s8),
             TextButton.icon(
               onPressed: () => context.push('/sell/documents'),
-              icon: const Icon(Icons.description_outlined, size: 18),
+              icon: const Icon(AppIcons.description_outlined, size: 18),
               label: const Text('Verification documents'),
             ),
             const SizedBox(height: AppSpace.s8),
             if (items.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: AppSpace.s40),
-                child: CenteredState(icon: Icons.inventory_2_outlined, title: 'No products yet'),
+                child: CenteredState(
+                  icon: AppIcons.inventory_2_outlined,
+                  title: 'No products yet',
+                ),
               ),
             for (final p in items)
               Card(
@@ -196,8 +246,14 @@ class _SellerDashboard extends ConsumerWidget {
                   side: BorderSide(color: c.border),
                 ),
                 child: ListTile(
-                  title: Text(p.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text('${p.status} · ${formatMoney(p.priceMinor, p.currency)}'),
+                  title: Text(
+                    p.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    '${p.status} · ${formatMoney(p.priceMinor, p.currency)}',
+                  ),
                   trailing: _StatusChip(status: p.status),
                   onTap: () => context.push(RoutePaths.editProduct(p.id)),
                 ),
@@ -216,16 +272,17 @@ class _StatsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final async = ref.watch(vendorStatsProvider);
-    return Container(
+    return AppCard(
       padding: const EdgeInsets.all(AppSpace.s16),
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: c.border),
-      ),
       child: async.when(
-        loading: () => const SizedBox(height: 48, child: Center(child: CircularProgressIndicator())),
-        error: (e, _) => Text('Stats unavailable', style: context.text.bodyMedium?.copyWith(color: c.textMed)),
+        loading: () => const SizedBox(
+          height: 48,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (e, _) => Text(
+          'Stats unavailable',
+          style: context.text.bodyMedium?.copyWith(color: c.textMed),
+        ),
         data: (s) => Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -233,7 +290,10 @@ class _StatsCard extends ConsumerWidget {
             _Stat(label: 'Drafts', value: '${s.draft}'),
             _Stat(label: 'Offers', value: '${s.activeOffers}'),
             _Stat(label: 'Views', value: '${s.productViews}'),
-            _Stat(label: 'Rating', value: s.reviews == 0 ? '—' : s.ratingAvg.toStringAsFixed(1)),
+            _Stat(
+              label: 'Rating',
+              value: s.reviews == 0 ? '—' : s.ratingAvg.toStringAsFixed(1),
+            ),
           ],
         ),
       ),
@@ -251,7 +311,12 @@ class _Stat extends StatelessWidget {
     return Column(
       children: [
         Text(value, style: context.text.titleLarge),
-        Text(label, style: context.text.labelSmall?.copyWith(color: context.colors.textMed)),
+        Text(
+          label,
+          style: context.text.labelSmall?.copyWith(
+            color: context.colors.textMed,
+          ),
+        ),
       ],
     );
   }
@@ -263,16 +328,11 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final (bg, fg) = switch (status) {
-      'PUBLISHED' => (c.successContainer, c.success),
-      'DRAFT' => (c.surfaceSunken, c.textMed),
-      _ => (c.errorContainer, c.error),
+    final tone = switch (status) {
+      'PUBLISHED' => BadgeTone.success,
+      'DRAFT' => BadgeTone.neutral,
+      _ => BadgeTone.danger,
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.s8, vertical: AppSpace.s4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.pill)),
-      child: Text(status, style: context.text.labelSmall?.copyWith(color: fg)),
-    );
+    return StatusBadge(status, tone: tone);
   }
 }

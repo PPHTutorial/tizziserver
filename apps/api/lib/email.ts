@@ -1,11 +1,12 @@
 // Stall — Email Service
 import nodemailer from 'nodemailer'
+import { env } from '@stall/config'
 
-const SMTP_HOST = process.env.SMTP_HOST || 'localhost'
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || '1025', 10)
-const SMTP_USER = process.env.SMTP_USER || ''
-const SMTP_PASS = process.env.SMTP_PASS || ''
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Stall <no-reply@stall.local>'
+const SMTP_HOST = env.SMTP_HOST || 'localhost'
+const SMTP_PORT = env.SMTP_PORT || 1025
+const SMTP_USER = env.SMTP_USER || ''
+const SMTP_PASS = env.SMTP_PASS || ''
+const EMAIL_FROM = env.EMAIL_FROM || 'Stall <no-reply@stall.local>'
 
 // Create transporter. In dev this targets Mailpit (localhost:1025, no auth);
 // in prod set SMTP_HOST/PORT/USER/PASS to the real provider.
@@ -16,7 +17,7 @@ const transporter = nodemailer.createTransport({
   ...(SMTP_USER ? { auth: { user: SMTP_USER, pass: SMTP_PASS } } : {}),
 })
 
-// Verify transporter configuration
+/** Optional boot-time check — `sendEmail` no longer calls this per send. */
 export async function verifyEmailTransporter() {
   try {
     await transporter.verify()
@@ -42,15 +43,6 @@ export async function sendEmail(
   attachments?: Array<{ filename: string; path?: string; content?: string | Buffer }>
 ) {
   try {
-    // Verify transporter before sending
-    const isReady = await verifyEmailTransporter()
-    if (!isReady) {
-      return { 
-        success: false, 
-        error: 'Email service is not configured properly' 
-      }
-    }
-
     const info = await transporter.sendMail({
       from: EMAIL_FROM,
       to,
@@ -64,9 +56,9 @@ export async function sendEmail(
     return { success: true, messageId: info.messageId }
   } catch (error) {
     console.error('❌ Email sending failed:', error)
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
     }
   }
 }
@@ -75,4 +67,3 @@ export async function sendEmail(
 export function generateEmailVerificationCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
-

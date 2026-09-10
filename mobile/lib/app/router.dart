@@ -16,6 +16,11 @@ import '../features/auth/screens/sessions_screen.dart';
 import '../features/auth/screens/social_auth_screen.dart';
 import '../features/auth/screens/welcome_screen.dart';
 import '../features/auth/screens/account_state_screens.dart';
+import '../features/ads/screens/advertising_center_screen.dart';
+import '../features/ads/screens/campaign_detail_screen.dart';
+import '../features/analytics/screens/courier_performance_history_screen.dart';
+import '../features/analytics/screens/vendor_analytics_screen.dart';
+import '../features/referrals/screens/referral_screen.dart';
 import '../features/catalog/screens/business_docs_screen.dart';
 import '../features/catalog/screens/categories_screen.dart';
 import '../features/catalog/screens/category_products_screen.dart';
@@ -26,7 +31,40 @@ import '../features/catalog/screens/product_editor_screen.dart';
 import '../features/catalog/screens/search_screen.dart';
 import '../features/catalog/screens/vendor_hub_screen.dart';
 import '../features/catalog/screens/vendor_screen.dart';
+import '../features/selling/screens/vendor_order_detail_screen.dart';
+import '../features/selling/screens/vendor_orders_screen.dart';
 import '../features/catalog/screens/wishlist_screen.dart';
+import '../features/commerce/screens/address_book_screen.dart';
+import '../features/commerce/screens/cart_screen.dart';
+import '../features/commerce/screens/checkout_screen.dart';
+import '../features/commerce/screens/coupons_screen.dart';
+import '../features/commerce/screens/order_confirmation_screen.dart';
+import '../features/commerce/screens/order_detail_screen.dart';
+import '../features/commerce/screens/orders_screen.dart';
+import '../features/commerce/screens/payment_methods_screen.dart';
+import '../features/commerce/screens/wallet_screen.dart';
+import '../features/courier/screens/active_delivery_screen.dart';
+import '../features/courier/screens/courier_areas_screen.dart';
+import '../features/courier/screens/courier_dashboard_screen.dart';
+import '../features/courier/screens/courier_earnings_screen.dart';
+import '../features/courier/screens/courier_jobs_screen.dart';
+import '../features/courier/screens/courier_onboarding_screen.dart';
+import '../features/courier/screens/courier_performance_screen.dart';
+import '../features/courier/screens/courier_profile_screen.dart';
+import '../features/courier/screens/courier_vehicles_screen.dart';
+import '../features/delivery/screens/delivery_tracking_screen.dart';
+import '../features/auctions/screens/auction_detail_screen.dart';
+import '../features/auctions/screens/auction_list_screen.dart';
+import '../features/auctions/screens/auction_qualification_screen.dart';
+import '../features/auctions/screens/my_tickets_screen.dart';
+import '../features/auctions/screens/winner_claim_screen.dart';
+import '../features/comms/screens/conversation_screen.dart';
+import '../features/comms/screens/inbox_screen.dart';
+import '../features/comms/screens/notifications_screen.dart';
+import '../features/trust/screens/disputes_screen.dart';
+import '../features/trust/screens/my_reports_screen.dart';
+import '../features/trust/screens/security_centre_screen.dart';
+import '../features/trust/screens/support_screen.dart';
 import '../features/onboarding/onboarding_controller.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/onboarding/splash_screen.dart';
@@ -61,10 +99,60 @@ class RoutePaths {
   static const sell = '/sell';
   static const newProduct = '/sell/product/new';
   static String editProduct(String id) => '/sell/product/$id';
+  static const sellOrders = '/sell/orders';
+  static String sellOrder(String id) => '/sell/orders/$id';
   static const wishlist = '/me/wishlist';
   static const deals = '/deals';
   static const nearby = '/nearby';
   static const sellDocuments = '/sell/documents';
+
+  // Phase 3 — commerce
+  static const cart = '/cart';
+  static const checkout = '/checkout';
+  static const orders = '/me/orders';
+  static String order(String id) => '/me/orders/$id';
+  static const orderConfirmation = '/checkout/done';
+  static const wallet = '/me/wallet';
+  static const addresses = '/me/addresses';
+  static const coupons = '/me/coupons';
+  static const paymentMethods = '/me/payment-methods';
+
+  // Phase 4 — delivery + courier
+  static String delivery(String id) => '/me/deliveries/$id';
+  static const courierHub = '/courier';
+  static const courierOnboarding = '/courier/onboarding';
+  static const courierJobs = '/courier/jobs';
+  static const courierEarnings = '/courier/earnings';
+  static const courierPerformance = '/courier/performance';
+  static const courierVehicles = '/courier/vehicles';
+  static const courierAreas = '/courier/areas';
+  static const courierProfile = '/courier/profile';
+  static String courierDelivery(String id) => '/courier/delivery/$id';
+
+  // Phase 5 — Inverse Draws (GrandPrice only)
+  static const auctions = '/auctions';
+  static String auction(String slug) => '/auctions/$slug';
+  static String auctionQualification(String slug) => '/auctions/$slug/qualification';
+  static String auctionWin(String slug) => '/auctions/$slug/win';
+  static const myTickets = '/me/tickets';
+
+  // Phase 6 — chat / notifications / trust & safety / support
+  static const inbox = '/inbox';
+  static String conversation(String id) => '/inbox/$id';
+  static const notifications = '/notifications';
+  static const notificationPrefs = '/notifications/preferences';
+  static const disputes = '/me/disputes';
+  static String dispute(String id) => '/me/disputes/$id';
+  static const support = '/support';
+  static const securityCentre = '/me/security';
+  static const myReports = '/me/reports';
+
+  // Phase 7 — advertising / analytics / referrals
+  static const advertising = '/sell/advertising';
+  static String campaign(String id) => '/sell/advertising/$id';
+  static const vendorAnalytics = '/sell/analytics';
+  static const courierHistory = '/courier/history';
+  static const referrals = '/me/referrals';
 }
 
 /// Routes reachable while signed out.
@@ -157,6 +245,85 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/sell/product/:id',
         builder: (_, s) => ProductEditorScreen(productId: s.pathParameters['id']),
       ),
+      GoRoute(path: RoutePaths.sellOrders, builder: (_, __) => const VendorOrdersScreen()),
+      GoRoute(
+        path: '/sell/orders/:id',
+        builder: (_, s) => VendorOrderDetailScreen(vendorOrderId: s.pathParameters['id']!),
+      ),
+
+      // --- Phase 3: commerce ---
+      GoRoute(path: RoutePaths.cart, builder: (_, __) => const CartScreen()),
+      GoRoute(path: RoutePaths.checkout, builder: (_, __) => const CheckoutScreen()),
+      GoRoute(
+        path: RoutePaths.orderConfirmation,
+        builder: (_, s) => OrderConfirmationScreen(orderId: s.uri.queryParameters['id'] ?? ''),
+      ),
+      GoRoute(path: RoutePaths.orders, builder: (_, __) => const OrdersScreen()),
+      GoRoute(
+        path: '/me/orders/:id',
+        builder: (_, s) => OrderDetailScreen(orderId: s.pathParameters['id']!),
+      ),
+      GoRoute(path: RoutePaths.wallet, builder: (_, __) => const WalletScreen()),
+      GoRoute(path: RoutePaths.addresses, builder: (_, __) => const AddressBookScreen()),
+      GoRoute(path: RoutePaths.coupons, builder: (_, __) => const CouponsScreen()),
+      GoRoute(path: RoutePaths.paymentMethods, builder: (_, __) => const PaymentMethodsScreen()),
+
+      // --- Phase 4: delivery + courier ---
+      GoRoute(
+        path: '/me/deliveries/:id',
+        builder: (_, s) => DeliveryTrackingScreen(deliveryId: s.pathParameters['id']!),
+      ),
+      GoRoute(path: RoutePaths.courierHub, builder: (_, __) => const CourierHubScreen()),
+      GoRoute(path: RoutePaths.courierOnboarding, builder: (_, __) => const CourierOnboardingScreen()),
+      GoRoute(path: RoutePaths.courierJobs, builder: (_, __) => const CourierJobsScreen()),
+      GoRoute(path: RoutePaths.courierEarnings, builder: (_, __) => const CourierEarningsScreen()),
+      GoRoute(path: RoutePaths.courierPerformance, builder: (_, __) => const CourierPerformanceScreen()),
+      GoRoute(path: RoutePaths.courierVehicles, builder: (_, __) => const CourierVehiclesScreen()),
+      GoRoute(path: RoutePaths.courierAreas, builder: (_, __) => const CourierServiceAreasScreen()),
+      GoRoute(path: RoutePaths.courierProfile, builder: (_, __) => const CourierProfileScreen()),
+      GoRoute(
+        path: '/courier/delivery/:id',
+        builder: (_, s) => ActiveDeliveryScreen(deliveryId: s.pathParameters['id']!),
+      ),
+
+      // --- Phase 5: Inverse Draws ---
+      GoRoute(path: RoutePaths.auctions, builder: (_, __) => const AuctionListScreen()),
+      GoRoute(path: RoutePaths.myTickets, builder: (_, __) => const MyTicketsScreen()),
+      GoRoute(
+        path: '/auctions/:slug',
+        builder: (_, s) => AuctionDetailScreen(slug: s.pathParameters['slug']!),
+      ),
+      GoRoute(
+        path: '/auctions/:slug/qualification',
+        builder: (_, s) => AuctionQualificationScreen(slug: s.pathParameters['slug']!),
+      ),
+      GoRoute(
+        path: '/auctions/:slug/win',
+        builder: (_, s) => WinnerClaimScreen(slug: s.pathParameters['slug']!),
+      ),
+
+      // --- Phase 6: chat / notifications / trust & safety / support ---
+      GoRoute(path: RoutePaths.inbox, builder: (_, __) => const InboxScreen()),
+      GoRoute(
+        path: '/inbox/:id',
+        builder: (_, s) => ConversationScreen(conversationId: s.pathParameters['id']!, title: s.extra as String?),
+      ),
+      GoRoute(path: RoutePaths.notifications, builder: (_, __) => const NotificationsScreen()),
+      GoRoute(path: RoutePaths.disputes, builder: (_, __) => const DisputesScreen()),
+      GoRoute(
+        path: '/me/disputes/:id',
+        builder: (_, s) => DisputeDetailScreen(id: s.pathParameters['id']!),
+      ),
+      GoRoute(path: RoutePaths.support, builder: (_, __) => const SupportScreen()),
+      GoRoute(path: RoutePaths.securityCentre, builder: (_, __) => const SecurityCentreScreen()),
+      GoRoute(path: RoutePaths.myReports, builder: (_, __) => const MyReportsScreen()),
+
+      // Phase 7 — advertising / analytics / referrals
+      GoRoute(path: RoutePaths.advertising, builder: (_, __) => const AdvertisingCenterScreen()),
+      GoRoute(path: '/sell/advertising/:id', builder: (_, s) => CampaignDetailScreen(id: s.pathParameters['id']!)),
+      GoRoute(path: RoutePaths.vendorAnalytics, builder: (_, __) => const VendorAnalyticsScreen()),
+      GoRoute(path: RoutePaths.courierHistory, builder: (_, __) => const CourierPerformanceHistoryScreen()),
+      GoRoute(path: RoutePaths.referrals, builder: (_, __) => const ReferralScreen()),
     ],
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);

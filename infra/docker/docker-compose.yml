@@ -1,8 +1,12 @@
 name: stall
 
-# Local cloud stack. `docker compose -f infra/docker/docker-compose.yml up -d`
+# Local dev infra stack. `docker compose -f infra/docker/docker-compose.yml up -d`
 # App services (api / realtime / worker) run on the host via `pnpm dev` against these.
 # Images are pinned (floating :latest tags produced corrupt/mismatched layers on this box).
+#
+# For a full self-hosted PRODUCTION deploy (these same services + api/realtime/worker
+# containers + Caddy, no GCP/AWS) see docker-compose.prod.yml and
+# infra/terraform/selfhost/README.md instead.
 
 services:
   postgres:

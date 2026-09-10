@@ -1,0 +1,11 @@
+project_id            = "stall-staging"
+region                = "europe-west1"
+domain                = "stall.example"
+environment           = "staging"
+image_tag             = "latest"
+
+cloudflare_api_token  = "cf-token-with-zone-dns-waf-r2-edit"
+cloudflare_zone_id    = "your-zone-id"
+cloudflare_account_id = "your-account-id"
+
+github_repository = "PPHTutorial/stall-web"

@@ -8,6 +8,8 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../catalog_providers.dart';
 import '../widgets/product_card_tile.dart';
+import '../../../design/icons.dart';
+import '../../trust/report_sheet.dart';
 
 /// Screens 60–80 (seller page) / §25 — public vendor storefront.
 class VendorScreen extends ConsumerWidget {
@@ -22,7 +24,22 @@ class VendorScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: c.bg,
-      appBar: AppBar(title: Text(vendor.valueOrNull?.displayName ?? 'Vendor')),
+      appBar: AppBar(
+        title: Text(vendor.valueOrNull?.displayName ?? 'Vendor'),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'report') {
+                showReportSheet(context, ref,
+                    targetType: 'VENDOR', targetId: vendorId, targetLabel: 'seller');
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'report', child: Text('Report seller')),
+            ],
+          ),
+        ],
+      ),
       body: vendor.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => CenteredState.error(
@@ -46,7 +63,7 @@ class VendorScreen extends ConsumerWidget {
                             Flexible(child: Text(v.displayName, style: context.text.titleLarge)),
                             if (v.verified) ...[
                               const SizedBox(width: AppSpace.s6),
-                              Icon(Icons.verified, size: 16, color: c.primary),
+                              Icon(AppIcons.verified, size: 16, color: c.primary),
                             ],
                           ]),
                           const SizedBox(height: AppSpace.s2),

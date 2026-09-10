@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { hash as argonHash, verify as argonVerify } from "@node-rs/argon2";
 
 // OWASP-ish argon2id params. `algorithm: 2` == Argon2id (const enum can't be
@@ -26,6 +26,18 @@ export const randomToken = (bytes = 32): string => randomBytes(bytes).toString("
 
 /** SHA-256 hex — for O(1) lookup of high-entropy tokens (refresh tokens). Not for passwords. */
 export const sha256Hex = (input: string): string => createHash("sha256").update(input).digest("hex");
+
+/** HMAC-SHA256 hex — for signing/verifying webhook payloads against a shared secret. */
+export const hmacHex = (secret: string, data: string): string =>
+  createHmac("sha256", secret).update(data).digest("hex");
+
+/** Constant-time hex-string comparison — use for signatures, never `===`. */
+export function timingSafeEqualHex(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "hex");
+  const bufB = Buffer.from(b, "hex");
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 /** Numeric OTP code of the given length, uniformly random, leading zeros preserved. */
 export function numericCode(length: number): string {

@@ -212,6 +212,22 @@ class ReviewDto {
       );
 }
 
+class ProductMediaDto {
+  const ProductMediaDto({required this.kind, required this.fileKey, this.alt});
+
+  final String kind; // IMAGE | VIDEO
+  final String fileKey;
+  final String? alt;
+
+  bool get isVideo => kind == 'VIDEO';
+
+  factory ProductMediaDto.fromJson(Map<String, dynamic> j) => ProductMediaDto(
+        kind: j['kind'] as String? ?? 'IMAGE',
+        fileKey: j['fileKey'] as String? ?? '',
+        alt: j['alt'] as String?,
+      );
+}
+
 class ProductDetail {
   const ProductDetail({
     required this.id,
@@ -224,6 +240,7 @@ class ProductDetail {
     this.ratingCount = 0,
     this.categoryName,
     this.images = const [],
+    this.media = const [],
     this.variants = const [],
     this.fromPriceMinor,
     this.currency = 'GHS',
@@ -243,7 +260,12 @@ class ProductDetail {
   final int ratingCount;
   final String? categoryName;
   final List<String> images;
+  final List<ProductMediaDto> media;
   final List<ProductVariantDto> variants;
+
+  /// VIDEO media entries (fileKeys / URLs), in sort order.
+  List<String> get videos =>
+      media.where((m) => m.isVideo && m.fileKey.isNotEmpty).map((m) => m.fileKey).toList(growable: false);
   final int? fromPriceMinor;
   final String currency;
   final List<OfferView> offers;
@@ -261,8 +283,13 @@ class ProductDetail {
         ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
         ratingCount: _int(j['ratingCount']) ?? 0,
         categoryName: (j['category'] as Map<String, dynamic>?)?['name'] as String?,
+        media: (j['media'] as List<dynamic>? ?? const [])
+            .map((m) => ProductMediaDto.fromJson(m as Map<String, dynamic>))
+            .toList(growable: false),
         images: (j['media'] as List<dynamic>? ?? const [])
-            .map((m) => (m as Map<String, dynamic>)['fileKey'] as String)
+            .map((m) => m as Map<String, dynamic>)
+            .where((m) => (m['kind'] as String? ?? 'IMAGE') == 'IMAGE')
+            .map((m) => m['fileKey'] as String)
             .toList(growable: false),
         variants: (j['variants'] as List<dynamic>? ?? const [])
             .map((v) => ProductVariantDto.fromJson(v as Map<String, dynamic>))
@@ -327,6 +354,8 @@ class NearbyVendorDto {
     this.ratingAvg = 0,
     this.ratingCount = 0,
     required this.distanceM,
+    this.lat,
+    this.lng,
   });
 
   final String id;
@@ -335,6 +364,12 @@ class NearbyVendorDto {
   final double ratingAvg;
   final int ratingCount;
   final int distanceM;
+
+  /// Business location (WGS84). Null when the vendor's address isn't geocoded.
+  final double? lat;
+  final double? lng;
+
+  bool get hasLocation => lat != null && lng != null;
 
   String get distanceLabel =>
       distanceM < 1000 ? '$distanceM m' : '${(distanceM / 1000).toStringAsFixed(1)} km';
@@ -346,6 +381,8 @@ class NearbyVendorDto {
         ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
         ratingCount: _int(j['ratingCount']) ?? 0,
         distanceM: _int(j['distanceM']) ?? 0,
+        lat: (j['lat'] as num?)?.toDouble(),
+        lng: (j['lng'] as num?)?.toDouble(),
       );
 }
 

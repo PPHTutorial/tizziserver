@@ -41,6 +41,19 @@ export async function POST(request: NextRequest) {
         const code = String(data.otp ?? data.code ?? "");
         await coreAuth.verifyOtp({ target: phone, channel: "SMS", purpose: "LOGIN", code });
         const user = await coreAuth.findOrCreateUserByPhone(phone);
+
+        // Same 2FA gate as /api/v1/auth/verify — a legacy client can't silently
+        // downgrade a TOTP-protected account to single-factor login.
+        if (await coreAuth.hasTotp(user.id)) {
+          const totpCode = String(data.totpCode ?? data.totp ?? data.mfaCode ?? "");
+          if (!totpCode || !(await coreAuth.verifyTotp(user.id, totpCode))) {
+            return NextResponse.json(
+              { success: false, ok: false, error: { code: "MFA_REQUIRED", message: "A valid 2FA code is required for this account" } },
+              { status: 401 },
+            );
+          }
+        }
+
         await coreAuth.markPhoneVerified(user.id);
         const pair = await coreAuth.issueTokenPair({ userId: user.id, platform, userAgent: ua, ip });
         const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });

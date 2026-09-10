@@ -8,6 +8,7 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../catalog_providers.dart';
 import '../widgets/product_card_tile.dart';
+import '../../../design/icons.dart';
 
 const _sorts = <(String, String)>[
   ('relevance', 'Recommended'),
@@ -70,7 +71,7 @@ class _CategoryProductsScreenState extends ConsumerState<CategoryProductsScreen>
                 ),
               ),
               data: (page) => page.items.isEmpty
-                  ? const CenteredState(icon: Icons.inventory_2_outlined, title: 'Nothing here yet')
+                  ? const CenteredState(icon: AppIcons.inventory_2_outlined, title: 'Nothing here yet')
                   : ProductGrid(
                       items: page.items,
                       onOpen: (p) => context.push(RoutePaths.product(p.slug)),

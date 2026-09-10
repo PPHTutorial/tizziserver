@@ -118,6 +118,9 @@ export interface NearbyVendor {
   ratingAvg: number;
   ratingCount: number;
   distanceM: number;
+  /** Business location, WGS84. Present whenever the vendor has a geocoded address. */
+  lat: number | null;
+  lng: number | null;
 }
 
 /** Vendors with a business location within `radiusM` of a point (PostGIS). */
@@ -131,10 +134,14 @@ export async function nearbyVendors(input: {
   const radius = Math.min(Math.max(input.radiusM ?? 5000, 100), 50_000);
   const limit = clampLimit(input.limit, 20, 50);
 
-  const rows = await prisma.$queryRawUnsafe<(Omit<NearbyVendor, "distanceM"> & { distanceM: number })[]>(
+  const rows = await prisma.$queryRawUnsafe<
+    (Omit<NearbyVendor, "distanceM" | "lat" | "lng"> & { distanceM: number; lat: number | null; lng: number | null })[]
+  >(
     `
     SELECT vp.id, vp."displayName", vp.logo, vp."ratingAvg", vp."ratingCount",
-      ST_Distance(b.location, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography) AS "distanceM"
+      ST_Distance(b.location, ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography) AS "distanceM",
+      ST_Y(b.location::geometry) AS lat,
+      ST_X(b.location::geometry) AS lng
     FROM vendor_profiles vp
     JOIN businesses b ON b."vendorId" = vp.id
     WHERE vp.status = 'ACTIVE'
@@ -150,5 +157,10 @@ export async function nearbyVendors(input: {
     radius,
     limit,
   );
-  return rows.map((r) => ({ ...r, distanceM: Math.round(Number(r.distanceM)) }));
+  return rows.map((r) => ({
+    ...r,
+    distanceM: Math.round(Number(r.distanceM)),
+    lat: r.lat == null ? null : Number(r.lat),
+    lng: r.lng == null ? null : Number(r.lng),
+  }));
 }

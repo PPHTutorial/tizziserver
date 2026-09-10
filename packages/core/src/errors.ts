@@ -15,6 +15,8 @@ export type ErrorCode =
   | "REFRESH_REUSE_DETECTED"
   | "SESSION_REVOKED"
   | "ROLE_NOT_ACTIVE"
+  | "INSUFFICIENT_FUNDS"
+  | "PAYMENT_FAILED"
   | "INTERNAL";
 
 const STATUS: Record<ErrorCode, number> = {
@@ -34,6 +36,8 @@ const STATUS: Record<ErrorCode, number> = {
   REFRESH_REUSE_DETECTED: 401,
   SESSION_REVOKED: 401,
   ROLE_NOT_ACTIVE: 403,
+  INSUFFICIENT_FUNDS: 402,
+  PAYMENT_FAILED: 402,
   INTERNAL: 500,
 };
 

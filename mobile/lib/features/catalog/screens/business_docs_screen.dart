@@ -2,13 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
+import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../../auth/auth_util.dart';
 import '../catalog_providers.dart';
+import '../../../design/icons.dart';
 
-const _docTypes = ['CERTIFICATE_OF_INCORPORATION', 'TAX_CERTIFICATE', 'ID_DOCUMENT', 'PROOF_OF_ADDRESS', 'OTHER'];
+const _docTypes = [
+  'CERTIFICATE_OF_INCORPORATION',
+  'TAX_CERTIFICATE',
+  'ID_DOCUMENT',
+  'PROOF_OF_ADDRESS',
+  'OTHER',
+];
+
+BadgeTone _docStatusTone(String status) => switch (status) {
+  'APPROVED' => BadgeTone.success,
+  'REJECTED' => BadgeTone.danger,
+  _ => BadgeTone.neutral,
+};
 
 /// §24 / §25 — KYC evidence documents on the vendor's business.
 class BusinessDocsScreen extends ConsumerWidget {
@@ -24,51 +38,56 @@ class BusinessDocsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Verification documents')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context, ref),
-        icon: const Icon(Icons.upload_file),
+        icon: const Icon(AppIcons.upload_file),
         label: const Text('Add'),
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => CenteredState.error(
           title: 'Couldn\'t load documents',
-          action: PrimaryButton(label: 'Retry', onPressed: () => ref.invalidate(businessDocsProvider)),
+          action: PrimaryButton(
+            label: 'Retry',
+            onPressed: () => ref.invalidate(businessDocsProvider),
+          ),
         ),
         data: (docs) => docs.isEmpty
             ? const CenteredState(
-                icon: Icons.description_outlined,
+                icon: AppIcons.description_outlined,
                 title: 'No documents yet',
                 body: 'Add your business registration and ID to speed up KYC.',
               )
             : ListView.separated(
                 padding: const EdgeInsets.all(AppSpace.s16),
                 itemCount: docs.length,
-                separatorBuilder: (_, __) => const SizedBox(height: AppSpace.s8),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpace.s8),
                 itemBuilder: (context, i) {
                   final d = docs[i];
-                  return Container(
-                    padding: const EdgeInsets.all(AppSpace.s12),
-                    decoration: BoxDecoration(
-                      color: c.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(color: c.border),
-                    ),
+                  return AppCard(
                     child: Row(
                       children: [
-                        Icon(Icons.description_outlined, color: c.textMed),
+                        Icon(AppIcons.description_outlined, color: c.textMed),
                         const SizedBox(width: AppSpace.s12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(d.type.replaceAll('_', ' '), style: context.text.titleSmall),
-                              Text(d.fileKey,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: context.text.bodyMedium?.copyWith(color: c.textMed)),
+                              Text(
+                                d.type.replaceAll('_', ' '),
+                                style: context.text.titleSmall,
+                              ),
+                              Text(
+                                d.fileKey,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.text.bodyMedium?.copyWith(
+                                  color: c.textMed,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        Text(d.status, style: context.text.labelSmall?.copyWith(color: c.textMed)),
+                        StatusBadge(d.status, tone: _docStatusTone(d.status)),
                       ],
                     ),
                   );
@@ -91,24 +110,45 @@ class BusinessDocsScreen extends ConsumerWidget {
             children: [
               DropdownButtonFormField<String>(
                 value: type,
-                decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-                items: [for (final t in _docTypes) DropdownMenuItem(value: t, child: Text(t.replaceAll('_', ' ')))],
+                decoration: const InputDecoration(
+                  labelText: 'Type',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final t in _docTypes)
+                    DropdownMenuItem(
+                      value: t,
+                      child: Text(t.replaceAll('_', ' ')),
+                    ),
+                ],
                 onChanged: (v) => setLocal(() => type = v ?? type),
               ),
               const SizedBox(height: AppSpace.s12),
-              AppField(label: 'File key', controller: fileKey, hintText: 'uploads/cert.pdf'),
+              AppField(
+                label: 'File key',
+                controller: fileKey,
+                hintText: 'uploads/cert.pdf',
+              ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
           ],
         ),
       ),
     );
     if (ok != true || fileKey.text.trim().isEmpty) return;
     final err = await runCatching(
-      () => ref.read(stallApiProvider).addBusinessDocument(type: type, fileKey: fileKey.text.trim()),
+      () => ref
+          .read(stallApiProvider)
+          .addBusinessDocument(type: type, fileKey: fileKey.text.trim()),
     );
     if (!context.mounted) return;
     if (err == null) {

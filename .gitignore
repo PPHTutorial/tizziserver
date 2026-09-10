@@ -29,6 +29,9 @@ next-env.d.ts
 # local dev postgres cluster (scripts/dev-postgres.mjs) + env backups
 .pgdata/
 
+# STORAGE_PROVIDER=mock local object-storage sandbox (packages/core/src/storage)
+.storage-mock/
+
 # Next 16 auto-generated agent rule files
 apps/api/AGENTS.md
 apps/api/CLAUDE.md
@@ -56,3 +59,22 @@ mobile/lib/design/tokens.g.dart
 # figma export: keep the mined tokens + manifest + renders, drop the giant raw dumps
 docs/design/**/file.json
 docs/design/**/nodes/
+
+# Playwright (apps/api/e2e)
+apps/api/test-results/
+apps/api/playwright-report/
+apps/api/blob-report/
+apps/api/playwright/.cache/
+
+# Terraform (infra/terraform, incl. selfhost/) — local provider cache,
+# state, and real vars. terraform.tfvars.example and .terraform.lock.hcl ARE
+# tracked. The ** prefix makes these apply in every subdirectory (each
+# module — root GCP+Cloudflare, selfhost/ — inits its own .terraform/).
+infra/terraform/**/.terraform/
+infra/terraform/**/*.tfstate
+infra/terraform/**/*.tfstate.*
+infra/terraform/**/*.tfvars
+!infra/terraform/**/*.tfvars.example
+infra/terraform/**/crash.log
+infra/terraform/**/override.tf
+infra/terraform/**/override.tf.json

@@ -7,6 +7,7 @@ import '../../../app/router.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
+import '../../../design/icons.dart';
 
 /// Screen 19 — Security alert (e.g. "new sign-in detected"). Reached from a
 /// push notification; lets the user confirm or lock the account down.
@@ -33,7 +34,7 @@ class SecurityAlertScreen extends ConsumerWidget {
                   color: c.errorContainer,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.shield_outlined, color: c.error, size: 30),
+                child: Icon(AppIcons.shield_outlined, color: c.error, size: 30),
               ),
               const SizedBox(height: AppSpace.s16),
               Text('New sign-in to your account', style: context.text.titleLarge),

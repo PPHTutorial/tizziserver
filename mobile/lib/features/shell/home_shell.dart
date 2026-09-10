@@ -6,12 +6,23 @@ import '../../api/models.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 import '../../design/context_ext.dart';
+import '../../design/responsive.dart';
 import '../../design/tokens.g.dart';
 import '../../design/widgets.dart';
 import '../auth/screens/select_role_screen.dart';
+import '../auth/security_actions.dart';
 import '../catalog/screens/catalog_home_body.dart';
 import '../catalog/screens/vendor_hub_screen.dart';
+import '../commerce/commerce_providers.dart';
+import '../comms/comms_providers.dart';
+import '../courier/screens/active_delivery_screen.dart';
+import '../courier/screens/courier_dashboard_screen.dart';
+import '../courier/screens/courier_earnings_screen.dart';
+import '../courier/screens/courier_jobs_screen.dart';
+import '../courier/screens/courier_profile_screen.dart';
+import '../selling/screens/vendor_orders_screen.dart';
 import 'app_bottom_nav.dart';
+import '../../design/icons.dart';
 
 /// Post-auth landing. Phase 1 ships the shell + server-driven nav + the account
 /// tab (security, 2FA, PIN, password, logout). Feature tabs arrive in Phase 2+.
@@ -29,6 +40,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   Widget build(BuildContext context) {
     final async = ref.watch(bootstrapProvider);
     final c = context.colors;
+    ref.watch(commsLiveSyncProvider); // live inbox + notification-bell updates
 
     return async.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -49,27 +61,134 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         final current = nav.isEmpty ? null : nav[index];
         final key = current?.key ?? 'home';
 
+        final body = switch (key) {
+          'profile' when boot.activeRole == 'COURIER' => const CourierProfileBody(),
+          'profile' => _AccountTab(boot: boot),
+          'home' when boot.activeRole == 'CUSTOMER' =>
+            CatalogHomeBody(platformName: boot.platform.name),
+          'home' when boot.activeRole == 'COURIER' => const CourierDashboardBody(),
+          'jobs' => const CourierJobsBody(),
+          'active' => const CourierActiveBody(),
+          'earnings' => const CourierEarningsBody(),
+          'explore' => const CatalogExploreBody(),
+          'orders' when boot.activeRole == 'VENDOR' => const VendorOrdersBody(),
+          'dashboard' || 'products' => const VendorHubBody(),
+          _ => _PlaceholderTab(boot: boot, navKey: key),
+        };
+
+        // §30 — a nav rail replaces the bottom bar on tablet-width viewports.
+        final wide = context.isWide && nav.length >= 2;
+
         return Scaffold(
           backgroundColor: c.bg,
           appBar: AppBar(
             title: Text(current?.label ?? boot.platform.name),
             centerTitle: false,
+            actions: [
+              const _NotificationsAction(),
+              IconButton(
+                icon: const Icon(AppIcons.forum_outlined),
+                tooltip: 'Inbox',
+                onPressed: () => context.push(RoutePaths.inbox),
+              ),
+              if (boot.activeRole == 'CUSTOMER') const _CartAction(),
+            ],
           ),
-          body: switch (key) {
-            'profile' => _AccountTab(boot: boot),
-            'home' when boot.activeRole == 'CUSTOMER' =>
-              CatalogHomeBody(platformName: boot.platform.name),
-            'explore' => const CatalogExploreBody(),
-            'dashboard' || 'products' => const VendorHubBody(),
-            _ => _PlaceholderTab(boot: boot, navKey: key),
-          },
-          bottomNavigationBar: AppBottomNav(
-            items: nav,
-            currentIndex: index,
-            onTap: (i) => setState(() => _index = i),
-          ),
+          body: wide
+              ? Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: index,
+                      onDestinationSelected: (i) => setState(() => _index = i),
+                      labelType: NavigationRailLabelType.all,
+                      backgroundColor: c.surface,
+                      destinations: [
+                        for (final item in nav)
+                          NavigationRailDestination(
+                            icon: Icon(navIconFor(item.icon), size: 20),
+                            label: Text(item.label),
+                          ),
+                      ],
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: body),
+                  ],
+                )
+              : body,
+          bottomNavigationBar: wide
+              ? null
+              : AppBottomNav(
+                  items: nav,
+                  currentIndex: index,
+                  onTap: (i) => setState(() => _index = i),
+                ),
         );
       },
+    );
+  }
+}
+
+class _NotificationsAction extends ConsumerWidget {
+  const _NotificationsAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(unreadNotificationsProvider);
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(AppIcons.notifications_none),
+          tooltip: 'Notifications',
+          onPressed: () => context.push(RoutePaths.notifications),
+        ),
+        if (unread > 0)
+          Positioned(
+            right: 6,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: context.colors.primary,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Text(unread > 9 ? '9+' : '$unread',
+                  style: context.text.labelSmall?.copyWith(color: context.colors.onPrimary)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _CartAction extends ConsumerWidget {
+  const _CartAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(cartCountProvider);
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(AppIcons.shopping_cart_outlined),
+          onPressed: () => context.push(RoutePaths.cart),
+        ),
+        if (count > 0)
+          Positioned(
+            right: 6,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: context.colors.primary,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: Text('$count',
+                  style: context.text.labelSmall?.copyWith(color: context.colors.onPrimary)),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -145,39 +264,120 @@ class _AccountTab extends ConsumerWidget {
         const SizedBox(height: AppSpace.s20),
         if (auth.roles.length > 1)
           _Tile(
-            icon: Icons.swap_horiz,
+            icon: AppIcons.swap_horiz,
             label: 'Switch role',
             onTap: () => showRoleSwitcher(context, ref),
           ),
         _Tile(
-          icon: Icons.storefront_outlined,
+          icon: AppIcons.storefront_outlined,
           label: 'Sell on Stall',
           onTap: () => context.push(RoutePaths.sell),
         ),
+        if (auth.activeRole == 'VENDOR') ...[
+          if (boot.hasFeature('advertising'))
+            _Tile(
+              icon: AppIcons.campaign_outlined,
+              label: 'Advertising',
+              onTap: () => context.push(RoutePaths.advertising),
+            ),
+          _Tile(
+            icon: AppIcons.insights_outlined,
+            label: 'Analytics',
+            onTap: () => context.push(RoutePaths.vendorAnalytics),
+          ),
+        ],
+        if (auth.activeRole == 'COURIER')
+          _Tile(
+            icon: AppIcons.timeline_outlined,
+            label: 'Performance history',
+            onTap: () => context.push(RoutePaths.courierHistory),
+          ),
         _Tile(
-          icon: Icons.favorite_border,
+          icon: AppIcons.card_giftcard_outlined,
+          label: 'Refer & earn',
+          onTap: () => context.push(RoutePaths.referrals),
+        ),
+        _Tile(
+          icon: AppIcons.receipt_long_outlined,
+          label: 'My orders',
+          onTap: () => context.push(RoutePaths.orders),
+        ),
+        _Tile(
+          icon: AppIcons.account_balance_wallet_outlined,
+          label: 'Wallet',
+          onTap: () => context.push(RoutePaths.wallet),
+        ),
+        _Tile(
+          icon: AppIcons.credit_card,
+          label: 'Payment methods',
+          onTap: () => context.push(RoutePaths.paymentMethods),
+        ),
+        _Tile(
+          icon: AppIcons.local_offer_outlined,
+          label: 'Coupons',
+          onTap: () => context.push(RoutePaths.coupons),
+        ),
+        if (boot.hasFeature('auction')) ...[
+          _Tile(
+            icon: AppIcons.emoji_events_outlined,
+            label: 'Inverse Draws',
+            onTap: () => context.push(RoutePaths.auctions),
+          ),
+          _Tile(
+            icon: AppIcons.confirmation_number_outlined,
+            label: 'My tickets',
+            onTap: () => context.push(RoutePaths.myTickets),
+          ),
+        ],
+        _Tile(
+          icon: AppIcons.location_on_outlined,
+          label: 'Addresses',
+          onTap: () => context.push(RoutePaths.addresses),
+        ),
+        _Tile(
+          icon: AppIcons.favorite_border,
           label: 'Wishlist',
           onTap: () => context.push(RoutePaths.wishlist),
         ),
         _Tile(
-          icon: Icons.devices,
+          icon: AppIcons.forum_outlined,
+          label: 'Messages',
+          onTap: () => context.push(RoutePaths.inbox),
+        ),
+        _Tile(
+          icon: AppIcons.gavel_outlined,
+          label: 'Disputes',
+          onTap: () => context.push(RoutePaths.disputes),
+        ),
+        _Tile(
+          icon: AppIcons.support_agent_outlined,
+          label: 'Help & support',
+          onTap: () => context.push(RoutePaths.support),
+        ),
+        _Tile(
+          icon: AppIcons.security,
+          label: 'Security centre',
+          onTap: () => context.push(RoutePaths.securityCentre),
+        ),
+        _Tile(
+          icon: AppIcons.devices,
           label: 'Signed-in devices',
           onTap: () => context.push(RoutePaths.sessions),
         ),
         _Tile(
-          icon: Icons.password,
+          icon: AppIcons.password,
           label: 'Set a password',
           onTap: () => context.push(RoutePaths.createPassword),
         ),
         _Tile(
-          icon: Icons.pin_outlined,
+          icon: AppIcons.pin_outlined,
           label: 'Set transaction PIN',
-          onTap: () => _setPin(context, ref),
+          onTap: () => setTransactionPin(context, ref),
         ),
         _Tile(
-          icon: Icons.shield_outlined,
+          icon: AppIcons.shield_outlined,
           label: 'Enable two-factor',
-          onTap: () => _enroll2fa(context, ref),
+          onTap: () => enrollTwoFactor(context, ref),
         ),
         const SizedBox(height: AppSpace.s20),
         SecondaryButton(
@@ -189,93 +389,6 @@ class _AccountTab extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  Future<void> _setPin(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Set transaction PIN'),
-        content: AppField(
-          label: '4–6 digits',
-          controller: controller,
-          keyboardType: TextInputType.number,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await ref.read(stallApiProvider).setPin(controller.text.trim());
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('PIN set.')));
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Couldn\'t set PIN.')));
-      }
-    }
-  }
-
-  Future<void> _enroll2fa(BuildContext context, WidgetRef ref) async {
-    try {
-      final enroll = await ref.read(stallApiProvider).enroll2fa();
-      if (!context.mounted) return;
-      final codeController = TextEditingController();
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Enable two-factor'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Add this secret to your authenticator app, then enter the code:'),
-              const SizedBox(height: AppSpace.s8),
-              SelectableText(enroll.secret, style: context.text.titleSmall),
-              const SizedBox(height: AppSpace.s12),
-              AppField(
-                label: 'Code',
-                controller: codeController,
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel')),
-            TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Confirm')),
-          ],
-        ),
-      );
-      if (confirmed != true || !context.mounted) return;
-      final recovery = await ref.read(stallApiProvider).confirm2fa(codeController.text.trim());
-      if (!context.mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Two-factor enabled'),
-          content: Text('Save these recovery codes somewhere safe:\n\n${recovery.join('\n')}'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
-          ],
-        ),
-      );
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Couldn\'t start 2FA enrolment.')));
-      }
-    }
   }
 }
 
@@ -293,7 +406,7 @@ class _Tile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: c.textMed),
       title: Text(label, style: context.text.bodyLarge),
-      trailing: Icon(Icons.chevron_right, color: c.textLow),
+      trailing: Icon(AppIcons.chevron_right, color: c.textLow),
       onTap: onTap,
     );
   }

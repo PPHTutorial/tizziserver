@@ -1,0 +1,8 @@
+## Copy to `key.properties` (gitignored) in this same directory and fill in
+## real values before a `--release` build needs to be signed for the store.
+## Generate a keystore: keytool -genkey -v -keystore upload-keystore.jks \
+##   -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+storeFile=upload-keystore.jks
+storePassword=
+keyAlias=upload
+keyPassword=

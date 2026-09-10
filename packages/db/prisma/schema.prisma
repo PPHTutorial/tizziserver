@@ -177,6 +177,7 @@ enum DocStatus {
 enum KycSubject {
   VENDOR
   COURIER
+  USER
 }
 
 // --- Domain 3 (catalog) ---------------------------------------------
@@ -503,6 +504,46 @@ model User {
   wishlist         WishlistItem[]
   recentlyViewed   RecentlyViewed[]
 
+  carts             Cart[]
+  orders            Order[]
+  couponRedemptions CouponRedemption[]
+  wallet            Wallet?
+  paymentIntents    PaymentIntent[]
+  paymentMethods    PaymentMethod[]
+
+  deliveries       Delivery[]
+  deliveryRatings  DeliveryRating[]
+  deliveryDisputes DeliveryDispute[]
+
+  auctionTickets       AuctionTicket[]
+  ticketWallets        TicketWallet[]
+  auctionParticipation AuctionParticipant[]
+  auctionRefunds       AuctionRefund[]
+  winTargetPurchases   WinTargetPurchase[]
+  auctionDisputes      AuctionDispute[]
+
+  conversations       ConversationParticipant[]
+  messages            Message[]
+  messageReceipts     MessageReceipt[]
+  blocksMade          Block[]                  @relation("BlockBy")
+  blocksReceived      Block[]                  @relation("BlockTarget")
+  notifications       Notification[]
+  notificationPrefs   NotificationPreference[]
+  reportsMade         Report[]
+  disputesOpened      Dispute[]                @relation("DisputeOpener")
+  disputeEvidence     DisputeEvidence[]
+  disputeMessages     DisputeMessage[]
+  appeals             Appeal[]
+  supportTickets      SupportTicket[]
+
+  campaigns        Campaign[]
+  boosts           Boost[]
+  adEvents         AdEvent[]
+  referralCode     ReferralCode?
+  referralsMade    Referral[]    @relation("Referrer")
+  referralReceived Referral?     @relation("Referee")
+  deletionRequest  AccountDeletionRequest?
+
   @@map("users")
 }
 
@@ -681,7 +722,8 @@ model Address {
   updatedAt     DateTime                               @updatedAt
   deletedAt     DateTime?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
 
   @@index([userId])
   @@map("addresses")
@@ -717,11 +759,12 @@ model VendorProfile {
   updatedAt   DateTime      @updatedAt
   deletedAt   DateTime?
 
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business  Business?
-  products  Product[]
-  offers    VendorOffer[]
-  inventory Inventory[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business     Business?
+  products     Product[]
+  offers       VendorOffer[]
+  inventory    Inventory[]
+  vendorOrders VendorOrder[]
 
   @@map("vendor_profiles")
 }
@@ -805,6 +848,10 @@ model CourierProfile {
   availability CourierAvailability[]
   shifts       CourierShift[]
   serviceAreas CourierServiceArea[]
+  deliveries   Delivery[]
+  offers       DeliveryOffer[]
+  earnings     CourierEarning[]
+  breadcrumbs  DeliveryLocation[]
 
   @@map("courier_profiles")
 }
@@ -899,22 +946,78 @@ model CourierServiceArea {
 // =====================================================================
 
 /// One review case per (subject, type). A mock reviewer flips `status` in dev.
+/// `level` + `documents` + `liveness` are used by courier onboarding (Phase 4);
+/// the full unified review workflow + provider hooks are Phase 6.
 model KycCase {
   id           String     @id @default(cuid(2))
   subjectType  KycSubject
   subjectId    String
+  level        KycLevel   @default(BASIC)
   status       KycStatus  @default(PENDING)
   platformSlug String?
   fields       Json?
   note         String?
+  providerRef  String?
   reviewedById String?
   submittedAt  DateTime   @default(now())
   reviewedAt   DateTime?
   updatedAt    DateTime   @updatedAt
 
+  documents KycDocument[]
+  liveness  LivenessCheck[]
+
   @@unique([subjectType, subjectId])
   @@index([status])
   @@map("kyc_cases")
+}
+
+enum KycLevel {
+  BASIC
+  FULL
+}
+
+enum KycDocKind {
+  ID_FRONT
+  ID_BACK
+  SELFIE
+  PROOF_ADDRESS
+  BUSINESS_REG
+  DRIVER_LICENSE
+  VEHICLE_REG
+  INSURANCE
+  OTHER
+}
+
+model KycDocument {
+  id        String     @id @default(cuid(2))
+  kycCaseId String
+  type      KycDocKind
+  fileKey   String
+  ocr       Json?
+  status    DocStatus  @default(PENDING)
+  note      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  kycCase KycCase @relation(fields: [kycCaseId], references: [id], onDelete: Cascade)
+
+  @@index([kycCaseId])
+  @@map("kyc_documents")
+}
+
+model LivenessCheck {
+  id        String   @id @default(cuid(2))
+  kycCaseId String
+  provider  String   @default("mock")
+  score     Float    @default(0)
+  passed    Boolean  @default(false)
+  ref       Json?
+  createdAt DateTime @default(now())
+
+  kycCase KycCase @relation(fields: [kycCaseId], references: [id], onDelete: Cascade)
+
+  @@index([kycCaseId])
+  @@map("liveness_checks")
 }
 
 // =====================================================================
@@ -1200,4 +1303,2065 @@ model PromotionItem {
   @@unique([promotionId, productId])
   @@index([productId])
   @@map("promotion_items")
+}
+
+// =====================================================================
+// Domain 4 — Cart, coupons, orders, fulfilment  (Phase 3)
+// =====================================================================
+
+enum CouponType {
+  PERCENT
+  FIXED
+  FREE_DELIVERY
+}
+
+enum CouponStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PLACED
+  CONFIRMED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum VendorOrderStatus {
+  NEW
+  ACCEPTED
+  PREPARING
+  READY_FOR_PICKUP
+  HANDED_OVER
+  COMPLETED
+  CANCELLED
+}
+
+enum FulfilmentMethod {
+  DELIVERY
+  PICKUP
+  VENDOR_LOGISTICS
+}
+
+enum FulfilmentStatus {
+  PENDING
+  READY
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  PROCESSING
+  DONE
+  REJECTED
+}
+
+enum RefundReason {
+  CUSTOMER_CANCEL
+  VENDOR_CANCEL
+  RETURN
+  NOT_DELIVERED
+  OTHER
+}
+
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+/// One active cart per (user, platform).
+model Cart {
+  id           String   @id @default(cuid(2))
+  userId       String
+  platformSlug String
+  currency     String   @default("GHS")
+  couponCode   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@unique([userId, platformSlug])
+  @@map("carts")
+}
+
+model CartItem {
+  id             String   @id @default(cuid(2))
+  cartId         String
+  /// Catalog references are stored by id (no FK) — the cart survives a re-price
+  /// or an offer being pulled; the read path revalidates against live offers.
+  offerId        String
+  productId      String
+  variantId      String?
+  vendorId       String
+  titleSnapshot  String
+  imageKey       String?
+  qty            Int      @default(1)
+  unitPriceMinor Int
+  savedForLater  Boolean  @default(false)
+  addedAt        DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, offerId, variantId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+/// Backend-configured discount code (MD §20).
+model Coupon {
+  id             String       @id @default(cuid(2))
+  code           String       @unique
+  type           CouponType
+  /// PERCENT: basis points (1000 = 10%). FIXED: minor units. FREE_DELIVERY: ignored.
+  value          Int
+  /// { vendorIds?: string[], categorySlugs?: string[], firstOrderOnly?: boolean }
+  scope          Json?
+  minSpendMinor  Int?
+  maxRedemptions Int?
+  perUserLimit   Int?         @default(1)
+  platformSlug   String?
+  startsAt       DateTime?
+  endsAt         DateTime?
+  status         CouponStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  redemptions CouponRedemption[]
+
+  @@index([status])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id          String   @id @default(cuid(2))
+  couponId    String
+  userId      String
+  orderId     String
+  amountMinor Int
+  at          DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, orderId])
+  @@index([couponId, userId])
+  @@map("coupon_redemptions")
+}
+
+/// Customer-facing aggregate order across one or more vendors.
+model Order {
+  id                 String      @id @default(cuid(2))
+  number             String      @unique
+  customerId         String
+  platformSlug       String
+  status             OrderStatus @default(PENDING_PAYMENT)
+  currency           String      @default("GHS")
+  itemsSubtotalMinor Int
+  discountMinor      Int         @default(0)
+  couponCode         String?
+  deliveryFeeMinor   Int         @default(0)
+  serviceFeeMinor    Int         @default(0)
+  taxMinor           Int         @default(0)
+  totalMinor         Int
+  fulfilmentMethod   FulfilmentMethod @default(DELIVERY)
+  addressId          String?
+  addressSnapshot    Json?
+  paymentMethod      String? // "wallet" | "gateway"
+  placedAt           DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  customer     User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  address      Address?      @relation(fields: [addressId], references: [id])
+  vendorOrders VendorOrder[]
+  events       OrderEvent[]
+  refunds      Refund[]
+  invoice      Invoice?
+  intent       PaymentIntent?
+
+  @@index([customerId, createdAt])
+  @@index([platformSlug, status])
+  @@index([status, createdAt])
+  @@map("orders")
+}
+
+model VendorOrder {
+  id             String            @id @default(cuid(2))
+  orderId        String
+  vendorId       String
+  number         String            @unique
+  status         VendorOrderStatus @default(NEW)
+  currency       String            @default("GHS")
+  subtotalMinor  Int
+  discountMinor  Int               @default(0)
+  commissionMinor Int              @default(0)
+  payoutMinor    Int               @default(0)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  vendor     VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items      OrderItem[]
+  fulfilment Fulfilment?
+  returns    Return[]
+
+  @@index([orderId])
+  @@index([vendorId, status])
+  @@map("vendor_orders")
+}
+
+model OrderItem {
+  id             String  @id @default(cuid(2))
+  vendorOrderId  String
+  offerId        String
+  productId      String
+  variantId      String?
+  titleSnapshot  String
+  imageKey       String?
+  qty            Int
+  unitPriceMinor Int
+  totalMinor     Int
+
+  vendorOrder VendorOrder @relation(fields: [vendorOrderId], references: [id], onDelete: Cascade)
+
+  @@index([vendorOrderId])
+  @@map("order_items")
+}
+
+model Fulfilment {
+  id            String           @id @default(cuid(2))
+  vendorOrderId String           @unique
+  method        FulfilmentMethod
+  status        FulfilmentStatus @default(PENDING)
+  deliveryId    String?
+  pickupCode    String?
+  addressSnapshot Json?
+  readyAt       DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  vendorOrder VendorOrder @relation(fields: [vendorOrderId], references: [id], onDelete: Cascade)
+
+  @@map("fulfilments")
+}
+
+/// Append-only order timeline.
+model OrderEvent {
+  id        String    @id @default(cuid(2))
+  orderId   String
+  type      String
+  actorType ActorType @default(SYSTEM)
+  actorId   String?
+  data      Json?
+  at        DateTime  @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, at])
+  @@map("order_events")
+}
+
+model Return {
+  id            String       @id @default(cuid(2))
+  vendorOrderId String
+  items         Json
+  reason        String
+  status        ReturnStatus @default(REQUESTED)
+  resolution    String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  vendorOrder VendorOrder @relation(fields: [vendorOrderId], references: [id], onDelete: Cascade)
+
+  @@index([vendorOrderId])
+  @@map("returns")
+}
+
+model Refund {
+  id            String       @id @default(cuid(2))
+  orderId       String
+  vendorOrderId String?
+  amountMinor   Int
+  reason        RefundReason @default(OTHER)
+  status        RefundStatus @default(REQUESTED)
+  ledgerTxnId   String?
+  note          String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("refunds")
+}
+
+model Invoice {
+  id       String   @id @default(cuid(2))
+  orderId  String   @unique
+  number   String   @unique
+  pdfKey   String?
+  lines    Json
+  issuedAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+}
+
+// =====================================================================
+// Domain 6 — Wallet, payments, settlements (double-entry)  (Phase 3)
+// =====================================================================
+
+enum LedgerOwnerType {
+  USER
+  VENDOR
+  COURIER
+  PLATFORM
+  GATEWAY
+  ESCROW
+}
+
+enum LedgerAccountKind {
+  WALLET
+  PAYABLE
+  RECEIVABLE
+  REVENUE
+  ESCROW
+  CLEARING
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerTxnType {
+  TOPUP
+  ORDER_CAPTURE
+  PAYOUT
+  REFUND
+  FEE
+  TIP
+  ADJUSTMENT
+  HOLD
+  RELEASE
+  WITHDRAWAL
+}
+
+enum PaymentPurpose {
+  ORDER
+  WALLET_TOPUP
+  TICKET
+  CAMPAIGN
+}
+
+enum PaymentIntentStatus {
+  REQUIRES_ACTION
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+/// Chart of accounts. `balanceMinor` is a cached projection of the entries.
+model LedgerAccount {
+  id           String            @id @default(cuid(2))
+  ownerType    LedgerOwnerType
+  ownerId      String? // userId / vendorId / courierId / platformSlug; null for singletons
+  currency     String            @default("GHS")
+  kind         LedgerAccountKind
+  balanceMinor Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  entries LedgerEntry[]
+  wallet  Wallet?
+
+  @@unique([ownerType, ownerId, currency, kind])
+  @@map("ledger_accounts")
+}
+
+/// Groups a balanced set of entries (Σ debits = Σ credits).
+model LedgerTxn {
+  id        String        @id @default(cuid(2))
+  type      LedgerTxnType
+  reference Json?
+  memo      String?
+  at        DateTime      @default(now())
+
+  entries          LedgerEntry[]
+  walletTxns       WalletTransaction[]
+
+  @@index([type, at])
+  @@map("ledger_txns")
+}
+
+model LedgerEntry {
+  id          String          @id @default(cuid(2))
+  txnId       String
+  accountId   String
+  direction   LedgerDirection
+  amountMinor Int
+  at          DateTime        @default(now())
+
+  txn     LedgerTxn     @relation(fields: [txnId], references: [id], onDelete: Cascade)
+  account LedgerAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, at])
+  @@index([txnId])
+  @@map("ledger_entries")
+}
+
+model Wallet {
+  id          String   @id @default(cuid(2))
+  userId      String   @unique
+  currency    String   @default("GHS")
+  accountId   String   @unique
+  pinRequired Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account LedgerAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  txns    WalletTransaction[]
+
+  @@map("wallets")
+}
+
+/// Human-readable wallet feed (MD §19).
+model WalletTransaction {
+  id               String   @id @default(cuid(2))
+  walletId         String
+  ledgerTxnId      String
+  directionLabel   String // "credit" | "debit"
+  amountMinor      Int
+  balanceAfterMinor Int
+  description      String
+  meta             Json?
+  at               DateTime @default(now())
+
+  wallet    Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  ledgerTxn LedgerTxn @relation(fields: [ledgerTxnId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, at])
+  @@map("wallet_transactions")
+}
+
+model PaymentIntent {
+  id             String              @id @default(cuid(2))
+  userId         String
+  purpose        PaymentPurpose
+  amountMinor    Int
+  currency       String              @default("GHS")
+  status         PaymentIntentStatus @default(REQUIRES_ACTION)
+  gateway        String
+  gatewayRef     String?
+  clientSecret   String?
+  idempotencyKey String?             @unique
+  orderId        String?             @unique
+  metadata       Json?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order    Order?    @relation(fields: [orderId], references: [id])
+  payments Payment[]
+
+  @@index([userId, createdAt])
+  @@map("payment_intents")
+}
+
+model Payment {
+  id              String        @id @default(cuid(2))
+  intentId        String
+  status          PaymentStatus @default(PENDING)
+  capturedMinor   Int           @default(0)
+  feeMinor        Int           @default(0)
+  gatewayResponse Json?
+  processedAt     DateTime?
+  createdAt       DateTime      @default(now())
+
+  intent PaymentIntent @relation(fields: [intentId], references: [id], onDelete: Cascade)
+
+  @@index([intentId])
+  @@map("payments")
+}
+
+model PaymentMethod {
+  id        String   @id @default(cuid(2))
+  userId    String
+  gateway   String
+  token     String
+  brand     String?
+  last4     String?
+  expMonth  Int?
+  expYear   Int?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("payment_methods")
+}
+
+model Payout {
+  id          String       @id @default(cuid(2))
+  ownerType   LedgerOwnerType
+  ownerId     String
+  amountMinor Int
+  currency    String       @default("GHS")
+  status      PayoutStatus @default(PENDING)
+  gatewayRef  String?
+  ledgerTxnId String?
+  note        String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([ownerType, ownerId, status])
+  @@map("payouts")
+}
+
+// =====================================================================
+// Domain 5 — Delivery & courier operations  (Phase 4)
+// =====================================================================
+// Independent of Order. A Delivery is spawned by a Fulfilment, an auction
+// PrizeClaim, or an ad-hoc request. Dispatch shortlisting uses Redis GEO;
+// PostGIS geography is kept only for DeliveryZone polygons (point-in-zone).
+// Breadcrumbs / events carry plain lat/lng floats (time-series, id-scoped).
+
+enum DeliveryZoneStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum DeliverySourceType {
+  FULFILMENT
+  AUCTION
+  ADHOC
+}
+
+enum DeliveryStatus {
+  REQUESTED
+  SEARCHING_COURIER
+  COURIER_ASSIGNED
+  COURIER_EN_ROUTE_PICKUP
+  ARRIVED_PICKUP
+  PICKED_UP
+  EN_ROUTE_DROPOFF
+  ARRIVED_DROPOFF
+  DELIVERED
+  COMPLETED
+  FAILED_RECIPIENT_UNAVAILABLE
+  REASSIGNING
+  RESCHEDULED
+  CANCELLED_BY_CUSTOMER
+  CANCELLED_BY_COURIER
+  CANCELLED_BY_SYSTEM
+}
+
+enum DeliveryJobState {
+  OPEN
+  OFFERING
+  ASSIGNED
+  EXPIRED
+  CANCELLED
+}
+
+enum DeliveryOfferResponse {
+  PENDING
+  ACCEPTED
+  DECLINED
+  TIMEOUT
+}
+
+enum PickupVerifyMethod {
+  OTP
+  QR
+  PHOTO
+  VENDOR_CONFIRM
+}
+
+enum DeliveryVerifyMethod {
+  OTP
+  QR
+  SIGNATURE
+  PHOTO
+}
+
+enum DeliveryPartyRole {
+  CUSTOMER
+  COURIER
+}
+
+enum CourierEarningKind {
+  DELIVERY
+  BONUS
+  TIP
+  ADJUSTMENT
+  FEE
+}
+
+enum DeliveryDisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+/// Serviceable area for a platform/region. `area` is the authoritative polygon;
+/// `centerLat/Lng` + `radiusM` are a cheap fallback for clients without map tiles.
+model DeliveryZone {
+  id           String                                   @id @default(cuid(2))
+  platformSlug String?
+  regionCode   String?
+  name         String
+  area         Unsupported("geography(Polygon, 4326)")?
+  centerLat    Float?
+  centerLng    Float?
+  radiusM      Int?
+  baseFeeMinor Int                                      @default(0)
+  perKmMinor   Int                                      @default(0)
+  status       DeliveryZoneStatus                       @default(ACTIVE)
+  createdAt    DateTime                                 @default(now())
+  updatedAt    DateTime                                 @updatedAt
+
+  @@index([platformSlug, status])
+  @@map("delivery_zones")
+}
+
+/// Customer-visible delivery + its lifecycle. Contact fields are stored plain
+/// here; the courier-facing DeliveryJob exposes area labels only pre-acceptance.
+model Delivery {
+  id             String             @id @default(cuid(2))
+  code           String             @unique
+  platformSlug   String
+  sourceType     DeliverySourceType
+  sourceId       String
+  status         DeliveryStatus     @default(REQUESTED)
+  customerId     String?
+  courierId      String?
+  vehicleType    VehicleKind        @default(MOTORBIKE)
+
+  pickupLat      Float
+  pickupLng      Float
+  pickupAddress  Json
+  pickupContact  Json? // { name, phone } — masked in the job feed
+  dropoffLat     Float
+  dropoffLng     Float
+  dropoffAddress Json
+  dropoffContact Json?
+
+  distanceM      Int                @default(0)
+  durationS      Int                @default(0)
+  feeMinor       Int                @default(0)
+  courierPayoutMinor Int            @default(0)
+  tipMinor       Int                @default(0)
+  currency       String             @default("GHS")
+
+  /// Short verification codes (plaintext, like Fulfilment.pickupCode). The
+  /// pickup code is shown to the vendor, the dropoff code to the customer; the
+  /// courier keys them in at each step.
+  pickupCode     String?
+  dropoffCode    String?
+
+  scheduledFor   DateTime?
+  assignedAt     DateTime?
+  pickedUpAt     DateTime?
+  deliveredAt    DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  reassignCount  Int                @default(0)
+  etaAt          DateTime?
+
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  customer     User?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  courier      CourierProfile?       @relation(fields: [courierId], references: [id], onDelete: SetNull)
+  items        DeliveryItem[]
+  job          DeliveryJob?
+  offers       DeliveryOffer[]
+  events       DeliveryEvent[]
+  breadcrumbs  DeliveryLocation[]
+  pickupVerification   PickupVerification?
+  dropoffVerification  DeliveryVerification?
+  proofOfDelivery      ProofOfDelivery?
+  ratings      DeliveryRating[]
+  disputes     DeliveryDispute[]
+  earnings     CourierEarning[]
+
+  @@index([courierId, status])
+  @@index([customerId, createdAt])
+  @@index([platformSlug, status])
+  @@index([sourceType, sourceId])
+  @@map("deliveries")
+}
+
+model DeliveryItem {
+  id          String  @id @default(cuid(2))
+  deliveryId  String
+  description String
+  qty         Int     @default(1)
+  photoKey    String?
+  valueMinor  Int?
+  fragile     Boolean @default(false)
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId])
+  @@map("delivery_items")
+}
+
+/// The courier-marketplace listing. Pre-acceptance shows area labels only — no PII.
+model DeliveryJob {
+  id              String           @id @default(cuid(2))
+  deliveryId      String           @unique
+  state           DeliveryJobState @default(OPEN)
+  payoutMinor     Int
+  currency        String           @default("GHS")
+  pickupAreaLabel String
+  dropoffAreaLabel String
+  distanceM       Int              @default(0)
+  durationS       Int              @default(0)
+  vehicleType     VehicleKind      @default(MOTORBIKE)
+  requirements    Json?
+  offeredCount    Int              @default(0)
+  expiresAt       DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([state, expiresAt])
+  @@map("delivery_jobs")
+}
+
+/// One dispatch attempt against a ranked courier. The engine iterates these.
+model DeliveryOffer {
+  id            String                @id @default(cuid(2))
+  deliveryId    String
+  courierId     String
+  rank          Int                   @default(0)
+  distanceM     Int                   @default(0)
+  payoutMinor   Int                   @default(0)
+  response      DeliveryOfferResponse @default(PENDING)
+  declineReason String?
+  sentAt        DateTime              @default(now())
+  expiresAt     DateTime
+  respondedAt   DateTime?
+
+  delivery Delivery       @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  courier  CourierProfile @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryId, courierId])
+  @@index([courierId, response])
+  @@map("delivery_offers")
+}
+
+/// State-machine log; append-only. Drives the customer timeline + ops feed.
+model DeliveryEvent {
+  id         String    @id @default(cuid(2))
+  deliveryId String
+  type       String
+  actorType  ActorType @default(SYSTEM)
+  actorId    String?
+  lat        Float?
+  lng        Float?
+  data       Json?
+  at         DateTime  @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId, at])
+  @@map("delivery_events")
+}
+
+/// Breadcrumb track (throttled writes) for live map + replay + disputes; append-only.
+model DeliveryLocation {
+  id         String   @id @default(cuid(2))
+  deliveryId String
+  courierId  String
+  lat        Float
+  lng        Float
+  heading    Float?
+  speed      Float?
+  accuracy   Float?
+  at         DateTime @default(now())
+
+  delivery Delivery       @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  courier  CourierProfile @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId, at])
+  @@map("delivery_locations")
+}
+
+model PickupVerification {
+  id           String             @id @default(cuid(2))
+  deliveryId   String             @unique
+  method       PickupVerifyMethod @default(OTP)
+  otpHash      String?
+  packageCount Int?
+  conditionNote String?
+  photoKeys    String[]
+  verifiedAt   DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@map("pickup_verifications")
+}
+
+model DeliveryVerification {
+  id            String               @id @default(cuid(2))
+  deliveryId    String               @unique
+  method        DeliveryVerifyMethod @default(OTP)
+  otpHash       String?
+  signatureKey  String?
+  photoKeys     String[]
+  recipientName String?
+  verifiedAt    DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_verifications")
+}
+
+model ProofOfDelivery {
+  id         String   @id @default(cuid(2))
+  deliveryId String   @unique
+  photoKeys  String[]
+  notes      String?
+  lat        Float?
+  lng        Float?
+  at         DateTime @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@map("proofs_of_delivery")
+}
+
+model DeliveryRating {
+  id         String            @id @default(cuid(2))
+  deliveryId String
+  byUserId   String
+  role       DeliveryPartyRole
+  stars      Int
+  tags       String[]
+  comment    String?
+  createdAt  DateTime          @default(now())
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  byUser   User     @relation(fields: [byUserId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryId, role])
+  @@index([deliveryId])
+  @@map("delivery_ratings")
+}
+
+model DeliveryDispute {
+  id         String                @id @default(cuid(2))
+  deliveryId String
+  openedById String
+  category   String
+  body       String
+  evidence   Json?
+  status     DeliveryDisputeStatus @default(OPEN)
+  resolution String?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  openedBy User     @relation(fields: [openedById], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId])
+  @@index([status])
+  @@map("delivery_disputes")
+}
+
+/// Courier earning line; nets into the ledger via a RELEASE/TIP/ADJUSTMENT txn.
+model CourierEarning {
+  id            String             @id @default(cuid(2))
+  courierId     String
+  deliveryId    String?
+  kind          CourierEarningKind @default(DELIVERY)
+  grossMinor    Int                @default(0)
+  deductionMinor Int               @default(0)
+  netMinor      Int                @default(0)
+  currency      String             @default("GHS")
+  ledgerTxnId   String?
+  memo          String?
+  at            DateTime           @default(now())
+
+  courier  CourierProfile @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  delivery Delivery?      @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
+
+  @@index([courierId, at])
+  @@map("courier_earnings")
+}
+
+// =====================================================================
+// Domain 7 — Inverse Draws, tickets, qualification  (Phase 5)
+// GrandPrice-only: every auctions/* handler is capability-gated `auction`.
+// =====================================================================
+
+enum AuctionType {
+  SEAT_DRAW
+  PREMIUM_ASSET
+}
+
+enum AuctionStatus {
+  DRAFT
+  ANNOUNCED
+  OPEN
+  FILLING
+  CLOSING
+  DRAW_PENDING
+  DRAWING
+  COMPLETED
+  UNSOLD
+  CANCELLED
+}
+
+enum DrawTrigger {
+  SOLD_OUT
+  SCHEDULED
+  EITHER
+}
+
+enum NonWinnerPolicy {
+  REFUND
+  CREDIT
+  VOUCHER
+}
+
+enum TicketSource {
+  PURCHASE
+  BONUS
+  REFERRAL
+  ENGAGEMENT
+}
+
+enum TicketStatus {
+  ACTIVE
+  DRAWN
+  WON
+  REFUNDED
+  VOID
+}
+
+enum QualFactor {
+  TICKETS
+  ENGAGEMENT
+  SHARE
+  REFERRAL
+}
+
+enum DrawMethod {
+  VRF
+  COMMIT_REVEAL
+}
+
+enum WinnerStatus {
+  PENDING_CLAIM
+  CLAIMED
+  FORFEITED
+}
+
+enum PrizeClaimStatus {
+  OPEN
+  VERIFYING
+  APPROVED
+  FULFILLING
+  DELIVERED
+  REJECTED
+}
+
+enum PrizeFulfilMethod {
+  DELIVERY
+  PICKUP
+  DIGITAL
+  PAYOUT
+}
+
+enum AuctionRefundReason {
+  UNSOLD_DRAW
+  NON_WINNER
+  CANCELLED
+  DISPUTE
+}
+
+enum AuctionRefundStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+enum WinTargetStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum AuctionDisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+/// An Inverse Draw: a fixed pool of seats at `ticketPriceMinor`; sell-out (or a
+/// scheduled time with `minSeatsToDraw` met) triggers an auditable `Draw`; the
+/// winner may buy the item at `winTargetMinor` (retail struck-through). Unsold ⇒
+/// every seat refunded to wallet.
+model Auction {
+  id              String        @id @default(cuid(2))
+  slug            String        @unique
+  title           String
+  description     String?
+  type            AuctionType   @default(SEAT_DRAW)
+  status          AuctionStatus @default(DRAFT)
+  platformSlug    String
+  regionCodes     String[]
+  /// optional link to a retail listing so the PDP can show dual CTAs
+  productId       String?
+  offerId         String?
+  retailValueMinor Int
+  ticketPriceMinor Int
+  winTargetMinor   Int
+  currency         String       @default("GHS")
+  seatsTotal       Int
+  seatsSold        Int          @default(0) // projection from AuctionTicket
+  minSeatsToDraw   Int          @default(1)
+  drawTrigger      DrawTrigger  @default(EITHER)
+  nonWinnerPolicy  NonWinnerPolicy @default(REFUND)
+  rules            Json?
+  announcedAt      DateTime?
+  opensAt          DateTime?
+  closesAt         DateTime?
+  drawAt           DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  assets       PremiumAsset[]
+  packages     TicketPackage[]
+  tickets      AuctionTicket[]
+  ticketWallets TicketWallet[]
+  participants AuctionParticipant[]
+  qualRules    QualificationRule[]
+  draw         Draw?
+  refunds      AuctionRefund[]
+  disputes     AuctionDispute[]
+
+  @@index([platformSlug, status])
+  @@index([status, drawAt])
+  @@map("auctions")
+}
+
+model PremiumAsset {
+  id              String  @id @default(cuid(2))
+  auctionId       String?
+  productId       String?
+  title           String
+  media           String[]
+  specs           Json?
+  retailValueMinor Int    @default(0)
+  createdAt       DateTime @default(now())
+
+  auction Auction? @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId])
+  @@map("premium_assets")
+}
+
+model TicketPackage {
+  id           String  @id @default(cuid(2))
+  auctionId    String
+  name         String
+  ticketCount  Int
+  bonusTickets Int     @default(0)
+  priceMinor   Int
+  sortOrder    Int     @default(0)
+  active       Boolean @default(true)
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId])
+  @@map("ticket_packages")
+}
+
+/// One row per seat held.
+model AuctionTicket {
+  id              String       @id @default(cuid(2))
+  auctionId       String
+  userId          String
+  packageId       String?
+  serial          String       @unique
+  seatNo          Int?
+  source          TicketSource @default(PURCHASE)
+  paymentIntentId String?
+  status          TicketStatus @default(ACTIVE)
+  acquiredAt      DateTime     @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId, userId])
+  @@index([auctionId, status])
+  @@map("auction_tickets")
+}
+
+model TicketWallet {
+  id          String   @id @default(cuid(2))
+  userId      String
+  auctionId   String
+  activeCount Int      @default(0) // projection
+  updatedAt   DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, auctionId])
+  @@map("ticket_wallets")
+}
+
+model AuctionParticipant {
+  id               String   @id @default(cuid(2))
+  auctionId        String
+  userId           String
+  ticketCount      Int      @default(0)
+  qualificationScore Float  @default(0)
+  rank             Int?
+  eligible         Boolean  @default(true)
+  joinedAt         DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  auction    Auction             @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  qualEvents QualificationEvent[]
+  drawEntry  DrawEntry?
+  winner     Winner?
+  backup     BackupWinner?
+
+  @@unique([auctionId, userId])
+  @@index([auctionId, qualificationScore])
+  @@map("auction_participants")
+}
+
+/// Backend-configured weighting. Weighting re-ranks the draw — never a guarantee.
+model QualificationRule {
+  id        String     @id @default(cuid(2))
+  auctionId String
+  factor    QualFactor
+  weight    Float      @default(1)
+  params    Json?
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+
+  @@unique([auctionId, factor])
+  @@map("qualification_rules")
+}
+
+/// Append-only; the score is recomputed from these.
+model QualificationEvent {
+  id            String     @id @default(cuid(2))
+  participantId String
+  factor        QualFactor
+  points        Float
+  ref           Json?
+  at            DateTime   @default(now())
+
+  participant AuctionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([participantId, factor])
+  @@map("qualification_events")
+}
+
+/// Auditable RNG. `seedCommitHash` published before close; `seedReveal` + the
+/// weighted `DrawEntry` windows + `resultHash` published after — a verifiable proof.
+model Draw {
+  id               String     @id @default(cuid(2))
+  auctionId        String     @unique
+  method           DrawMethod @default(COMMIT_REVEAL)
+  algorithmVersion String     @default("v1")
+  seedCommitHash   String
+  seedReveal       String?
+  entryCount       Int        @default(0)
+  totalWeight      Float      @default(0)
+  resultHash       String?
+  committedAt      DateTime   @default(now())
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  auction Auction     @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  entries DrawEntry[]
+  winners Winner[]
+  backups BackupWinner[]
+
+  @@map("draws")
+}
+
+model DrawEntry {
+  id            String @id @default(cuid(2))
+  drawId        String
+  participantId String @unique
+  weight        Float
+  rangeStart    Float
+  rangeEnd      Float
+
+  draw        Draw               @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  participant AuctionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([drawId])
+  @@map("draw_entries")
+}
+
+model Winner {
+  id            String       @id @default(cuid(2))
+  drawId        String
+  participantId String       @unique
+  position      String       @default("PRIMARY")
+  assetId       String?
+  status        WinnerStatus @default(PENDING_CLAIM)
+  createdAt     DateTime     @default(now())
+
+  draw        Draw               @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  participant AuctionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  claim       PrizeClaim?
+  winTarget   WinTargetPurchase?
+
+  @@index([drawId])
+  @@map("winners")
+}
+
+model BackupWinner {
+  id            String @id @default(cuid(2))
+  drawId        String
+  participantId String @unique
+  order         Int
+
+  draw        Draw               @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  participant AuctionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([drawId, order])
+  @@map("backup_winners")
+}
+
+model PrizeClaim {
+  id        String           @id @default(cuid(2))
+  winnerId  String           @unique
+  status    PrizeClaimStatus @default(OPEN)
+  kycCaseId String?
+  deliveryId String?
+  note      String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  winner      Winner            @relation(fields: [winnerId], references: [id], onDelete: Cascade)
+  fulfilments PrizeFulfilment[]
+
+  @@map("prize_claims")
+}
+
+model PrizeFulfilment {
+  id          String            @id @default(cuid(2))
+  claimId     String
+  method      PrizeFulfilMethod
+  ref         Json?
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+
+  claim PrizeClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@map("prize_fulfilments")
+}
+
+model AuctionRefund {
+  id          String              @id @default(cuid(2))
+  auctionId   String
+  userId      String
+  ticketIds   String[]
+  amountMinor Int
+  reason      AuctionRefundReason
+  status      AuctionRefundStatus @default(PENDING)
+  ledgerTxnId String?
+  createdAt   DateTime            @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId, userId])
+  @@map("auction_refunds")
+}
+
+/// The winner's discounted buy at `winTargetMinor`.
+model WinTargetPurchase {
+  id              String          @id @default(cuid(2))
+  winnerId        String          @unique
+  userId          String
+  amountMinor     Int
+  currency        String          @default("GHS")
+  paymentIntentId String?
+  status          WinTargetStatus @default(PENDING)
+  orderId         String?
+  deliveryId      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  winner Winner @relation(fields: [winnerId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("win_target_purchases")
+}
+
+model AuctionDispute {
+  id        String               @id @default(cuid(2))
+  auctionId String
+  userId    String
+  body      String
+  evidence  Json?
+  status    AuctionDisputeStatus @default(OPEN)
+  resolution String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId])
+  @@map("auction_disputes")
+}
+
+// =====================================================================
+// Domain 9 — Communication & notifications  (Phase 6)
+// =====================================================================
+
+enum ConversationKind {
+  CUSTOMER_VENDOR
+  CUSTOMER_COURIER
+  SUPPORT
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum MessageKind {
+  TEXT
+  IMAGE
+  DOC
+  VOICE
+  PRODUCT
+  ORDER
+  DELIVERY
+  SYSTEM
+}
+
+enum NotificationCategory {
+  ORDER
+  PAYMENT
+  DELIVERY
+  COURIER
+  AUCTION
+  TICKET
+  COUPON
+  VENDOR
+  PROMO
+  SECURITY
+  CHAT
+  SUPPORT
+}
+
+enum NotificationChannel {
+  PUSH
+  IN_APP
+  EMAIL
+  SMS
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+model Conversation {
+  id            String             @id @default(cuid(2))
+  kind          ConversationKind
+  subjectType   String?
+  subjectId     String?
+  status        ConversationStatus @default(OPEN)
+  lastMessageAt DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+  supportTicket SupportTicket?
+
+  @@index([kind, subjectId])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String    @id @default(cuid(2))
+  conversationId String
+  userId         String
+  role           String // "CUSTOMER" | "VENDOR" | "COURIER" | "SUPPORT"
+  lastReadAt     DateTime?
+  muted          Boolean   @default(false)
+  joinedAt       DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+/// Append-only.
+model Message {
+  id             String      @id @default(cuid(2))
+  conversationId String
+  senderId       String
+  kind           MessageKind @default(TEXT)
+  body           String?
+  attachments    Json?
+  meta           Json?
+  at             DateTime    @default(now())
+
+  conversation Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User             @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  receipts     MessageReceipt[]
+
+  @@index([conversationId, at])
+  @@map("messages")
+}
+
+model MessageReceipt {
+  id          String    @id @default(cuid(2))
+  messageId   String
+  userId      String
+  deliveredAt DateTime?
+  readAt      DateTime?
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_receipts")
+}
+
+model Block {
+  id           String   @id @default(cuid(2))
+  byUserId     String
+  targetUserId String
+  at           DateTime @default(now())
+
+  byUser     User @relation("BlockBy", fields: [byUserId], references: [id], onDelete: Cascade)
+  targetUser User @relation("BlockTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@unique([byUserId, targetUserId])
+  @@map("blocks")
+}
+
+model Notification {
+  id        String               @id @default(cuid(2))
+  userId    String
+  category  NotificationCategory
+  title     String
+  body      String
+  data      Json?
+  channel   NotificationChannel  @default(IN_APP)
+  readAt    DateTime?
+  sentAt    DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, sentAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id       String               @id @default(cuid(2))
+  userId   String
+  category NotificationCategory
+  push     Boolean              @default(true)
+  email    Boolean              @default(true)
+  sms      Boolean              @default(false)
+  inApp    Boolean              @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@map("notification_preferences")
+}
+
+model NotificationTemplate {
+  id        String              @id @default(cuid(2))
+  key       String
+  channel   NotificationChannel
+  locale    String              @default("en")
+  subject   String?
+  body      String
+  variables Json?
+
+  @@unique([key, channel, locale])
+  @@map("notification_templates")
+}
+
+model Broadcast {
+  id           String          @id @default(cuid(2))
+  audience     Json
+  templateKey  String
+  title        String
+  body         String
+  scheduledFor DateTime?
+  status       BroadcastStatus @default(DRAFT)
+  sentCount    Int             @default(0)
+  createdById  String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([status, scheduledFor])
+  @@map("broadcasts")
+}
+
+// =====================================================================
+// Domain 10 — Trust, safety, support & disputes  (Phase 6)
+// =====================================================================
+
+enum ReportTargetType {
+  USER
+  PRODUCT
+  VENDOR
+  COURIER
+  CONVERSATION
+  ORDER
+  DELIVERY
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  ACTIONED
+  DISMISSED
+}
+
+enum DisputeKind {
+  ORDER
+  PAYMENT
+  DELIVERY
+  VENDOR
+  COURIER
+  AUCTION
+}
+
+enum DisputeStatus {
+  OPEN
+  EVIDENCE
+  UNDER_REVIEW
+  RESOLVED
+  APPEALED
+  CLOSED
+}
+
+enum DisputeEvidenceKind {
+  TEXT
+  IMAGE
+  DOC
+}
+
+enum AppealStatus {
+  OPEN
+  UPHELD
+  DENIED
+}
+
+enum SupportPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum SafetyActionType {
+  WARN
+  RESTRICT
+  SUSPEND
+  BAN
+  CLEAR
+}
+
+model Report {
+  id           String           @id @default(cuid(2))
+  reporterId   String
+  targetType   ReportTargetType
+  targetId     String
+  category     String
+  body         String
+  evidence     Json?
+  status       ReportStatus     @default(OPEN)
+  reviewedById String?
+  note         String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+  @@index([status])
+  @@map("reports")
+}
+
+model Dispute {
+  id           String        @id @default(cuid(2))
+  kind         DisputeKind
+  refId        String
+  openedById   String
+  againstId    String?
+  status       DisputeStatus @default(OPEN)
+  category     String
+  body         String
+  resolution   Json?
+  refundMinor  Int?
+  slaDueAt     DateTime?
+  assignedToId String?
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  openedBy User              @relation("DisputeOpener", fields: [openedById], references: [id], onDelete: Cascade)
+  evidence DisputeEvidence[]
+  messages DisputeMessage[]
+  appeal   Appeal?
+
+  @@index([kind, refId])
+  @@index([status, slaDueAt])
+  @@map("disputes")
+}
+
+model DisputeEvidence {
+  id        String              @id @default(cuid(2))
+  disputeId String
+  byUserId  String
+  kind      DisputeEvidenceKind @default(TEXT)
+  fileKey   String?
+  body      String?
+  at        DateTime            @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  byUser  User    @relation(fields: [byUserId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+  @@map("dispute_evidence")
+}
+
+model DisputeMessage {
+  id        String   @id @default(cuid(2))
+  disputeId String
+  senderId  String
+  body      String
+  staffOnly Boolean  @default(false)
+  at        DateTime @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  sender  User    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId, at])
+  @@map("dispute_messages")
+}
+
+model Appeal {
+  id           String       @id @default(cuid(2))
+  disputeId    String       @unique
+  byUserId     String
+  body         String
+  status       AppealStatus @default(OPEN)
+  decidedById  String?
+  decidedAt    DateTime?
+  createdAt    DateTime     @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  byUser  User    @relation(fields: [byUserId], references: [id], onDelete: Cascade)
+
+  @@map("appeals")
+}
+
+model SupportTicket {
+  id             String         @id @default(cuid(2))
+  number         String         @unique
+  userId         String
+  category       String
+  subject        String
+  body           String
+  priority       SupportPriority @default(NORMAL)
+  status         SupportStatus   @default(OPEN)
+  assigneeId     String?
+  conversationId String?         @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation? @relation(fields: [conversationId], references: [id])
+
+  @@index([userId, status])
+  @@map("support_tickets")
+}
+
+model SafetyAction {
+  id         String           @id @default(cuid(2))
+  actorId    String
+  targetType String
+  targetId   String
+  action     SafetyActionType
+  reason     String
+  expiresAt  DateTime?
+  createdAt  DateTime         @default(now())
+
+  @@index([targetType, targetId])
+  @@map("safety_actions")
+}
+
+// =====================================================================
+// Domain 8 — Advertising, boosting, campaigns, referrals, analytics  (Phase 7)
+// =====================================================================
+
+enum CampaignObjective {
+  PRODUCT_SALES
+  STORE_TRAFFIC
+  PRODUCT_LAUNCH
+  AUCTION_PROMO
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING_REVIEW
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum AdBillingModel {
+  CPM
+  CPC
+  FLAT_DAILY
+}
+
+enum AdPlacementSlot {
+  HOME_RAIL
+  SEARCH_TOP
+  CATEGORY_TOP
+  PRODUCT_RELATED
+  CHECKOUT_CROSS_SELL
+}
+
+enum AdCreativeKind {
+  PRODUCT_CARD
+  BANNER
+}
+
+enum BoostKind {
+  SEARCH_RANK
+  CATEGORY_PIN
+  HOME_FEATURE
+}
+
+enum BoostStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  EXPIRED
+  CANCELLED
+}
+
+enum AdEventKind {
+  IMPRESSION
+  CLICK
+  CONVERSION
+}
+
+enum ReferralStatus {
+  PENDING
+  QUALIFIED
+  REWARDED
+  EXPIRED
+}
+
+/// Backend-editable ad/boost tiers — NO hardcoded tiers anywhere in code.
+/// The admin console is the only writer; mobile reads the active set.
+model BoostTier {
+  id            String         @id @default(cuid(2))
+  key           String         @unique
+  name          String
+  description   String?
+  platformSlugs String[]
+  billingModel  AdBillingModel @default(CPM)
+  /// price per 1000 impressions (CPM), per click (CPC), or per day (FLAT_DAILY), in minor units.
+  priceMinor    Int
+  /// search-rank multiplier in basis points (12000 = 1.2×). Applied by the ranker.
+  rankBoostBps  Int            @default(10000)
+  placements    AdPlacementSlot[]
+  badge         String?
+  sortOrder     Int            @default(0)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  campaigns Campaign[]
+  boosts    Boost[]
+
+  @@index([isActive, sortOrder])
+  @@map("boost_tiers")
+}
+
+model Campaign {
+  id               String            @id @default(cuid(2))
+  vendorId         String
+  platformSlug     String
+  name             String
+  objective        CampaignObjective @default(PRODUCT_SALES)
+  status           CampaignStatus    @default(DRAFT)
+  boostTierId      String?
+  budgetMinor      Int
+  dailyCapMinor    Int?
+  spentMinor       Int               @default(0)
+  /// { categoryIds?: string[], regionCodes?: string[], keywords?: string[], minAge?: number }
+  targeting        Json?
+  startsAt         DateTime?
+  endsAt           DateTime?
+  submittedAt      DateTime?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  paymentIntentId  String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  vendor    User            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  boostTier BoostTier?      @relation(fields: [boostTierId], references: [id])
+  items     CampaignItem[]
+  ads       Advertisement[]
+  events    AdEvent[]
+  dailyStats AdDailyStat[]
+
+  @@index([vendorId, status])
+  @@index([platformSlug, status])
+  @@map("campaigns")
+}
+
+model CampaignItem {
+  id         String @id @default(cuid(2))
+  campaignId String
+  productId  String
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, productId])
+  @@map("campaign_items")
+}
+
+model Advertisement {
+  id               String         @id @default(cuid(2))
+  campaignId       String
+  slot             AdPlacementSlot
+  creativeKind     AdCreativeKind @default(PRODUCT_CARD)
+  headline         String?
+  subtext          String?
+  imageKey         String?
+  productId        String?
+  destinationRoute String?
+  weight           Int            @default(100)
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+
+  campaign Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  events   AdEvent[]
+
+  @@index([slot, isActive])
+  @@map("advertisements")
+}
+
+/// Raw ad interaction log — rolled up nightly into AdDailyStat, then compacted.
+model AdEvent {
+  id           String      @id @default(cuid(2))
+  adId         String?
+  campaignId   String
+  kind         AdEventKind
+  userId       String?
+  platformSlug String
+  placement    AdPlacementSlot?
+  costMinor    Int         @default(0)
+  sessionId    String?
+  meta         Json?
+  at           DateTime    @default(now())
+
+  ad       Advertisement? @relation(fields: [adId], references: [id], onDelete: SetNull)
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, kind, at])
+  @@index([adId, at])
+  @@map("ad_events")
+}
+
+model AdDailyStat {
+  id            String   @id @default(cuid(2))
+  campaignId    String
+  day           DateTime @db.Date
+  impressions   Int      @default(0)
+  clicks        Int      @default(0)
+  conversions   Int      @default(0)
+  spendMinor    Int      @default(0)
+  revenueMinor  Int      @default(0)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, day])
+  @@map("ad_daily_stats")
+}
+
+/// A lighter-weight direct product boost (no full campaign creative flow).
+model Boost {
+  id           String      @id @default(cuid(2))
+  vendorId     String
+  productId    String
+  platformSlug String
+  boostTierId  String
+  kind         BoostKind   @default(SEARCH_RANK)
+  status       BoostStatus @default(PENDING)
+  categoryId   String?
+  startsAt     DateTime    @default(now())
+  endsAt       DateTime
+  priceMinor   Int
+  spentMinor   Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  vendor    User      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  boostTier BoostTier @relation(fields: [boostTierId], references: [id])
+
+  @@index([productId, status, endsAt])
+  @@index([vendorId, status])
+  @@map("boosts")
+}
+
+model ReferralCode {
+  id        String   @id @default(cuid(2))
+  userId    String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("referral_codes")
+}
+
+model Referral {
+  id                String         @id @default(cuid(2))
+  referrerId        String
+  refereeId         String?        @unique
+  code              String
+  channel           String?
+  status            ReferralStatus @default(PENDING)
+  rewardMinor       Int            @default(0)
+  qualifyingOrderId String?
+  rewardedAt        DateTime?
+  expiresAt         DateTime?
+  createdAt         DateTime       @default(now())
+
+  referrer User  @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referee  User? @relation("Referee", fields: [refereeId], references: [id], onDelete: SetNull)
+
+  @@index([referrerId, status])
+  @@map("referrals")
+}
+
+enum AccountDeletionStatus {
+  REQUESTED
+  GRACE_PERIOD
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+/// GDPR / CCPA "delete my account" pipeline. A request enters a grace period,
+/// then the worker anonymises PII, revokes access, and tombstones the row.
+model AccountDeletionRequest {
+  id          String                @id @default(cuid(2))
+  userId      String                @unique
+  status      AccountDeletionStatus @default(REQUESTED)
+  reason      String?
+  requestedAt DateTime              @default(now())
+  purgeAfter  DateTime
+  processedAt DateTime?
+  /// what was scrubbed / retained, for the audit trail
+  report      Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, purgeAfter])
+  @@map("account_deletion_requests")
+}
+
+/// Nightly platform-level KPI cache for the admin dashboard + trend charts.
+model AnalyticsSnapshot {
+  id           String   @id @default(cuid(2))
+  platformSlug String
+  day          DateTime @db.Date
+  /// { gmvMinor, orders, newUsers, activeVendors, deliveries, adSpendMinor, ... }
+  metrics      Json
+  createdAt    DateTime @default(now())
+
+  @@unique([platformSlug, day])
+  @@map("analytics_snapshots")
 }

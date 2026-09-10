@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'tokens.g.dart';
 
@@ -8,6 +9,22 @@ import 'tokens.g.dart';
 class AppTheme {
   static ThemeData light() => _base(AppColors.light, Brightness.light);
   static ThemeData dark() => _base(AppColors.dark, Brightness.dark);
+
+  /// Status bar + system navigation bar painted with the scaffold background
+  /// so the OS chrome blends into the page. Applied app-wide via
+  /// `MaterialApp.builder` (see `app.dart`) and to every `AppBar` via
+  /// [_base]'s `appBarTheme`, so it holds on scrolled-under app bars too.
+  static SystemUiOverlayStyle systemOverlay(AppColors c, Brightness brightness) {
+    final iconsDark = brightness == Brightness.light;
+    return SystemUiOverlayStyle(
+      statusBarColor: c.bg,
+      statusBarIconBrightness: iconsDark ? Brightness.dark : Brightness.light, // Android
+      statusBarBrightness: brightness, // iOS
+      systemNavigationBarColor: c.bg,
+      systemNavigationBarDividerColor: c.bg,
+      systemNavigationBarIconBrightness: iconsDark ? Brightness.dark : Brightness.light,
+    );
+  }
 
   static ThemeData _base(AppColors c, Brightness brightness) {
     final scheme = ColorScheme(
@@ -35,6 +52,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: c.bg,
+      appBarTheme: AppBarTheme(systemOverlayStyle: systemOverlay(c, brightness)),
       extensions: [c],
       textTheme: TextTheme(
         displayLarge: role(AppType.display),

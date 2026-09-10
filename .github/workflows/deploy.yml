@@ -1,0 +1,147 @@
+name: Deploy
+
+# Build → test gate → push images → migrate → deploy staging (auto) → deploy prod (gated).
+#
+# Requires these repo/environment secrets:
+#   GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_SERVICE_ACCOUNT   (keyless auth)
+#   GCP_PROJECT_ID, GCP_REGION
+#   STAGING_DATABASE_URL, PROD_DATABASE_URL               (for the migrate job)
+# Production deploy runs only after the `production` environment approval.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: environment
+        type: choice
+        options: [staging, production]
+        default: staging
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: ${{ secrets.GCP_REGION }}
+  REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/stall
+
+jobs:
+  gate:
+    name: test gate
+    uses: ./.github/workflows/ci.yml
+
+  build-images:
+    name: build + push images
+    needs: gate
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Build + push api / realtime / worker
+        run: |
+          for svc in api realtime worker; do
+            docker build -f infra/docker/Dockerfile.$svc -t "$REPO/$svc:${{ steps.meta.outputs.tag }}" .
+            docker push "$REPO/$svc:${{ steps.meta.outputs.tag }}"
+          done
+
+  migrate-staging:
+    name: prisma migrate (staging)
+    needs: build-images
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @stall/db generate
+      - name: migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: pnpm --filter @stall/db migrate:deploy
+
+  deploy-staging:
+    name: deploy staging
+    needs: [build-images, migrate-staging]
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy revisions (no traffic), then shift 100%
+        run: |
+          for svc in api realtime worker; do
+            gcloud run deploy stall-$svc \
+              --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" \
+              --image "$REPO/$svc:${{ needs.build-images.outputs.tag }}" \
+              --no-traffic --tag "sha-${{ needs.build-images.outputs.tag }}"
+            gcloud run services update-traffic stall-$svc \
+              --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" \
+              --to-latest
+          done
+      - name: Smoke test
+        run: |
+          API=$(gcloud run services describe stall-api --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" --format='value(status.url)')
+          curl -fsS "$API/api/v1/health" | tee /dev/stderr | grep -q '"ok":true'
+
+  deploy-production:
+    name: deploy production
+    needs: [build-images, deploy-staging]
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'production'
+    runs-on: ubuntu-latest
+    environment: production   # requires a manual approval on this environment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile && pnpm --filter @stall/db generate
+      - name: migrate deploy (prod)
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: pnpm --filter @stall/db migrate:deploy
+      - name: Deploy prod revisions + shift traffic
+        run: |
+          for svc in api realtime worker; do
+            gcloud run deploy stall-$svc \
+              --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" \
+              --image "$REPO/$svc:${{ needs.build-images.outputs.tag }}" --no-traffic
+            gcloud run services update-traffic stall-$svc \
+              --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" --to-latest
+          done
+      - name: Rollback on failed smoke test
+        run: |
+          API=$(gcloud run services describe stall-api --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" --format='value(status.url)')
+          if ! curl -fsS "$API/api/v1/health" | grep -q '"ok":true'; then
+            echo "::error::health check failed — rolling back"
+            for svc in api realtime worker; do
+              PREV=$(gcloud run revisions list --service stall-$svc --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" --format='value(name)' --sort-by=~metadata.creationTimestamp | sed -n 2p)
+              gcloud run services update-traffic stall-$svc --project "${{ secrets.GCP_PROJECT_ID }}" --region "$REGION" --to-revisions "$PREV=100"
+            done
+            exit 1
+          fi

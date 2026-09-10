@@ -124,6 +124,8 @@ export const NearbyResponse = ok(
         ratingAvg: z.number(),
         ratingCount: z.number().int(),
         distanceM: z.number().int(),
+        lat: z.number().nullable(),
+        lng: z.number().nullable(),
       }),
     ),
   }),

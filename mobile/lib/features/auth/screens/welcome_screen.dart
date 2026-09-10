@@ -7,6 +7,7 @@ import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../social.dart';
+import '../../../design/icons.dart';
 
 /// Screens 4–5 — Welcome / Login-Sign-up landing with social options.
 class WelcomeScreen extends ConsumerWidget {
@@ -33,7 +34,7 @@ class WelcomeScreen extends ConsumerWidget {
               const Spacer(),
               PrimaryButton(
                 label: 'Continue with phone',
-                icon: Icons.smartphone,
+                icon: AppIcons.smartphone,
                 onPressed: () => context.push(RoutePaths.phone),
               ),
               const SizedBox(height: AppSpace.s12),
@@ -56,6 +57,7 @@ class WelcomeScreen extends ConsumerWidget {
               for (final p in SocialProviderId.values) ...[
                 SecondaryButton(
                   label: p.label,
+                  icon: p.icon,
                   onPressed: () => startSocialSignIn(context, ref, p),
                 ),
                 const SizedBox(height: AppSpace.s12),

@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+/** Env values are always strings — coerce "false"/"0"/"no" to false, not true. */
+const boolish = (def: boolean) =>
+  z
+    .string()
+    .optional()
+    .transform((v) => (v == null || v === "" ? def : !["false", "0", "no", "off"].includes(v.toLowerCase())));
+
 /**
  * Central environment contract for every Stall service.
  * Add keys here as phases introduce them — never read `process.env.X` directly
@@ -55,6 +62,11 @@ const schema = z.object({
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   S3_BUCKET: z.string().optional(),
+  // `mock` writes to local disk — no external accounts, same sandbox
+  // philosophy as PAYMENTS_PROVIDER. Swap to `s3` once the MinIO/R2 bucket
+  // above is actually reachable.
+  STORAGE_PROVIDER: z.enum(["mock", "s3"]).default("mock"),
+  STORAGE_MOCK_DIR: z.string().default("./.storage-mock"),
 
   // --- Email (v1: nodemailer/SMTP; Mailpit in docker) ----------------
   SMTP_HOST: z.string().optional(),
@@ -62,6 +74,80 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+
+  // --- Payments (Phase 3) ------------------------------------------------
+  // `mock` is a deterministic in-process sandbox — no external accounts (B4).
+  // Swap to a real provider once its sandbox keys are set.
+  PAYMENTS_PROVIDER: z.enum(["mock", "paystack", "flutterwave", "stripe"]).default("mock"),
+  PAYMENTS_CURRENCY: z.string().default("GHS"),
+  // Shared secret the mock gateway's webhook caller must HMAC-sign the raw body
+  // with (header `x-mock-signature`). Dev-only default — set a real random
+  // value before ever exposing this endpoint outside a trusted sandbox.
+  MOCK_PAYMENTS_WEBHOOK_SECRET: z.string().default("dev-only-mock-webhook-secret-change-me"),
+  PAYSTACK_SECRET_KEY: z.string().optional(),
+  PAYSTACK_WEBHOOK_SECRET: z.string().optional(),
+  FLUTTERWAVE_SECRET_KEY: z.string().optional(),
+  FLUTTERWAVE_WEBHOOK_HASH: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+
+  // --- Maps (Phase 4) -------------------------------------------------
+  // Server-proxied Directions / Distance Matrix. Unset ⇒ a haversine + fixed
+  // average-speed fallback is used (dev / B5 not yet provisioned).
+  GOOGLE_MAPS_API_KEY: z.string().optional(),
+  MAPS_AVG_SPEED_KMH: z.coerce.number().positive().default(22),
+  MAPS_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(120),
+
+  // --- Realtime / dispatch (Phase 4) --------------------------------
+  REALTIME_URL: z.string().url().optional(),
+  DISPATCH_OFFER_TTL_SECONDS: z.coerce.number().int().positive().default(30),
+  DISPATCH_SHORTLIST_RADIUS_M: z.coerce.number().int().positive().default(6000),
+  DISPATCH_SHORTLIST_SIZE: z.coerce.number().int().positive().default(8),
+  DELIVERY_BASE_FEE_MINOR: z.coerce.number().int().nonnegative().default(800),
+  DELIVERY_PER_KM_MINOR: z.coerce.number().int().nonnegative().default(150),
+  DELIVERY_COURIER_SHARE_BPS: z.coerce.number().int().positive().max(10000).default(8000),
+
+  // --- Push notifications (Phase 4/6) ------------------------------
+  // Unset ⇒ notifications are persisted + logged only (B6 not yet provisioned).
+  FCM_PROJECT_ID: z.string().optional(),
+  FCM_CLIENT_EMAIL: z.string().optional(),
+  FCM_PRIVATE_KEY: z.string().optional(),
+
+  // --- Auctions / Inverse Draws (Phase 5) --------------------------
+  AUCTION_PRIZE_DELIVERY_FEE_MINOR: z.coerce.number().int().nonnegative().default(1500),
+  AUCTION_WAREHOUSE_LAT: z.coerce.number().default(5.6037),
+  AUCTION_WAREHOUSE_LNG: z.coerce.number().default(-0.187),
+
+  // --- Disputes / support (Phase 6) -------------------------------
+  DISPUTE_SLA_HOURS: z.coerce.number().int().positive().default(72),
+  APPEAL_WINDOW_HOURS: z.coerce.number().int().positive().default(168),
+
+  // --- Advertising / boosting / referrals (Phase 7) ----------------
+  // Fallbacks only — real prices live in the editable `BoostTier` table.
+  ADS_DEFAULT_CPM_MINOR: z.coerce.number().int().nonnegative().default(4000),
+  ADS_DEFAULT_CPC_MINOR: z.coerce.number().int().nonnegative().default(120),
+  ADS_REVIEW_REQUIRED: boolish(true),
+  ADS_MIN_BUDGET_MINOR: z.coerce.number().int().positive().default(5000),
+  ANALYTICS_ROLLUP_RETENTION_DAYS: z.coerce.number().int().positive().default(120),
+  REFERRAL_REWARD_MINOR: z.coerce.number().int().nonnegative().default(2000),
+  REFERRAL_QUALIFY_MIN_ORDER_MINOR: z.coerce.number().int().nonnegative().default(5000),
+  REFERRAL_EXPIRY_DAYS: z.coerce.number().int().positive().default(30),
+
+  // --- Admin / ops console (Phase 7) ------------------------------
+  ADMIN_SESSION_TTL_HOURS: z.coerce.number().int().positive().default(12),
+  ADMIN_2FA_REQUIRED: boolish(true),
+
+  // --- Privacy / data retention (Phase 8) ------------------------
+  ACCOUNT_DELETION_GRACE_DAYS: z.coerce.number().int().nonnegative().default(14),
+  AUDIT_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
+
+  // --- Observability (Phase 8) — all optional; unset ⇒ no-op exporters
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+  OTEL_SERVICE_NAME: z.string().optional(),
+  OTEL_TRACES_SAMPLER_ARG: z.coerce.number().min(0).max(1).default(1),
+  SENTRY_DSN: z.string().optional(),
+  SENTRY_ENVIRONMENT: z.string().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 
   // --- Platform ------------------------------------------------------
   DEFAULT_PLATFORM: z.string().default("grandprice"),

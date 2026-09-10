@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "dotenv -e ../../.env -- tsx watch src/main.ts",
     "start": "dotenv -e ../../.env -- tsx src/main.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:prod": "tsx src/main.ts"
   },
   "dependencies": {
     "@stall/config": "workspace:*",
+    "@stall/core": "workspace:*",
     "@stall/db": "workspace:*",
     "bullmq": "^6.3.0",
     "ioredis": "^5.4.1"

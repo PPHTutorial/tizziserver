@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "dotenv -e ../../.env -- tsx watch src/server.ts",
     "start": "dotenv -e ../../.env -- tsx src/server.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:prod": "tsx src/server.ts"
   },
   "dependencies": {
     "@stall/config": "workspace:*",
+    "@stall/core": "workspace:*",
     "@stall/db": "workspace:*",
     "@socket.io/redis-adapter": "^8.3.0",
     "fastify": "^5.12.0",

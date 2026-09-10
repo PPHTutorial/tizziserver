@@ -10,6 +10,7 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../catalog_providers.dart';
 import '../widgets/product_card_tile.dart';
+import '../../../design/icons.dart';
 
 /// Screen 76 — saved / wishlist items.
 class WishlistScreen extends ConsumerWidget {
@@ -31,7 +32,7 @@ class WishlistScreen extends ConsumerWidget {
         ),
         data: (items) => items.isEmpty
             ? const CenteredState(
-                icon: Icons.favorite_border,
+                icon: AppIcons.favorite_border,
                 title: 'Nothing saved yet',
                 body: 'Tap the heart on any product to save it here.',
               )
@@ -59,7 +60,7 @@ class WishlistScreen extends ConsumerWidget {
                           ),
                         ),
                         IconButton(
-                          icon: Icon(Icons.close, color: c.textLow),
+                          icon: Icon(AppIcons.close, color: c.textLow),
                           onPressed: () async {
                             await ref.read(stallApiProvider).toggleWishlist(w.productId, add: false);
                             ref.invalidate(wishlistProvider);

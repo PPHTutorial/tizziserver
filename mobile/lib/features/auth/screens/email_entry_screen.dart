@@ -8,6 +8,7 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../auth_util.dart';
 import '../otp_flow.dart';
+import '../../../design/icons.dart';
 
 /// Screen 7 — Email sign-in. The backend requires a phone OTP to *complete*
 /// sign-in, so email here is used for verification / recovery codes; on success
@@ -77,7 +78,7 @@ class _EmailEntryScreenState extends ConsumerState<EmailEntryScreen> {
           textInputAction: TextInputAction.done,
           onChanged: (_) => setState(() {}),
           onSubmitted: (_) => _submit(),
-          prefix: const Icon(Icons.alternate_email, size: 18),
+          prefix: const Icon(AppIcons.alternate_email, size: 18),
         ),
         InlineError(_error),
         const SizedBox(height: AppSpace.s16),

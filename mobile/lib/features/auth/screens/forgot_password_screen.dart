@@ -8,6 +8,7 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../auth_util.dart';
 import '../otp_flow.dart';
+import '../../../design/icons.dart';
 
 /// Screen 10 — Forgot password. For phone accounts this is just "sign in with a
 /// code", after which the user can set a new password from Security.
@@ -70,7 +71,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           keyboardType: TextInputType.phone,
           autofocus: true,
           onChanged: (_) => setState(() {}),
-          prefix: const Icon(Icons.smartphone, size: 18),
+          prefix: const Icon(AppIcons.smartphone, size: 18),
         ),
         InlineError(_error),
         const SizedBox(height: AppSpace.s16),

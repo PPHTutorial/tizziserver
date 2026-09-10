@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../app/router.dart';
 import 'auth_util.dart';
+import '../../design/icons.dart';
 
 /// Providers offered on the welcome / social screens.
 enum SocialProviderId { google, apple, facebook }
@@ -21,9 +22,9 @@ extension SocialProviderIdX on SocialProviderId {
         SocialProviderId.facebook => 'Continue with Facebook',
       };
   IconData get icon => switch (this) {
-        SocialProviderId.google => Icons.g_mobiledata,
-        SocialProviderId.apple => Icons.apple,
-        SocialProviderId.facebook => Icons.facebook,
+        SocialProviderId.google => AppIcons.g_mobiledata,
+        SocialProviderId.apple => AppIcons.apple,
+        SocialProviderId.facebook => AppIcons.facebook,
       };
 }
 

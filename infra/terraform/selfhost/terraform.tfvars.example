@@ -1,0 +1,11 @@
+domain      = "stall.example"
+environment = "production"
+
+vps_ip   = "203.0.113.10"
+vps_ipv6 = null # or "2001:db8::10" if the VPS has one
+
+cloudflare_api_token  = "cf-token-with-zone-dns-waf-r2-edit"
+cloudflare_zone_id    = "your-zone-id"
+cloudflare_account_id = "your-account-id"
+
+enable_r2 = false

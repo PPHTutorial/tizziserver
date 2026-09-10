@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../api/catalog_models.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
+import '../../../design/icons.dart';
 
 /// Placeholder thumbnail — there's no media server yet, so we render the brand
 /// initial on a tinted tile keyed off the product id.
@@ -76,7 +77,7 @@ class ProductCardTile extends StatelessWidget {
                   Row(
                     children: [
                       if (product.ratingCount > 0) ...[
-                        Icon(Icons.star, size: 12, color: c.rating),
+                        Icon(AppIcons.star, size: 12, color: c.rating),
                         Text(' ${product.ratingAvg.toStringAsFixed(1)} ',
                             style: context.text.labelSmall),
                       ],

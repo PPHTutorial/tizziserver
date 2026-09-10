@@ -1,0 +1,20 @@
+# Reverse proxy for the self-hosted Stall stack. Caddy gets free automatic
+# HTTPS (Let's Encrypt via the HTTP-01 challenge) with zero extra config —
+# this works fine with Cloudflare proxying (orange-cloud) in "Full" or
+# "Full (strict)" SSL mode, since the challenge request reaches this origin
+# on port 80/443 either way. `reverse_proxy` also transparently upgrades
+# WebSocket connections (needed for socket.io on the realtime host) with no
+# special directives.
+#
+# {$DOMAIN} comes from .env.prod, injected as an env var on the caddy
+# service in docker-compose.prod.yml. Matches the api/rt subdomain naming
+# infra/terraform/selfhost/ also uses.
+
+api.{$DOMAIN} {
+	reverse_proxy api:3000
+	encode zstd gzip
+}
+
+rt.{$DOMAIN} {
+	reverse_proxy realtime:3001
+}

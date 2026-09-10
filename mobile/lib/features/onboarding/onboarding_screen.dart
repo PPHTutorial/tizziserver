@@ -7,6 +7,7 @@ import '../../design/context_ext.dart';
 import '../../design/tokens.g.dart';
 import '../../design/widgets.dart';
 import 'onboarding_controller.dart';
+import '../../design/icons.dart';
 
 /// Screens 2–3 — Onboarding carousel. Completing it persists the flag and
 /// hands off to Welcome.
@@ -23,17 +24,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   static const _slides = <(IconData, String, String)>[
     (
-      Icons.storefront_outlined,
+      AppIcons.storefront_outlined,
       'One app, every marketplace',
       'Shop goods or order gas — Stall powers them both with the same account.'
     ),
     (
-      Icons.bolt_outlined,
+      AppIcons.bolt_outlined,
       'Fast, tracked delivery',
       'Watch your courier in real time from pickup to your door.'
     ),
     (
-      Icons.verified_user_outlined,
+      AppIcons.verified_user_outlined,
       'Secure by design',
       'Passwordless sign-in, 2FA, and a transaction PIN keep your account yours.'
     ),
