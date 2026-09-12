@@ -1,6 +1,7 @@
 import { prisma } from "@stall/db";
 import { AppError } from "../errors.ts";
 import { categoryBySlug } from "./categories.ts";
+import { resolveBrandLogo } from "./brands.ts";
 import { clampLimit, type Page } from "./util.ts";
 
 export type ProductSort = "relevance" | "newest" | "price_asc" | "price_desc" | "rating";
@@ -14,11 +15,24 @@ export interface ProductListInput {
   limit?: number;
 }
 
+export interface ProductCardAuction {
+  slug: string;
+  status: string;
+  ticketPriceMinor: number;
+  winTargetMinor: number;
+  seatsTotal: number;
+  seatsSold: number;
+  currency: string;
+}
+
 export interface ProductCard {
   id: string;
   slug: string;
   title: string;
   brand: string | null;
+  /** Short blurb for the card (2–3 lines in the UI); truncated server-side
+   * so a long product description never bloats a list response. */
+  description: string | null;
   image: string | null;
   ratingAvg: number;
   ratingCount: number;
@@ -26,6 +40,16 @@ export interface ProductCard {
   currency: string;
   offerCount: number;
   vendorCount: number;
+  /** The live Inverse Draw for this exact product, if the platform links one
+   * — lets a card show a green "Spot: ¤X" price alongside the retail price. */
+  activeAuction: ProductCardAuction | null;
+}
+
+const CARD_DESCRIPTION_MAX = 220;
+export function cardDescription(description: string | null | undefined): string | null {
+  const d = description?.trim();
+  if (!d) return null;
+  return d.length > CARD_DESCRIPTION_MAX ? `${d.slice(0, CARD_DESCRIPTION_MAX - 1).trimEnd()}…` : d;
 }
 
 const platformFilter = (platformSlug: string) => ({
@@ -34,16 +58,20 @@ const platformFilter = (platformSlug: string) => ({
   OR: [{ platformSlugs: { isEmpty: true } }, { platformSlugs: { has: platformSlug } }],
 });
 
-function toCard(p: {
-  id: string;
-  slug: string;
-  title: string;
-  brand: string | null;
-  ratingAvg: number;
-  ratingCount: number;
-  media: { fileKey: string }[];
-  offers: { priceMinor: number; currency: string; vendorId: string }[];
-}): ProductCard {
+function toCard(
+  p: {
+    id: string;
+    slug: string;
+    title: string;
+    brand: string | null;
+    description?: string | null;
+    ratingAvg: number;
+    ratingCount: number;
+    media: { fileKey: string }[];
+    offers: { priceMinor: number; currency: string; vendorId: string }[];
+  },
+  auction: ProductCardAuction | null = null,
+): ProductCard {
   const active = p.offers;
   const prices = active.map((o) => o.priceMinor);
   return {
@@ -51,6 +79,7 @@ function toCard(p: {
     slug: p.slug,
     title: p.title,
     brand: p.brand,
+    description: cardDescription(p.description),
     image: p.media[0]?.fileKey ?? null,
     ratingAvg: p.ratingAvg,
     ratingCount: p.ratingCount,
@@ -58,7 +87,43 @@ function toCard(p: {
     currency: active[0]?.currency ?? "GHS",
     offerCount: active.length,
     vendorCount: new Set(active.map((o) => o.vendorId)).size,
+    activeAuction: auction,
   };
+}
+
+/** Batch-fetch the live Inverse Draw (if any) for each of `productIds`, one
+ * query for the whole page instead of one per card. */
+export async function activeAuctionsFor(productIds: string[]): Promise<Map<string, ProductCardAuction>> {
+  if (!productIds.length) return new Map();
+  const rows = await prisma.auction.findMany({
+    where: { productId: { in: productIds }, status: { in: ["OPEN", "FILLING", "CLOSING"] } },
+    select: {
+      productId: true,
+      slug: true,
+      status: true,
+      ticketPriceMinor: true,
+      winTargetMinor: true,
+      seatsTotal: true,
+      seatsSold: true,
+      currency: true,
+    },
+  });
+  return new Map(
+    rows
+      .filter((r): r is typeof r & { productId: string } => r.productId != null)
+      .map((r) => [
+        r.productId,
+        {
+          slug: r.slug,
+          status: r.status,
+          ticketPriceMinor: r.ticketPriceMinor,
+          winTargetMinor: r.winTargetMinor,
+          seatsTotal: r.seatsTotal,
+          seatsSold: r.seatsSold,
+          currency: r.currency,
+        },
+      ]),
+  );
 }
 
 export async function listProducts(input: ProductListInput): Promise<Page<ProductCard>> {
@@ -100,7 +165,9 @@ export async function listProducts(input: ProductListInput): Promise<Page<Produc
   });
 
   const hasMore = rows.length > take;
-  let cards = rows.slice(0, take).map(toCard);
+  const page = rows.slice(0, take);
+  const auctions = await activeAuctionsFor(page.map((p) => p.id));
+  let cards = page.map((p) => toCard(p, auctions.get(p.id) ?? null));
 
   if (input.sort === "price_asc") {
     cards = cards.sort((a, b) => (a.fromPriceMinor ?? Infinity) - (b.fromPriceMinor ?? Infinity));
@@ -150,7 +217,8 @@ export async function similarProducts(
       offers: { where: { status: "ACTIVE" }, select: { priceMinor: true, currency: true, vendorId: true } },
     },
   });
-  return rows.map(toCard);
+  const auctions = await activeAuctionsFor(rows.map((p) => p.id));
+  return rows.map((p) => toCard(p, auctions.get(p.id) ?? null));
 }
 
 export async function getProductDetail(slugOrId: string, platformSlug: string) {
@@ -181,18 +249,21 @@ export async function getProductDetail(slugOrId: string, platformSlug: string) {
   });
   if (!product) throw new AppError("NOT_FOUND", "Product not found");
 
-  const activeAuction = await prisma.auction.findFirst({
-    where: { productId: product.id, status: { in: ["OPEN", "FILLING", "CLOSING"] } },
-    select: {
-      slug: true,
-      status: true,
-      ticketPriceMinor: true,
-      winTargetMinor: true,
-      seatsTotal: true,
-      seatsSold: true,
-      currency: true,
-    },
-  });
+  const [activeAuction, brandLogo] = await Promise.all([
+    prisma.auction.findFirst({
+      where: { productId: product.id, status: { in: ["OPEN", "FILLING", "CLOSING"] } },
+      select: {
+        slug: true,
+        status: true,
+        ticketPriceMinor: true,
+        winTargetMinor: true,
+        seatsTotal: true,
+        seatsSold: true,
+        currency: true,
+      },
+    }),
+    product.brand ? resolveBrandLogo(product.brand) : Promise.resolve(null),
+  ]);
 
   const prices = product.offers.map((o) => o.priceMinor);
   return {
@@ -201,6 +272,7 @@ export async function getProductDetail(slugOrId: string, platformSlug: string) {
     title: product.title,
     description: product.description,
     brand: product.brand,
+    brandLogo: brandLogo?.logoUrl ?? null,
     condition: product.condition,
     attributes: product.attributes ?? {},
     ratingAvg: product.ratingAvg,

@@ -1053,6 +1053,33 @@ model Category {
   @@map("categories")
 }
 
+/// Cache of resolved brand → logo lookups (curated map or the Brandfetch
+/// API), keyed by normalized brand name so every vendor typing "Samsung"
+/// shares one lookup instead of paying for it per-product. A row with
+/// `logoUrl: null` is a negative-cache tombstone (nothing found) so garbage
+/// input doesn't get re-queried against Brandfetch on every save — see
+/// `BRAND_LOGO_NEGATIVE_TTL_DAYS` in `packages/core/src/catalog/brands.ts`.
+model BrandLogo {
+  id        String   @id @default(cuid(2))
+  key       String   @unique
+  name      String
+  domain    String?
+  /// Storage key (not a Brandfetch URL) of the picked "primary" variant —
+  /// resolved to a servable URL by the same `mediaUrl()` every other stored
+  /// image key goes through.
+  logoUrl   String?
+  /// Every distinct theme/type variant Brandfetch returned, each downloaded
+  /// and re-hosted in our own storage on first fetch: `{type, theme, format,
+  /// key, width, height}[]`. Lets a future dark-mode-aware client pick its
+  /// own variant instead of only ever getting the one `logoUrl` default.
+  variants  Json     @default("[]")
+  source    String
+  fetchedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("brand_logos")
+}
+
 /// Base product, owned by the creating vendor. Sold through one or more
 /// `VendorOffer`s (multi-vendor). `searchVector` is maintained in migration SQL.
 model Product {

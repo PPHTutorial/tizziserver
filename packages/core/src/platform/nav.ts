@@ -13,7 +13,7 @@ export const NAV: Record<Role, NavItem[]> = {
   CUSTOMER: [
     { key: "home", label: "Home", icon: "house", route: "/home" },
     { key: "explore", label: "Explore", icon: "compass", route: "/explore" },
-    { key: "cart", label: "Cart", icon: "cart-shopping", route: "/cart" },
+    { key: "sell", label: "Sell", icon: "store", route: "/sell" },
     { key: "orders", label: "Orders", icon: "box", route: "/orders" },
     { key: "profile", label: "Profile", icon: "user", route: "/profile" },
   ],

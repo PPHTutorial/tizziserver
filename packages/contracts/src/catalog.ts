@@ -34,11 +34,24 @@ export const Category = z.object({
 
 export const RootCategory = Category.extend({ count: z.number().int().nullable() });
 
+/** The live Inverse Draw for a product, if the platform links one — lets a
+ * card or PDP show the "Spot: ¤X" auction seat price alongside retail. */
+export const ActiveAuctionSummary = z.object({
+  slug: z.string(),
+  status: z.string(),
+  ticketPriceMinor: z.number().int(),
+  winTargetMinor: z.number().int(),
+  seatsTotal: z.number().int(),
+  seatsSold: z.number().int(),
+  currency: z.string(),
+});
+
 export const ProductCard = z.object({
   id: z.string(),
   slug: z.string(),
   title: z.string(),
   brand: z.string().nullable(),
+  description: z.string().nullable(),
   image: z.string().nullable(),
   ratingAvg: z.number(),
   ratingCount: z.number().int(),
@@ -46,6 +59,7 @@ export const ProductCard = z.object({
   currency: z.string(),
   offerCount: z.number().int(),
   vendorCount: z.number().int(),
+  activeAuction: ActiveAuctionSummary.nullable(),
 });
 
 export const OfferView = z.object({
@@ -78,6 +92,7 @@ export const ProductDetail = z.object({
   title: z.string(),
   description: z.string(),
   brand: z.string().nullable(),
+  brandLogo: z.string().nullable(),
   condition: ProductCondition,
   attributes: z.record(z.string(), z.unknown()),
   ratingAvg: z.number(),
@@ -121,17 +136,7 @@ export const ProductDetail = z.object({
   /** The live Inverse Draw for this exact product, if the platform links one
    * (`Auction.productId`) — lets the PDP show the dual "Join Draw" / "Buy
    * Retail" CTA alongside the normal offers. */
-  activeAuction: z
-    .object({
-      slug: z.string(),
-      status: z.string(),
-      ticketPriceMinor: z.number().int(),
-      winTargetMinor: z.number().int(),
-      seatsTotal: z.number().int(),
-      seatsSold: z.number().int(),
-      currency: z.string(),
-    })
-    .nullable(),
+  activeAuction: ActiveAuctionSummary.nullable(),
 });
 
 // --- responses --------------------------------------------------------
@@ -164,6 +169,22 @@ export const NearbyResponse = ok(
     ),
   }),
 );
+
+export const BrandLogo = z.object({
+  name: z.string(),
+  logoUrl: z.string().nullable(),
+});
+export const BrandLogoResponse = ok(z.object({ items: z.array(BrandLogo) }));
+
+export const FeaturedVendor = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  logo: z.string().nullable(),
+  banner: z.string().nullable(),
+  ratingAvg: z.number(),
+  ratingCount: z.number().int(),
+  productCount: z.number().int(),
+});
 
 export const VendorPageResponse = ok(
   z.object({
@@ -331,11 +352,13 @@ export const PromotionItemCard = z.object({
   slug: z.string(),
   title: z.string(),
   brand: z.string().nullable(),
+  description: z.string().nullable(),
   image: z.string().nullable(),
   currency: z.string(),
   priceMinor: z.number().int().nullable(),
   dealPriceMinor: z.number().int().nullable(),
   discountBps: z.number().int().nullable(),
+  activeAuction: ActiveAuctionSummary.nullable(),
 });
 
 export const PromotionView = z.object({
@@ -359,6 +382,7 @@ export const HomeRailsResponse = ok(
     banners: z.array(PromotionView),
     newArrivals: z.array(ProductCard),
     topRated: z.array(ProductCard),
+    featuredVendors: z.array(FeaturedVendor),
     recentlyViewed: z.array(WishlistItem),
   }),
 );

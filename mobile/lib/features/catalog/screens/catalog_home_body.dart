@@ -130,9 +130,9 @@ class CatalogHomeBody extends ConsumerWidget {
                   const SizedBox(width: AppSpace.s12),
                   Expanded(
                     child: _QuickAction(
-                      icon: AppIcons.category_outlined,
-                      label: 'Categories',
-                      onTap: () => context.push(RoutePaths.categories),
+                      icon: AppIcons.shopping_bag_outlined,
+                      label: 'Products',
+                      onTap: () => context.push(RoutePaths.allProducts),
                     ),
                   ),
                   const SizedBox(width: AppSpace.s12),
@@ -164,9 +164,11 @@ class CatalogHomeBody extends ConsumerWidget {
                           slug: i.slug,
                           title: i.title,
                           brand: i.brand,
+                          description: i.description,
                           image: i.image,
                           fromPriceMinor: i.priceMinor,
                           currency: i.currency,
+                          activeAuction: i.activeAuction,
                         ),
                       )
                       .toList(),
@@ -184,6 +186,9 @@ class CatalogHomeBody extends ConsumerWidget {
                 items: rails.topRated,
                 onViewAll: () => context.push(RoutePaths.topRated),
               ),
+            if (rails.featuredVendors.isNotEmpty)
+              _FeaturedVendorsRail(vendors: rails.featuredVendors),
+            const _NearbyVendorsRail(),
             if (rails.recentlyViewed.isNotEmpty)
               _ProductRail(
                 title: 'Recently viewed',
@@ -218,85 +223,93 @@ class _CategoryRail extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(rootCategoriesProvider('all'));
     return async.maybeWhen(
-      data: (roots) => roots.isEmpty
+      data: (all) => all.isEmpty
           ? const SizedBox.shrink()
           : SizedBox(
               height: 96,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpace.s16,
-                  0,
-                  AppSpace.s16,
-                  AppSpace.s16,
-                ),
-                itemCount: roots.length + 1,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(width: AppSpace.s16),
-                itemBuilder: (context, i) {
-                  if (i == roots.length) {
-                    final c = context.colors;
-                    return InkWell(
-                      onTap: () => context.push(RoutePaths.categories),
-                      borderRadius: BorderRadius.circular(40),
-                      child: SizedBox(
-                        width: 64,
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              radius: 28,
-                              backgroundColor: c.primaryContainer,
-                              child: Icon(
-                                AppIcons.category_outlined,
-                                color: c.onPrimaryContainer,
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(height: AppSpace.s6),
-                            Text(
-                              'See all',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: context.text.labelMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-                  final cat = roots[i];
-                  return InkWell(
-                    onTap: () => context.push(RoutePaths.category(cat.slug)),
-                    borderRadius: BorderRadius.circular(40),
-                    child: SizedBox(
-                      width: 64,
-                      child: Column(
-                        children: [
-                          ClipOval(
-                            child: Image.network(
-                              categoryImage(cat.slug),
-                              width: 56,
-                              height: 56,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 56,
-                                height: 56,
-                                color: context.colors.surfaceSunken,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpace.s6),
-                          Text(
-                            cat.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: context.text.labelMedium,
-                          ),
-                        ],
-                      ),
+              child: Builder(
+                builder: (context) {
+                  // Top 10 on the home rail — "See all" (below) is the
+                  // destination for the rest, not a duplicate of this list.
+                  final roots = all.take(10).toList();
+                  return ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpace.s16,
+                      0,
+                      AppSpace.s16,
+                      AppSpace.s16,
                     ),
+                    itemCount: roots.length + 1,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(width: AppSpace.s16),
+                    itemBuilder: (context, i) {
+                      if (i == roots.length) {
+                        final c = context.colors;
+                        return InkWell(
+                          onTap: () => context.push(RoutePaths.categories),
+                          borderRadius: BorderRadius.circular(40),
+                          child: SizedBox(
+                            width: 64,
+                            child: Column(
+                              children: [
+                                CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor: c.primaryContainer,
+                                  child: Icon(
+                                    AppIcons.category_outlined,
+                                    color: c.onPrimaryContainer,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpace.s6),
+                                Text(
+                                  'See all',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: context.text.labelMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      final cat = roots[i];
+                      return InkWell(
+                        onTap: () =>
+                            context.push(RoutePaths.category(cat.slug)),
+                        borderRadius: BorderRadius.circular(40),
+                        child: SizedBox(
+                          width: 64,
+                          child: Column(
+                            children: [
+                              ClipOval(
+                                child: Image.network(
+                                  categoryImage(cat.slug),
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 56,
+                                    height: 56,
+                                    color: context.colors.surfaceSunken,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpace.s6),
+                              Text(
+                                cat.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: context.text.labelMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -340,12 +353,40 @@ class _InverseDrawBannerState extends ConsumerState<_InverseDrawBanner> {
     return auctions.maybeWhen(
       data: (list) {
         if (list.isEmpty) return const SizedBox.shrink();
+        final c = context.colors;
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.s16),
           child: Column(
             children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.s16,
+                  0,
+                  AppSpace.s16,
+                  AppSpace.s8,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Live Inverse Draws',
+                        style: context.text.titleMedium,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.push(RoutePaths.auctions),
+                      child: Text(
+                        'View All',
+                        style: context.text.labelLarge?.copyWith(
+                          color: c.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               SizedBox(
-                height: 190,
+                height: 216,
                 child: PageView.builder(
                   controller: _controller,
                   itemCount: list.length,
@@ -475,9 +516,38 @@ class _InverseDrawCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: AppSpace.s6),
+                  Row(
+                    children: [
+                      Text(
+                        'Worth ${formatMoney(auction.retailValueMinor, auction.currency)}',
+                        style: context.text.labelLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        '  ·  ',
+                        style: context.text.labelLarge?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      Flexible(
+                        child: Text(
+                          'Seats from ${formatMoney(auction.ticketPriceMinor, auction.currency)}',
+                          style: context.text.labelLarge?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.95),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                   const Spacer(),
                   Text(
-                    auctionDemandLabel(auction.fillPct),
+                    '${auction.seatsSold}/${auction.seatsTotal} seats sold '
+                    '· ${auctionDemandLabel(auction.fillPct)}',
                     style: context.text.bodyMedium?.copyWith(
                       color: Colors.white.withValues(alpha: 0.9),
                     ),
@@ -774,6 +844,202 @@ class _FlashDealRail extends StatelessWidget {
   }
 }
 
+/// Top-rated active vendors — a horizontal rail of vendor cards (not
+/// products) whose "View All" opens `FeaturedVendorsScreen`.
+class _FeaturedVendorsRail extends StatelessWidget {
+  const _FeaturedVendorsRail({required this.vendors});
+  final List<FeaturedVendorDto> vendors;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpace.s8, bottom: AppSpace.s20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('Featured vendors', style: context.text.titleMedium),
+                ),
+                GestureDetector(
+                  onTap: () => context.push(RoutePaths.featuredVendors),
+                  child: Text(
+                    'View All',
+                    style: context.text.labelLarge?.copyWith(color: c.primary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpace.s8),
+          SizedBox(
+            height: 148,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
+              itemCount: vendors.length,
+              separatorBuilder: (_, __) => const SizedBox(width: AppSpace.s12),
+              itemBuilder: (context, i) {
+                final v = vendors[i];
+                return SizedBox(
+                  width: 116,
+                  child: AppCard(
+                    onTap: () => context.push(RoutePaths.vendor(v.id)),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ProductThumb(
+                          seed: v.id,
+                          label: v.displayName,
+                          imageKey: v.logo,
+                          size: 56,
+                          radius: AppRadius.pill,
+                        ),
+                        const SizedBox(height: AppSpace.s8),
+                        Text(
+                          v.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: context.text.labelMedium,
+                        ),
+                        if (v.ratingCount > 0) ...[
+                          const SizedBox(height: AppSpace.s2),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(AppIcons.star, size: 11, color: c.rating),
+                              const SizedBox(width: 2),
+                              Text(
+                                v.ratingAvg.toStringAsFixed(1),
+                                style: context.text.labelSmall,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A preview of nearby vendors (default city centre — the dedicated
+/// `/nearby` screen offers "use my location"), matching Figma's
+/// `nearby-vendors` rail. Renders nothing while loading/empty/errored so it
+/// never blocks the rest of the feed.
+class _NearbyVendorsRail extends ConsumerWidget {
+  const _NearbyVendorsRail();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    final async = ref.watch(
+      nearbyVendorsProvider((
+        lat: kDefaultLatLng.lat,
+        lng: kDefaultLatLng.lng,
+        radiusM: 15000,
+      )),
+    );
+    return async.maybeWhen(
+      data: (vendors) {
+        if (vendors.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: AppSpace.s8, bottom: AppSpace.s20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Nearby vendors',
+                        style: context.text.titleMedium,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => context.push(RoutePaths.nearby),
+                      child: Text(
+                        'View All',
+                        style: context.text.labelLarge?.copyWith(
+                          color: c.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpace.s8),
+              SizedBox(
+                height: 76,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
+                  itemCount: vendors.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(width: AppSpace.s12),
+                  itemBuilder: (context, i) {
+                    final v = vendors[i];
+                    return SizedBox(
+                      width: 220,
+                      child: AppCard(
+                        onTap: () => context.push(RoutePaths.vendor(v.id)),
+                        child: Row(
+                          children: [
+                            ProductThumb(
+                              seed: v.id,
+                              label: v.displayName,
+                              imageKey: v.logo,
+                              size: 40,
+                            ),
+                            const SizedBox(width: AppSpace.s8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    v.displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: context.text.labelMedium,
+                                  ),
+                                  Text(
+                                    v.distanceLabel,
+                                    style: context.text.labelSmall?.copyWith(
+                                      color: c.textLow,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
 class _ProductRail extends StatelessWidget {
   const _ProductRail({
     required this.title,
@@ -811,17 +1077,21 @@ class _ProductRail extends StatelessWidget {
           ),
           const SizedBox(height: AppSpace.s8),
           SizedBox(
-            height: 250,
+            height: 300,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
               itemCount: items.length,
               separatorBuilder: (_, __) => const SizedBox(width: AppSpace.s12),
-              itemBuilder: (context, i) => SizedBox(
-                width: 160,
-                child: ProductCardTile(
-                  product: items[i],
-                  onTap: () => context.push(RoutePaths.product(items[i].slug)),
+              itemBuilder: (context, i) => Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: 160,
+                  child: ProductCardTile(
+                    product: items[i],
+                    onTap: () => context.push(RoutePaths.product(items[i].slug)),
+                    imageAspectRatio: 1.15,
+                  ),
                 ),
               ),
             ),

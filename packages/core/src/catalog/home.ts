@@ -1,6 +1,7 @@
 import { listProducts, type ProductCard } from "./products.ts";
 import { activePromotions, type PromotionView } from "./promotions.ts";
 import { listRecentlyViewed } from "./engagement.ts";
+import { listFeaturedVendors, type FeaturedVendor } from "./vendors.ts";
 
 export interface HomeRails {
   flashDeals: PromotionView[];
@@ -8,6 +9,7 @@ export interface HomeRails {
   banners: PromotionView[];
   newArrivals: ProductCard[];
   topRated: ProductCard[];
+  featuredVendors: FeaturedVendor[];
   recentlyViewed: {
     productId: string;
     slug: string;
@@ -20,10 +22,11 @@ export interface HomeRails {
 
 /** One call for the customer home screen: promo rails + a couple of product rails. */
 export async function homeRails(input: { platformSlug: string; userId?: string }): Promise<HomeRails> {
-  const [promos, newArrivals, topRated, recent] = await Promise.all([
+  const [promos, newArrivals, topRated, featuredVendors, recent] = await Promise.all([
     activePromotions({ platformSlug: input.platformSlug }),
     listProducts({ platformSlug: input.platformSlug, sort: "newest", limit: 10 }),
     listProducts({ platformSlug: input.platformSlug, sort: "rating", limit: 10 }),
+    listFeaturedVendors({ platformSlug: input.platformSlug, limit: 10 }),
     input.userId ? listRecentlyViewed(input.userId, 10) : Promise.resolve([]),
   ]);
 
@@ -33,6 +36,7 @@ export async function homeRails(input: { platformSlug: string; userId?: string }
     banners: promos.filter((p) => p.kind === "BANNER"),
     newArrivals: newArrivals.items,
     topRated: topRated.items.filter((p) => p.ratingCount > 0),
+    featuredVendors,
     recentlyViewed: recent,
   };
 }

@@ -96,6 +96,8 @@ class ProductCard {
     this.currency = 'GHS',
     this.offerCount = 0,
     this.vendorCount = 0,
+    this.activeAuction,
+    this.description,
   });
 
   final String id;
@@ -110,6 +112,15 @@ class ProductCard {
   final int offerCount;
   final int vendorCount;
 
+  /// The live Inverse Draw for this exact product, if the platform links
+  /// one — lets the card show a green "Spot: ¤X" auction-seat price
+  /// alongside the retail price.
+  final ProductActiveAuction? activeAuction;
+
+  /// Short blurb shown under the title (2–3 lines, then ellipsis). Not every
+  /// card source provides one (e.g. wishlist/recently-viewed thin cards).
+  final String? description;
+
   factory ProductCard.fromJson(Map<String, dynamic> j) => ProductCard(
         id: j['id'] as String,
         slug: j['slug'] as String,
@@ -122,6 +133,12 @@ class ProductCard {
         currency: (j['currency'] as String?) ?? 'GHS',
         offerCount: _int(j['offerCount']) ?? 0,
         vendorCount: _int(j['vendorCount']) ?? 0,
+        description: j['description'] as String?,
+        activeAuction: (j['activeAuction'] as Map<String, dynamic>?) == null
+            ? null
+            : ProductActiveAuction.fromJson(
+                j['activeAuction'] as Map<String, dynamic>,
+              ),
       );
 }
 
@@ -345,6 +362,7 @@ class ProductDetail {
     required this.title,
     required this.description,
     this.brand,
+    this.brandLogo,
     required this.condition,
     this.ratingAvg = 0,
     this.ratingCount = 0,
@@ -366,6 +384,10 @@ class ProductDetail {
   final String title;
   final String description;
   final String? brand;
+
+  /// The brand's real logo, auto-resolved server-side (curated map or
+  /// Brandfetch) from the free-text [brand] field — null if unresolved.
+  final String? brandLogo;
   final String condition;
   final double ratingAvg;
   final int ratingCount;
@@ -394,6 +416,7 @@ class ProductDetail {
         title: j['title'] as String,
         description: j['description'] as String? ?? '',
         brand: j['brand'] as String?,
+        brandLogo: j['brandLogo'] as String?,
         condition: j['condition'] as String? ?? 'NEW',
         ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
         ratingCount: _int(j['ratingCount']) ?? 0,
@@ -539,6 +562,38 @@ class NearbyVendorDto {
       );
 }
 
+/// A top-rated active vendor with at least one live listing — the home
+/// feed's "Featured vendors" rail and its "View all" destination screen.
+class FeaturedVendorDto {
+  const FeaturedVendorDto({
+    required this.id,
+    required this.displayName,
+    this.logo,
+    this.banner,
+    this.ratingAvg = 0,
+    this.ratingCount = 0,
+    this.productCount = 0,
+  });
+
+  final String id;
+  final String displayName;
+  final String? logo;
+  final String? banner;
+  final double ratingAvg;
+  final int ratingCount;
+  final int productCount;
+
+  factory FeaturedVendorDto.fromJson(Map<String, dynamic> j) => FeaturedVendorDto(
+        id: j['id'] as String,
+        displayName: j['displayName'] as String? ?? 'Vendor',
+        logo: j['logo'] as String?,
+        banner: j['banner'] as String?,
+        ratingAvg: (j['ratingAvg'] as num?)?.toDouble() ?? 0,
+        ratingCount: _int(j['ratingCount']) ?? 0,
+        productCount: _int(j['productCount']) ?? 0,
+      );
+}
+
 class VendorStatus {
   const VendorStatus({
     required this.onboarded,
@@ -680,21 +735,25 @@ class PromotionItemCard {
     required this.slug,
     required this.title,
     this.brand,
+    this.description,
     this.image,
     this.currency = 'GHS',
     this.priceMinor,
     this.dealPriceMinor,
     this.discountBps,
+    this.activeAuction,
   });
 
   final String productId;
   final String slug;
   final String title;
   final String? brand;
+  final String? description;
   final String? image;
   final String currency;
   final int? priceMinor;
   final int? dealPriceMinor;
+  final ProductActiveAuction? activeAuction;
   final int? discountBps;
 
   int? get effectivePriceMinor => dealPriceMinor ?? priceMinor;
@@ -705,11 +764,17 @@ class PromotionItemCard {
         slug: j['slug'] as String,
         title: j['title'] as String,
         brand: j['brand'] as String?,
+        description: j['description'] as String?,
         image: j['image'] as String?,
         currency: (j['currency'] as String?) ?? 'GHS',
         priceMinor: _int(j['priceMinor']),
         dealPriceMinor: _int(j['dealPriceMinor']),
         discountBps: _int(j['discountBps']),
+        activeAuction: (j['activeAuction'] as Map<String, dynamic>?) == null
+            ? null
+            : ProductActiveAuction.fromJson(
+                j['activeAuction'] as Map<String, dynamic>,
+              ),
       );
 }
 
@@ -757,6 +822,7 @@ class HomeRails {
     this.banners = const [],
     this.newArrivals = const [],
     this.topRated = const [],
+    this.featuredVendors = const [],
     this.recentlyViewed = const [],
   });
 
@@ -765,6 +831,7 @@ class HomeRails {
   final List<PromotionView> banners;
   final List<ProductCard> newArrivals;
   final List<ProductCard> topRated;
+  final List<FeaturedVendorDto> featuredVendors;
   final List<WishlistItemDto> recentlyViewed;
 
   bool get isEmpty =>
@@ -785,6 +852,7 @@ class HomeRails {
         banners: _list(j['banners'], PromotionView.fromJson),
         newArrivals: _list(j['newArrivals'], ProductCard.fromJson),
         topRated: _list(j['topRated'], ProductCard.fromJson),
+        featuredVendors: _list(j['featuredVendors'], FeaturedVendorDto.fromJson),
         recentlyViewed: _list(j['recentlyViewed'], WishlistItemDto.fromJson),
       );
 }

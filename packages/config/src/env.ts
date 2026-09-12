@@ -155,6 +155,15 @@ const schema = z.object({
 
   // --- Platform ------------------------------------------------------
   DEFAULT_PLATFORM: z.string().default("grandprice"),
+
+  // --- Brand logos (product/vendor "brand" field auto-illustration) ---
+  // Unset ⇒ only the curated map in `catalog/brands.ts` resolves; unknown
+  // brands fall back to the client's initials tile, no external call made.
+  BRANDFETCH_API_KEY: z.string().optional(),
+  // Public CDN "Logo Link" client id — safe to ship to the mobile client
+  // (it's a hotlink parameter, not a secret), but resolution always happens
+  // server-side so the API key above never leaves the backend.
+  BRANDFETCH_CLIENT_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

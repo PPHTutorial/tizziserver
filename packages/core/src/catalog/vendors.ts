@@ -2,6 +2,41 @@ import { prisma, Prisma } from "@stall/db";
 import { AppError } from "../errors.ts";
 import { uniqueSlug } from "./util.ts";
 
+export interface FeaturedVendor {
+  id: string;
+  displayName: string;
+  logo: string | null;
+  banner: string | null;
+  ratingAvg: number;
+  ratingCount: number;
+  productCount: number;
+}
+
+/** Top-rated active vendors with at least one live listing — backs the
+ * home feed's "Featured vendors" rail. */
+export async function listFeaturedVendors(input: { platformSlug: string; limit?: number }): Promise<FeaturedVendor[]> {
+  const take = Math.min(Math.max(input.limit ?? 10, 1), 30);
+  const rows = await prisma.vendorProfile.findMany({
+    where: {
+      status: "ACTIVE",
+      platformIds: { has: input.platformSlug },
+      products: { some: { status: "PUBLISHED", deletedAt: null } },
+    },
+    orderBy: [{ ratingAvg: "desc" }, { ratingCount: "desc" }],
+    take,
+    include: { _count: { select: { products: true } } },
+  });
+  return rows.map((v) => ({
+    id: v.id,
+    displayName: v.displayName,
+    logo: v.logo,
+    banner: v.banner,
+    ratingAvg: v.ratingAvg,
+    ratingCount: v.ratingCount,
+    productCount: v._count.products,
+  }));
+}
+
 // --- public vendor page ------------------------------------------------
 
 export async function getVendorPage(vendorId: string, platformSlug: string) {

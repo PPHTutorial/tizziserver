@@ -453,8 +453,26 @@ class _InfoSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (p.brand != null)
-          Text(p.brand!.toUpperCase(),
-              style: context.text.labelSmall?.copyWith(color: c.textLow)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (p.brandLogo != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Image.network(
+                    p.brandLogo!,
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(width: AppSpace.s6),
+              ],
+              Text(p.brand!.toUpperCase(),
+                  style: context.text.labelSmall?.copyWith(color: c.textLow)),
+            ],
+          ),
         const SizedBox(height: AppSpace.s4),
         Text(p.title, style: context.text.headlineMedium),
         const SizedBox(height: AppSpace.s8),
@@ -710,16 +728,20 @@ class _SimilarRail extends ConsumerWidget {
             Text('You might also like', style: context.text.titleMedium),
             const SizedBox(height: AppSpace.s8),
             SizedBox(
-              height: 250,
+              height: 300,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: items.length,
                 separatorBuilder: (_, __) => const SizedBox(width: AppSpace.s12),
-                itemBuilder: (context, i) => SizedBox(
-                  width: 160,
-                  child: ProductCardTile(
-                    product: items[i],
-                    onTap: () => context.push(RoutePaths.product(items[i].slug)),
+                itemBuilder: (context, i) => Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: 160,
+                    child: ProductCardTile(
+                      product: items[i],
+                      onTap: () => context.push(RoutePaths.product(items[i].slug)),
+                      imageAspectRatio: 1.15,
+                    ),
                   ),
                 ),
               ),

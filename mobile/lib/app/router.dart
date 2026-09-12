@@ -28,6 +28,7 @@ import '../features/catalog/screens/edit_shop_profile_screen.dart';
 import '../features/catalog/screens/categories_screen.dart';
 import '../features/catalog/screens/category_products_screen.dart';
 import '../features/catalog/screens/deals_screen.dart';
+import '../features/catalog/screens/featured_vendors_screen.dart';
 import '../features/catalog/screens/nearby_vendors_screen.dart';
 import '../features/catalog/screens/product_detail_screen.dart';
 import '../features/catalog/screens/reviews_screen.dart';
@@ -104,6 +105,7 @@ class RoutePaths {
   static const search = '/search';
   static const barcodeScan = '/search/scan';
   static const recentlyViewed = '/me/recently-viewed';
+  static const allProducts = '/products';
   static const newArrivals = '/products/new-arrivals';
   static const topRated = '/products/top-rated';
   static const campaigns = '/promotions/campaigns';
@@ -119,6 +121,7 @@ class RoutePaths {
   static const wishlist = '/me/wishlist';
   static const deals = '/deals';
   static const nearby = '/nearby';
+  static const featuredVendors = '/vendors/featured';
   static const sellDocuments = '/sell/documents';
   static const sellProfile = '/sell/profile';
 
@@ -298,6 +301,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             CategoryProductsScreen(slug: s.pathParameters['slug']!),
       ),
       GoRoute(
+        path: RoutePaths.allProducts,
+        builder: (_, __) =>
+            const CategoryProductsScreen(slug: null, title: 'All products'),
+      ),
+      GoRoute(
         path: RoutePaths.newArrivals,
         builder: (_, __) => const CategoryProductsScreen(
           slug: null,
@@ -342,6 +350,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.nearby,
         builder: (_, __) => const NearbyVendorsScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.featuredVendors,
+        builder: (_, __) => const FeaturedVendorsScreen(),
       ),
       GoRoute(
         path: RoutePaths.sell,

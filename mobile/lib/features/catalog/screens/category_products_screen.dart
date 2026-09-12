@@ -57,7 +57,14 @@ class _CategoryProductsScreenState
       body: SafeArea(
         child: Column(
           children: [
-            AppScreenHeader(title[0].toUpperCase() + title.substring(1)),
+            AppScreenHeader(
+              title[0].toUpperCase() + title.substring(1),
+              trailing: IconButton(
+                icon: const Icon(AppIcons.search, size: 18),
+                tooltip: 'Search',
+                onPressed: () => context.push(RoutePaths.search),
+              ),
+            ),
             SizedBox(
               height: 48,
               child: ListView.separated(

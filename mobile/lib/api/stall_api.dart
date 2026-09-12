@@ -485,6 +485,31 @@ class StallApi {
     return _items(d, NearbyVendorDto.fromJson);
   }
 
+  /// Resolves a brand name to its real logo (curated map or Brandfetch,
+  /// cached server-side) — used for the product editor's live brand preview.
+  /// Null if nothing could be resolved (garbage input, unknown brand).
+  Future<String?> brandLogo(String name) async {
+    final d = await _send(
+      'GET',
+      '/api/v1/catalog/brands/logo',
+      auth: false,
+      query: {'names': name},
+    );
+    final items = d['items'] as List<dynamic>? ?? const [];
+    if (items.isEmpty) return null;
+    return (items.first as Map)['logoUrl'] as String?;
+  }
+
+  Future<List<FeaturedVendorDto>> featuredVendors({int limit = 30}) async {
+    final d = await _send(
+      'GET',
+      '/api/v1/vendors/featured',
+      auth: false,
+      query: {'limit': '$limit'},
+    );
+    return _items(d, FeaturedVendorDto.fromJson);
+  }
+
   Future<VendorPage> vendor(String id) async {
     final d = await _send('GET', '/api/v1/vendors/$id', auth: false);
     return VendorPage.fromJson(d);

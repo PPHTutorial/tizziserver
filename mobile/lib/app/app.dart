@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design/theme.dart';
 import '../design/tokens.g.dart';
+import 'providers.dart';
 import 'router.dart';
 
 class StallApp extends ConsumerWidget {
@@ -13,7 +14,7 @@ class StallApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
-      title: 'Stall',
+      title: ref.watch(apiConfigProvider).platformDisplayName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

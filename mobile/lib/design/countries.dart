@@ -1,0 +1,110 @@
+/// ISO-3166 country + E.164 dial-code data for the phone entry country picker.
+class Country {
+  const Country(this.name, this.iso2, this.dialCode);
+  final String name;
+  final String iso2;
+  final String dialCode;
+
+  String get flag => String.fromCharCodes(
+        iso2.toUpperCase().codeUnits.map((c) => 0x1F1E6 + (c - 0x41)),
+      );
+}
+
+/// Alphabetical by name. Dial codes are the country's primary E.164 prefix.
+const List<Country> kCountries = [
+  Country('Algeria', 'DZ', '213'),
+  Country('Angola', 'AO', '244'),
+  Country('Argentina', 'AR', '54'),
+  Country('Australia', 'AU', '61'),
+  Country('Austria', 'AT', '43'),
+  Country('Bangladesh', 'BD', '880'),
+  Country('Belgium', 'BE', '32'),
+  Country('Benin', 'BJ', '229'),
+  Country('Botswana', 'BW', '267'),
+  Country('Brazil', 'BR', '55'),
+  Country('Burkina Faso', 'BF', '226'),
+  Country('Cameroon', 'CM', '237'),
+  Country('Canada', 'CA', '1'),
+  Country('Chad', 'TD', '235'),
+  Country('Chile', 'CL', '56'),
+  Country('China', 'CN', '86'),
+  Country('Colombia', 'CO', '57'),
+  Country('Congo (DRC)', 'CD', '243'),
+  Country("Côte d'Ivoire", 'CI', '225'),
+  Country('Denmark', 'DK', '45'),
+  Country('Egypt', 'EG', '20'),
+  Country('Ethiopia', 'ET', '251'),
+  Country('Finland', 'FI', '358'),
+  Country('France', 'FR', '33'),
+  Country('Gabon', 'GA', '241'),
+  Country('Gambia', 'GM', '220'),
+  Country('Germany', 'DE', '49'),
+  Country('Ghana', 'GH', '233'),
+  Country('Guinea', 'GN', '224'),
+  Country('India', 'IN', '91'),
+  Country('Indonesia', 'ID', '62'),
+  Country('Ireland', 'IE', '353'),
+  Country('Israel', 'IL', '972'),
+  Country('Italy', 'IT', '39'),
+  Country('Japan', 'JP', '81'),
+  Country('Jordan', 'JO', '962'),
+  Country('Kenya', 'KE', '254'),
+  Country('Lebanon', 'LB', '961'),
+  Country('Lesotho', 'LS', '266'),
+  Country('Liberia', 'LR', '231'),
+  Country('Libya', 'LY', '218'),
+  Country('Madagascar', 'MG', '261'),
+  Country('Malawi', 'MW', '265'),
+  Country('Malaysia', 'MY', '60'),
+  Country('Mali', 'ML', '223'),
+  Country('Mauritania', 'MR', '222'),
+  Country('Mauritius', 'MU', '230'),
+  Country('Mexico', 'MX', '52'),
+  Country('Morocco', 'MA', '212'),
+  Country('Mozambique', 'MZ', '258'),
+  Country('Namibia', 'NA', '264'),
+  Country('Netherlands', 'NL', '31'),
+  Country('New Zealand', 'NZ', '64'),
+  Country('Niger', 'NE', '227'),
+  Country('Nigeria', 'NG', '234'),
+  Country('Norway', 'NO', '47'),
+  Country('Pakistan', 'PK', '92'),
+  Country('Philippines', 'PH', '63'),
+  Country('Poland', 'PL', '48'),
+  Country('Portugal', 'PT', '351'),
+  Country('Qatar', 'QA', '974'),
+  Country('Rwanda', 'RW', '250'),
+  Country('Saudi Arabia', 'SA', '966'),
+  Country('Senegal', 'SN', '221'),
+  Country('Sierra Leone', 'SL', '232'),
+  Country('Singapore', 'SG', '65'),
+  Country('Somalia', 'SO', '252'),
+  Country('South Africa', 'ZA', '27'),
+  Country('South Korea', 'KR', '82'),
+  Country('South Sudan', 'SS', '211'),
+  Country('Spain', 'ES', '34'),
+  Country('Sri Lanka', 'LK', '94'),
+  Country('Sudan', 'SD', '249'),
+  Country('Sweden', 'SE', '46'),
+  Country('Switzerland', 'CH', '41'),
+  Country('Tanzania', 'TZ', '255'),
+  Country('Thailand', 'TH', '66'),
+  Country('Togo', 'TG', '228'),
+  Country('Tunisia', 'TN', '216'),
+  Country('Turkey', 'TR', '90'),
+  Country('Uganda', 'UG', '256'),
+  Country('Ukraine', 'UA', '380'),
+  Country('United Arab Emirates', 'AE', '971'),
+  Country('United Kingdom', 'GB', '44'),
+  Country('United States', 'US', '1'),
+  Country('Vietnam', 'VN', '84'),
+  Country('Zambia', 'ZM', '260'),
+  Country('Zimbabwe', 'ZW', '263'),
+];
+
+Country countryByIso2(String iso2, {Country fallback = const Country('Ghana', 'GH', '233')}) {
+  for (final c in kCountries) {
+    if (c.iso2 == iso2) return c;
+  }
+  return fallback;
+}

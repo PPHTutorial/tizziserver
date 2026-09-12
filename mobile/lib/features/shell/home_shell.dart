@@ -17,7 +17,6 @@ import '../auth/security_actions.dart';
 import '../catalog/screens/catalog_home_body.dart';
 import '../catalog/screens/vendor_hub_screen.dart';
 import '../commerce/commerce_providers.dart';
-import '../commerce/screens/cart_screen.dart';
 import '../commerce/screens/orders_screen.dart';
 import '../comms/comms_providers.dart';
 import '../courier/screens/active_delivery_screen.dart';
@@ -80,10 +79,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           'active' => const CourierActiveBody(),
           'earnings' => const CourierEarningsBody(),
           'explore' => const CatalogExploreBody(),
-          'cart' => const CartBody(),
           'orders' when boot.activeRole == 'VENDOR' => const VendorOrdersBody(),
           'orders' => const OrdersBody(),
-          'dashboard' || 'products' => const VendorHubBody(),
+          'dashboard' || 'products' || 'sell' => const VendorHubBody(),
           _ => _PlaceholderTab(boot: boot, navKey: key),
         };
 
@@ -94,15 +92,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         // `home-discover` frame — no bell/chat there); every other tab gets a
         // plain AppScreenHeader with its nav label. Notifications/Messages
         // move to the Account tab instead of living in a persistent app-bar.
+        // Cart lives in the app bar everywhere (not the bottom nav — that slot
+        // is now the seller entry point), so every tab carries the same action.
         final isHome = (current?.key ?? 'home') == 'home';
+        final showCart = boot.activeRole == 'CUSTOMER';
         final header = isHome
-            ? _HomeHeader(
-                platformName: boot.platform.name,
-                showCart: boot.activeRole == 'CUSTOMER',
-              )
+            ? _HomeHeader(platformName: boot.platform.name, showCart: showCart)
             : AppScreenHeader(
                 current?.label ?? boot.platform.name,
                 showBack: false,
+                trailing: showCart ? const _CartAction() : null,
               );
         final content = Column(
           children: [
@@ -229,6 +228,73 @@ class _CartAction extends ConsumerWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A distinctly-colored CTA (brand `primary`, not the plain list style used by
+/// the rows around it) so it stands out enough to actually attract vendors —
+/// "Sell on {platform}" per tenant, never the generic engine name.
+class _SellPromoCard extends StatelessWidget {
+  const _SellPromoCard({required this.platformName});
+  final String platformName;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpace.s12),
+      child: Material(
+        color: c.primary,
+        borderRadius: BorderRadius.circular(AppRadius.r2xl),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push(RoutePaths.sell),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpace.s16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: c.onPrimary.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    AppIcons.storefront_outlined,
+                    color: c.onPrimary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: AppSpace.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sell on $platformName',
+                        style: context.text.titleSmall?.copyWith(
+                          color: c.onPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Open your store and reach more buyers',
+                        style: context.text.labelMedium?.copyWith(
+                          color: c.onPrimary.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(AppIcons.chevron_right, color: c.onPrimary, size: 14),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -414,11 +480,6 @@ class _AccountTab extends ConsumerWidget {
     ];
 
     final selling = <Widget>[
-      AppListRow(
-        icon: AppIcons.storefront_outlined,
-        label: 'Sell on Stall',
-        onTap: () => context.push(RoutePaths.sell),
-      ),
       if (role == 'VENDOR' && boot.hasFeature('advertising'))
         AppListRow(
           icon: AppIcons.campaign_outlined,
@@ -584,6 +645,7 @@ class _AccountTab extends ConsumerWidget {
         ],
         const SizedBox(height: AppSpace.s12),
         section(shopping),
+        _SellPromoCard(platformName: boot.platform.name),
         section(selling),
         section(play),
         section(account),

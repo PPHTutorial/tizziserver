@@ -11,6 +11,7 @@ const _navIcons = <String, IconData>{
   'house': FontAwesomeIcons.house,
   'compass': FontAwesomeIcons.compass,
   'cart-shopping': FontAwesomeIcons.cartShopping,
+  'store': FontAwesomeIcons.store,
   'box': FontAwesomeIcons.box,
   'user': FontAwesomeIcons.user,
   'gauge': FontAwesomeIcons.gauge,

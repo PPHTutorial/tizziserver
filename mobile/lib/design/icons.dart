@@ -15,6 +15,7 @@ class AppIcons {
   // navigation / chrome
   static const chevron_right = FontAwesomeIcons.chevronRight;
   static const chevron_left = FontAwesomeIcons.chevronLeft;
+  static const chevron_down = FontAwesomeIcons.chevronDown;
   static const arrow_back = FontAwesomeIcons.arrowLeft;
   static const logout = FontAwesomeIcons.rightFromBracket;
   static const mic = FontAwesomeIcons.microphone;

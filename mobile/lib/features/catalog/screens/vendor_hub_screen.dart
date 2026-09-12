@@ -16,21 +16,25 @@ import '../../../design/icons.dart';
 /// §25 (vendor) screens 435–462 subset — the seller hub: onboarding →
 /// KYC-pending → product management. Used both as a pushed screen and a
 /// HomeShell tab body ([VendorHubBody]).
-class VendorHubScreen extends StatelessWidget {
+class VendorHubScreen extends ConsumerWidget {
   const VendorHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: context.colors.bg,
-    body: const SafeArea(
-      child: Column(
-        children: [
-          AppScreenHeader('Sell on Stall'),
-          Expanded(child: VendorHubBody()),
-        ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final platformName =
+        ref.watch(bootstrapProvider).valueOrNull?.platform.name ?? 'Stall';
+    return Scaffold(
+      backgroundColor: context.colors.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppScreenHeader('Sell on $platformName'),
+            const Expanded(child: VendorHubBody()),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class VendorHubBody extends ConsumerWidget {

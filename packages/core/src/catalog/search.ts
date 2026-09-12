@@ -1,6 +1,6 @@
 import { prisma } from "@stall/db";
 import { clampLimit } from "./util.ts";
-import type { ProductCard } from "./products.ts";
+import { activeAuctionsFor, cardDescription, type ProductCard } from "./products.ts";
 
 export interface SearchInput {
   platformSlug: string;
@@ -18,6 +18,7 @@ interface SearchRow {
   slug: string;
   title: string;
   brand: string | null;
+  description: string | null;
   ratingAvg: number;
   ratingCount: number;
   image: string | null;
@@ -54,7 +55,7 @@ export async function searchProducts(input: SearchInput): Promise<{
 
   const rows = await prisma.$queryRawUnsafe<(SearchRow & { rank: number; sim: number })[]>(
     `
-    SELECT p.id, p.slug, p.title, p.brand, p."ratingAvg", p."ratingCount",
+    SELECT p.id, p.slug, p.title, p.brand, p.description, p."ratingAvg", p."ratingCount",
       (SELECT m."fileKey" FROM product_media m WHERE m."productId" = p.id ORDER BY m."sortOrder" ASC LIMIT 1) AS image,
       (SELECT MIN(o."priceMinor") FROM vendor_offers o WHERE o."productId" = p.id AND o.status = 'ACTIVE') AS "fromPriceMinor",
       (SELECT COUNT(*) FROM vendor_offers o WHERE o."productId" = p.id AND o.status = 'ACTIVE') AS "offerCount",
@@ -94,11 +95,13 @@ export async function searchProducts(input: SearchInput): Promise<{
     q,
   );
 
+  const auctions = await activeAuctionsFor(rows.map((r) => r.id));
   const items: ProductCard[] = rows.map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,
     brand: r.brand,
+    description: cardDescription(r.description),
     image: r.image,
     ratingAvg: r.ratingAvg,
     ratingCount: r.ratingCount,
@@ -106,6 +109,7 @@ export async function searchProducts(input: SearchInput): Promise<{
     currency: "GHS",
     offerCount: Number(r.offerCount),
     vendorCount: Number(r.vendorCount),
+    activeAuction: auctions.get(r.id) ?? null,
   }));
 
   return { items, page, limit, total: Number(totalRows[0]?.n ?? 0) };

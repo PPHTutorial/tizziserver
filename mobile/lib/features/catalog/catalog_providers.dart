@@ -99,6 +99,19 @@ final nearbyVendorsProvider = FutureProvider.autoDispose
   (ref, a) => ref.watch(stallApiProvider).nearbyVendors(lat: a.lat, lng: a.lng, radiusM: a.radiusM),
 );
 
+/// Top-rated active vendors — backs the "Featured vendors" home rail and its
+/// "View all" screen (a superset of the rail's first few cards).
+final featuredVendorsProvider = FutureProvider.autoDispose<List<FeaturedVendorDto>>(
+  (ref) => ref.watch(stallApiProvider).featuredVendors(),
+);
+
+/// Live brand-logo preview while a vendor types into the "Brand" field on
+/// the product editor — keyed by the (debounced, trimmed) brand text.
+final brandLogoPreviewProvider =
+    FutureProvider.autoDispose.family<String?, String>(
+  (ref, name) => ref.watch(stallApiProvider).brandLogo(name),
+);
+
 /// Recent search terms — session-local (kept alive across screen visits), newest first.
 class RecentSearches extends Notifier<List<String>> {
   @override

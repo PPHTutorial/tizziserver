@@ -6,6 +6,19 @@ import '../../design/context_ext.dart';
 import '../../design/tokens.g.dart';
 import 'onboarding_controller.dart';
 
+class _SplashWordmark extends ConsumerWidget {
+  const _SplashWordmark();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    return Text(
+      ref.watch(apiConfigProvider).platformDisplayName,
+      style: context.text.displayLarge?.copyWith(color: c.onPrimary),
+    );
+  }
+}
+
 /// Screen 1 — Splash. Restores persisted state, then the router redirect takes
 /// over (onboarding / welcome / home).
 class SplashScreen extends ConsumerStatefulWidget {
@@ -36,15 +49,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Stall',
-              style: context.text.displayLarge?.copyWith(color: c.onPrimary),
-            ),
+            const _SplashWordmark(),
             const SizedBox(height: AppSpace.s16),
             SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2, color: c.onPrimary),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: c.onPrimary,
+              ),
             ),
           ],
         ),

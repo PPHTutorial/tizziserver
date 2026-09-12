@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -84,6 +86,18 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   late final String? _status = widget.existing?.status;
   late String? _offerStatus = widget.existing?.offerStatus;
 
+  // Debounced brand text — feeds the live logo preview beside the Brand
+  // field without firing a lookup on every keystroke.
+  late String _debouncedBrand = widget.existing?.brand ?? '';
+  Timer? _brandDebounce;
+
+  void _onBrandChanged() {
+    _brandDebounce?.cancel();
+    _brandDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) setState(() => _debouncedBrand = _brand.text.trim());
+    });
+  }
+
   // Category-specific fields (`Category.attributeSchema`), keyed by field
   // key. Created lazily per key the first time that field renders, so
   // switching category doesn't require pre-declaring every possible field.
@@ -97,10 +111,13 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   void initState() {
     super.initState();
     _categoryId = widget.existing?.categoryId;
+    _brand.addListener(_onBrandChanged);
   }
 
   @override
   void dispose() {
+    _brandDebounce?.cancel();
+    _brand.removeListener(_onBrandChanged);
     for (final ctl in [_title, _desc, _brand, _price, _qty, _image]) {
       ctl.dispose();
     }
@@ -408,6 +425,9 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
                     label: 'Brand (optional)',
                     hintText: 'e.g. Orbit',
                     controller: _brand,
+                    prefix: _debouncedBrand.isEmpty
+                        ? null
+                        : _BrandLogoPreview(name: _debouncedBrand),
                   ),
                   const SizedBox(height: AppSpace.s16),
                   Text('Condition', style: context.text.titleSmall),
@@ -540,6 +560,33 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A small circular logo that fades in beside the Brand field once the
+/// debounced text resolves to a real brand (curated map or Brandfetch) —
+/// shows nothing while unresolved/loading so the field looks unchanged.
+class _BrandLogoPreview extends ConsumerWidget {
+  const _BrandLogoPreview({required this.name});
+  final String name;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final logoUrl = ref.watch(brandLogoPreviewProvider(name)).valueOrNull;
+    if (logoUrl == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpace.s12, right: AppSpace.s4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Image.network(
+          logoUrl,
+          width: 22,
+          height: 22,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
         ),
       ),
     );
