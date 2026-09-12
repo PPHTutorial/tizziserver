@@ -10,7 +10,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// Semantic icon set backed by Font Awesome. Use with [Icon] or [AppIcon].
 class AppIcons {
-  const AppIcons._();
+  const AppIcons._(); 
 
   // navigation / chrome
   static const chevron_right = FontAwesomeIcons.chevronRight;
