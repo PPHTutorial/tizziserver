@@ -738,7 +738,17 @@ export async function listVendorOrders(userId: string, opts: { status?: string }
     where: { vendorId: vp.id, ...(opts.status ? { status: opts.status as never } : {}) },
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { items: true, order: { select: { number: true, fulfilmentMethod: true, addressSnapshot: true } } },
+    include: {
+      items: true,
+      order: {
+        select: {
+          number: true,
+          fulfilmentMethod: true,
+          addressSnapshot: true,
+          customer: { select: { firstName: true, lastName: true } },
+        },
+      },
+    },
   });
   return rows.map((vo) => ({
     id: vo.id,
@@ -749,6 +759,7 @@ export async function listVendorOrders(userId: string, opts: { status?: string }
     commissionMinor: vo.commissionMinor,
     payoutMinor: vo.payoutMinor,
     fulfilmentMethod: vo.order.fulfilmentMethod,
+    buyerName: [vo.order.customer.firstName, vo.order.customer.lastName].filter(Boolean).join(" ") || "Customer",
     itemCount: vo.items.reduce((n, it) => n + it.qty, 0),
     items: vo.items.map((it) => ({ title: it.titleSnapshot, qty: it.qty, totalMinor: it.totalMinor })),
     createdAt: vo.createdAt.toISOString(),
@@ -855,9 +866,35 @@ export async function setVendorOrderStatus(userId: string, vendorOrderId: string
  */
 export async function completeVendorOrder(userId: string, vendorOrderId: string) {
   const vp = await vendorProfileFor(userId);
-  const vo = await prisma.vendorOrder.findFirst({ where: { id: vendorOrderId, vendorId: vp.id }, include: { items: true, order: true } });
+  const vo = await fetchVendorOrderWithItems({ id: vendorOrderId, vendorId: vp.id });
   if (!vo) throw new AppError("NOT_FOUND", "Sub-order not found");
-  if (vo.status === "COMPLETED") throw new AppError("CONFLICT", "Sub-order is already completed");
+  return completeVendorOrderInternal(vo, { actorType: "USER", actorId: userId });
+}
+
+/**
+ * Same completion as `completeVendorOrder`, but for the courier-driven path
+ * (a verified drop-off) instead of the vendor's own manual "mark complete"
+ * button — no vendor-auth check, since there's no vendor user in that
+ * context. Without this, `Order.status` never reached FULFILLED on its own
+ * after a real delivery: a customer could still cancel (and get refunded)
+ * an order they'd already physically received, because the order/vendor-order
+ * status only ever advanced via the vendor manually completing it.
+ */
+export async function completeVendorOrderSystem(vendorOrderId: string) {
+  const vo = await fetchVendorOrderWithItems({ id: vendorOrderId });
+  if (!vo || vo.status === "CANCELLED") return null;
+  return completeVendorOrderInternal(vo, { actorType: "SYSTEM" });
+}
+
+function fetchVendorOrderWithItems(where: Prisma.VendorOrderWhereInput) {
+  return prisma.vendorOrder.findFirst({ where, include: { items: true, order: true } });
+}
+
+async function completeVendorOrderInternal(
+  vo: NonNullable<Awaited<ReturnType<typeof fetchVendorOrderWithItems>>>,
+  actor: { actorType: "USER"; actorId: string } | { actorType: "SYSTEM" },
+) {
+  if (vo.status === "COMPLETED") return { vendorOrderId: vo.id, status: "COMPLETED" as const };
   if (vo.status === "CANCELLED") throw new AppError("CONFLICT", "Sub-order was cancelled");
 
   const order = vo.order;
@@ -880,7 +917,7 @@ export async function completeVendorOrder(userId: string, vendorOrderId: string)
     for (const it of vo.items) {
       if (!it.variantId) continue;
       await tx.inventory.updateMany({
-        where: { variantId: it.variantId, vendorId: vp.id },
+        where: { variantId: it.variantId, vendorId: vo.vendorId },
         data: { reserved: { decrement: it.qty }, quantity: { decrement: it.qty } },
       });
     }
@@ -894,7 +931,7 @@ export async function completeVendorOrder(userId: string, vendorOrderId: string)
         lines: [
           { account: platformEscrow(order.platformSlug, order.currency), direction: "DEBIT", amountMinor: vo.subtotalMinor },
           ...(vo.payoutMinor > 0
-            ? [{ account: vendorPayable(vp.id, order.currency), direction: "CREDIT" as const, amountMinor: vo.payoutMinor }]
+            ? [{ account: vendorPayable(vo.vendorId, order.currency), direction: "CREDIT" as const, amountMinor: vo.payoutMinor }]
             : []),
           ...(vo.commissionMinor > 0
             ? [{ account: platformRevenue(order.platformSlug, order.currency), direction: "CREDIT" as const, amountMinor: vo.commissionMinor }]
@@ -904,7 +941,7 @@ export async function completeVendorOrder(userId: string, vendorOrderId: string)
       tx,
     );
 
-    await tx.orderEvent.create({ data: { orderId: order.id, type: "VENDOR_COMPLETED", actorType: "USER", actorId: userId, data: { vendorOrderId: vo.id, payoutMinor: vo.payoutMinor } } });
+    await tx.orderEvent.create({ data: { orderId: order.id, type: "VENDOR_COMPLETED", ...actor, data: { vendorOrderId: vo.id, payoutMinor: vo.payoutMinor } } });
     await tx.outboxEvent.create({ data: { type: "vendor_order.completed", aggregateType: "VendorOrder", aggregateId: vo.id, payload: { number: vo.number } } });
 
     const siblings = await tx.vendorOrder.findMany({ where: { orderId: order.id }, select: { status: true } });

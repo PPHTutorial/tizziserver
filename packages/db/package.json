@@ -14,6 +14,8 @@
     "migrate:reset": "prisma migrate reset",
     "studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
+    "seed:bulk": "tsx scripts/seed-bulk.ts",
+    "seed:bulk:wipe": "tsx scripts/seed-bulk.ts --wipe",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

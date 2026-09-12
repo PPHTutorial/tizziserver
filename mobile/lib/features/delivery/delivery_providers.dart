@@ -108,7 +108,8 @@ final deliveryTrackProvider = StreamProvider.autoDispose.family<DeliveryTrackDto
           pickup: l.pickup,
           dropoff: l.dropoff,
           courier: (lat: lat, lng: lng, heading: heading, at: at),
-          trail: trail.length > 60 ? trail.sublist(trail.length - 60) : trail,
+          route: l.route, // route is refreshed on the next delivery:event refetch
+          trail: trail.length > 25 ? trail.sublist(trail.length - 25) : trail,
           distanceRemainingM: l.distanceRemainingM,
         ));
       })

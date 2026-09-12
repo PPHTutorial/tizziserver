@@ -20,44 +20,75 @@ class AdvertisingCenterScreen extends ConsumerWidget {
     final c = context.colors;
     final campaigns = ref.watch(campaignsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Advertising')),
+      backgroundColor: c.bg,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
+          showDragHandle: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.r2xl)),
+          ),
           builder: (_) => const _CreateCampaignSheet(),
         ),
         icon: const Icon(AppIcons.add),
         label: const Text('New campaign'),
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(campaignsProvider);
-            await ref.read(campaignsProvider.future);
-          },
-          child: campaigns.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('$e')),
-            data: (list) {
-              if (list.isEmpty) {
-                return ListView(children: [
-                  const SizedBox(height: 120),
-                  Icon(AppIcons.campaign_outlined, size: 48, color: c.textLow),
-                  const SizedBox(height: AppSpace.s8),
-                  Center(child: Text('No campaigns yet', style: context.text.bodyMedium)),
-                  const SizedBox(height: 4),
-                  Center(child: Text('Boost a product to the top of search and the home feed.', style: context.text.bodySmall?.copyWith(color: c.textMed))),
-                ]);
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.all(AppSpace.s16),
-                itemCount: list.length,
-                separatorBuilder: (_, __) => const SizedBox(height: AppSpace.s8),
-                itemBuilder: (_, i) => _CampaignCard(c: list[i]),
-              );
-            },
-          ),
+        child: Column(
+          children: [
+            const AppScreenHeader('Advertising'),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(campaignsProvider);
+                  await ref.read(campaignsProvider.future);
+                },
+                child: campaigns.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('$e')),
+                  data: (list) {
+                    if (list.isEmpty) {
+                      return ListView(
+                        children: [
+                          const SizedBox(height: 120),
+                          Icon(
+                            AppIcons.campaign_outlined,
+                            size: 48,
+                            color: c.textLow,
+                          ),
+                          const SizedBox(height: AppSpace.s8),
+                          Center(
+                            child: Text(
+                              'No campaigns yet',
+                              style: context.text.bodyMedium,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Center(
+                            child: Text(
+                              'Boost a product to the top of search and the home feed.',
+                              style: context.text.bodySmall?.copyWith(
+                                color: c.textMed,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return ListView.separated(
+                      padding: const EdgeInsets.all(AppSpace.s16),
+                      itemCount: list.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: AppSpace.s8),
+                      itemBuilder: (_, i) => _CampaignCard(c: list[i]),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -85,22 +116,39 @@ class _CampaignCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(c.name, style: context.text.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              Expanded(
+                child: Text(
+                  c.name,
+                  style: context.text.titleSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               StatusBadge(c.status, tone: tone),
             ],
           ),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            child: LinearProgressIndicator(value: c.spentPct, minHeight: 6, backgroundColor: col.border, color: col.primary),
+            child: LinearProgressIndicator(
+              value: c.spentPct,
+              minHeight: 6,
+              backgroundColor: col.border,
+              color: col.primary,
+            ),
           ),
           const SizedBox(height: 6),
-          Text('${formatMoney(c.spentMinor, 'GHS')} of ${formatMoney(c.budgetMinor, 'GHS')} spent'
-              '${c.tierName != null ? ' · ${c.tierName}' : ''}',
-              style: context.text.bodySmall?.copyWith(color: col.textMed)),
+          Text(
+            '${formatMoney(c.spentMinor, 'GHS')} of ${formatMoney(c.budgetMinor, 'GHS')} spent'
+            '${c.tierName != null ? ' · ${c.tierName}' : ''}',
+            style: context.text.bodySmall?.copyWith(color: col.textMed),
+          ),
           if (c.rejectionReason != null) ...[
             const SizedBox(height: 4),
-            Text(c.rejectionReason!, style: context.text.bodySmall?.copyWith(color: col.error)),
+            Text(
+              c.rejectionReason!,
+              style: context.text.bodySmall?.copyWith(color: col.error),
+            ),
           ],
         ],
       ),
@@ -111,7 +159,8 @@ class _CampaignCard extends StatelessWidget {
 class _CreateCampaignSheet extends ConsumerStatefulWidget {
   const _CreateCampaignSheet();
   @override
-  ConsumerState<_CreateCampaignSheet> createState() => _CreateCampaignSheetState();
+  ConsumerState<_CreateCampaignSheet> createState() =>
+      _CreateCampaignSheetState();
 }
 
 class _CreateCampaignSheetState extends ConsumerState<_CreateCampaignSheet> {
@@ -159,7 +208,12 @@ class _CreateCampaignSheetState extends ConsumerState<_CreateCampaignSheet> {
     final tiers = ref.watch(boostTiersProvider);
     final products = ref.watch(myProductsProvider);
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + AppSpace.s16, top: AppSpace.s16, left: AppSpace.s16, right: AppSpace.s16),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpace.s16,
+        top: AppSpace.s16,
+        left: AppSpace.s16,
+        right: AppSpace.s16,
+      ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -167,10 +221,26 @@ class _CreateCampaignSheetState extends ConsumerState<_CreateCampaignSheet> {
           children: [
             Text('New campaign', style: context.text.titleMedium),
             const SizedBox(height: AppSpace.s16),
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Campaign name')),
+            TextField(
+              controller: _name,
+              decoration: const InputDecoration(
+                labelText: 'Campaign name',
+                hintText: 'e.g. Weekend flash sale',
+              ),
+            ),
             const SizedBox(height: AppSpace.s16),
-            Text('Daily budget cap: GHS ${_budget.round()}', style: context.text.bodyMedium),
-            Slider(value: _budget, min: 50, max: 2000, divisions: 39, label: 'GHS ${_budget.round()}', onChanged: (v) => setState(() => _budget = v)),
+            Text(
+              'Daily budget cap: GHS ${_budget.round()}',
+              style: context.text.bodyMedium,
+            ),
+            Slider(
+              value: _budget,
+              min: 50,
+              max: 2000,
+              divisions: 39,
+              label: 'GHS ${_budget.round()}',
+              onChanged: (v) => setState(() => _budget = v),
+            ),
             const SizedBox(height: AppSpace.s8),
             Text('Tier', style: context.text.labelLarge),
             const SizedBox(height: 6),
@@ -180,11 +250,15 @@ class _CreateCampaignSheetState extends ConsumerState<_CreateCampaignSheet> {
               data: (list) => Wrap(
                 spacing: 8,
                 children: list
-                    .map((t) => ChoiceChip(
-                          label: Text('${t.name} · ${formatMoney(t.priceMinor, 'GHS')}'),
-                          selected: _tierKey == t.key,
-                          onSelected: (_) => setState(() => _tierKey = t.key),
-                        ))
+                    .map(
+                      (t) => ChoiceChip(
+                        label: Text(
+                          '${t.name} · ${formatMoney(t.priceMinor, 'GHS')}',
+                        ),
+                        selected: _tierKey == t.key,
+                        onSelected: (_) => setState(() => _tierKey = t.key),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -197,13 +271,23 @@ class _CreateCampaignSheetState extends ConsumerState<_CreateCampaignSheet> {
               data: (list) => Column(
                 children: list
                     .take(12)
-                    .map((p) => CheckboxListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          value: _productIds.contains(p.id),
-                          title: Text(p.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          onChanged: (v) => setState(() => v == true ? _productIds.add(p.id) : _productIds.remove(p.id)),
-                        ))
+                    .map(
+                      (p) => CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        value: _productIds.contains(p.id),
+                        title: Text(
+                          p.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onChanged: (v) => setState(
+                          () => v == true
+                              ? _productIds.add(p.id)
+                              : _productIds.remove(p.id),
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -216,7 +300,13 @@ class _CreateCampaignSheetState extends ConsumerState<_CreateCampaignSheet> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _busy || _productIds.isEmpty ? null : _submit,
-                child: _busy ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create draft'),
+                child: _busy
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Create draft'),
               ),
             ),
           ],

@@ -22,8 +22,14 @@ class VendorHubScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: context.colors.bg,
-    appBar: AppBar(title: const Text('Sell on Stall')),
-    body: const VendorHubBody(),
+    body: const SafeArea(
+      child: Column(
+        children: [
+          AppScreenHeader('Sell on Stall'),
+          Expanded(child: VendorHubBody()),
+        ],
+      ),
+    ),
   );
 }
 
@@ -144,19 +150,21 @@ class _OnboardingFormState extends ConsumerState<_OnboardingForm> {
         const SizedBox(height: AppSpace.s20),
         AppField(
           label: 'Store name',
+          hintText: 'e.g. Kumasi Gadget Store',
           controller: _display,
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: AppSpace.s16),
         AppField(
           label: 'Registered business name',
+          hintText: 'As it appears on your certificate',
           controller: _legal,
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: AppSpace.s16),
-        AppField(label: 'Business reg. number (optional)', controller: _reg),
+        AppField(label: 'Business reg. number (optional)', hintText: 'e.g. BN-123456', controller: _reg),
         const SizedBox(height: AppSpace.s16),
-        AppField(label: 'City (optional)', controller: _city),
+        AppField(label: 'City (optional)', hintText: 'e.g. Accra', controller: _city),
         InlineError(_error),
         const SizedBox(height: AppSpace.s24),
         PrimaryButton(
@@ -169,11 +177,24 @@ class _OnboardingFormState extends ConsumerState<_OnboardingForm> {
   }
 }
 
-class _SellerDashboard extends ConsumerWidget {
+class _SellerDashboard extends ConsumerStatefulWidget {
   const _SellerDashboard();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SellerDashboard> createState() => _SellerDashboardState();
+}
+
+const _inventoryTabs = <(String, String)>[
+  ('all', 'All'),
+  ('active', 'Active'),
+  ('paused', 'Paused'),
+];
+
+class _SellerDashboardState extends ConsumerState<_SellerDashboard> {
+  String _tab = 'all';
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.colors;
     final async = ref.watch(myProductsProvider(null));
 
@@ -193,73 +214,120 @@ class _SellerDashboard extends ConsumerWidget {
             ),
           ],
         ),
-        data: (items) => ListView(
-          padding: const EdgeInsets.all(AppSpace.s16),
-          children: [
-            const _StatsCard(),
-            const SizedBox(height: AppSpace.s16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Your products (${items.length})',
-                  style: context.text.titleMedium,
-                ),
-                FilledButton.icon(
-                  onPressed: () => context.push(RoutePaths.newProduct),
-                  icon: const Icon(AppIcons.add, size: 18),
-                  label: const Text('Add'),
-                  style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpace.s8),
-            OutlinedButton.icon(
-              onPressed: () => context.push(RoutePaths.sellOrders),
-              icon: const Icon(AppIcons.receipt_long_outlined, size: 18),
-              label: const Text('Incoming orders'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(44),
-              ),
-            ),
-            const SizedBox(height: AppSpace.s8),
-            TextButton.icon(
-              onPressed: () => context.push('/sell/documents'),
-              icon: const Icon(AppIcons.description_outlined, size: 18),
-              label: const Text('Verification documents'),
-            ),
-            const SizedBox(height: AppSpace.s8),
-            if (items.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: AppSpace.s40),
-                child: CenteredState(
-                  icon: AppIcons.inventory_2_outlined,
-                  title: 'No products yet',
-                ),
-              ),
-            for (final p in items)
-              Card(
-                elevation: 0,
-                color: c.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  side: BorderSide(color: c.border),
-                ),
-                child: ListTile(
-                  title: Text(
-                    p.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        data: (items) {
+          final counts = {
+            'all': items.length,
+            'active': items.where((p) => p.offerStatus == 'ACTIVE').length,
+            'paused': items.where((p) => p.offerStatus == 'PAUSED').length,
+          };
+          final visible = switch (_tab) {
+            'active' => items.where((p) => p.offerStatus == 'ACTIVE').toList(),
+            'paused' => items.where((p) => p.offerStatus == 'PAUSED').toList(),
+            _ => items,
+          };
+          return ListView(
+            padding: const EdgeInsets.all(AppSpace.s16),
+            children: [
+              const _StatsCard(),
+              const SizedBox(height: AppSpace.s16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Your products', style: context.text.titleMedium),
+                  FilledButton.icon(
+                    onPressed: () => context.push(RoutePaths.newProduct),
+                    icon: const Icon(AppIcons.add, size: 18),
+                    label: const Text('Add'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 40),
+                    ),
                   ),
-                  subtitle: Text(
-                    '${p.status} · ${formatMoney(p.priceMinor, p.currency)}',
-                  ),
-                  trailing: _StatusChip(status: p.status),
-                  onTap: () => context.push(RoutePaths.editProduct(p.id)),
+                ],
+              ),
+              const SizedBox(height: AppSpace.s8),
+              OutlinedButton.icon(
+                onPressed: () => context.push(RoutePaths.sellOrders),
+                icon: const Icon(AppIcons.receipt_long_outlined, size: 18),
+                label: const Text('Incoming orders'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
                 ),
               ),
-          ],
-        ),
+              const SizedBox(height: AppSpace.s8),
+              TextButton.icon(
+                onPressed: () => context.push(RoutePaths.sellProfile),
+                icon: const Icon(AppIcons.storefront_outlined, size: 18),
+                label: const Text('Edit shop profile'),
+              ),
+              TextButton.icon(
+                onPressed: () => context.push('/sell/documents'),
+                icon: const Icon(AppIcons.description_outlined, size: 18),
+                label: const Text('Verification documents'),
+              ),
+              const SizedBox(height: AppSpace.s12),
+              Row(
+                children: [
+                  for (final (value, label) in _inventoryTabs) ...[
+                    ChoiceChip(
+                      label: Text('$label (${counts[value]})'),
+                      selected: _tab == value,
+                      onSelected: (_) => setState(() => _tab = value),
+                    ),
+                    const SizedBox(width: AppSpace.s8),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpace.s12),
+              if (visible.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(top: AppSpace.s40),
+                  child: CenteredState(
+                    icon: AppIcons.inventory_2_outlined,
+                    title: 'No products here',
+                  ),
+                ),
+              for (final p in visible)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpace.s12),
+                  child: AppCard(
+                    onTap: () => context.push(RoutePaths.editProduct(p.id)),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.text.titleSmall,
+                              ),
+                              const SizedBox(height: AppSpace.s4),
+                              Text(
+                                [
+                                  formatMoney(p.priceMinor, p.currency),
+                                  'Stock: ${p.quantity}',
+                                  'Views: ${p.viewCount}',
+                                ].join(' · '),
+                                style: context.text.bodySmall?.copyWith(
+                                  color: c.textMed,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSpace.s8),
+                        _StatusChip(status: p.status),
+                        const SizedBox(width: AppSpace.s4),
+                        Icon(AppIcons.chevron_right, color: c.textLow),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

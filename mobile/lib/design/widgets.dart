@@ -30,25 +30,37 @@ class AuthScaffold extends StatelessWidget {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.bg,
-      appBar: showBack
-          ? AppBar(
-              leading: BackButton(onPressed: onBack ?? () => Navigator.of(context).maybePop()),
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-            )
-          : null,
       body: SafeArea(
-        top: !showBack,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (showBack)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s8, AppSpace.s16, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Material(
+                    color: c.surface,
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: onBack ?? () => Navigator.of(context).maybePop(),
+                      child: SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Icon(AppIcons.chevron_left, size: 16, color: c.textHi),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpace.s24, AppSpace.s8, AppSpace.s24, AppSpace.s24),
+                    AppSpace.s24, AppSpace.s16, AppSpace.s24, AppSpace.s24),
                 children: [
                   if (title != null)
-                    Text(title!, style: context.text.headlineMedium),
+                    Text(title!, style: context.text.displayLarge?.copyWith(fontSize: 28)),
                   if (subtitle != null) ...[
                     const SizedBox(height: AppSpace.s8),
                     Text(subtitle!,
@@ -386,6 +398,63 @@ class CenteredState extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A live "ends in Xh Ym" (or "Xh Ym Zs" with [showSeconds]) countdown,
+/// re-ticking on its own until [until] passes, then rendering nothing.
+class CountdownText extends StatefulWidget {
+  const CountdownText({
+    super.key,
+    required this.until,
+    this.showSeconds = false,
+    this.style,
+    this.prefix = 'ends in ',
+  });
+
+  final DateTime until;
+  final bool showSeconds;
+  final TextStyle? style;
+  final String prefix;
+
+  @override
+  State<CountdownText> createState() => _CountdownTextState();
+}
+
+class _CountdownTextState extends State<CountdownText> {
+  late Duration _left = widget.until.difference(DateTime.now());
+
+  @override
+  void initState() {
+    super.initState();
+    _tick();
+  }
+
+  void _tick() {
+    if (!mounted) return;
+    setState(() => _left = widget.until.difference(DateTime.now()));
+    if (_left > Duration.zero) {
+      Future.delayed(
+        Duration(seconds: widget.showSeconds ? 1 : 30),
+        _tick,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_left <= Duration.zero) return const SizedBox.shrink();
+    final h = _left.inHours;
+    final m = _left.inMinutes % 60;
+    final label = widget.showSeconds
+        ? '${widget.prefix}${h}h ${m}m ${_left.inSeconds % 60}s'
+        : '${widget.prefix}${h}h ${m}m';
+    return Text(
+      label,
+      style:
+          widget.style ??
+          context.text.labelSmall?.copyWith(color: context.colors.error),
     );
   }
 }

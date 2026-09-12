@@ -16,7 +16,8 @@ Future<void> setTransactionPin(BuildContext context, WidgetRef ref) async {
     builder: (context) => AlertDialog(
       title: const Text('Set transaction PIN'),
       content: AppField(
-        label: '4–6 digits',
+        label: 'Transaction PIN',
+        hintText: '4–6 digits',
         controller: controller,
         keyboardType: TextInputType.number,
         obscureText: true,
@@ -58,7 +59,7 @@ Future<void> enrollTwoFactor(BuildContext context, WidgetRef ref) async {
             const SizedBox(height: AppSpace.s8),
             SelectableText(enroll.secret, style: context.text.titleSmall),
             const SizedBox(height: AppSpace.s12),
-            AppField(label: 'Code', controller: codeController, keyboardType: TextInputType.number),
+            AppField(label: 'Code', hintText: '6-digit code', controller: codeController, keyboardType: TextInputType.number),
           ],
         ),
         actions: [

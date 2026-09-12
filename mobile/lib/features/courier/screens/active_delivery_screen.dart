@@ -11,6 +11,7 @@ import '../../../app/providers.dart';
 import '../../../core/location.dart';
 import '../../../core/realtime.dart';
 import '../../../design/app_map.dart';
+import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
@@ -27,12 +28,19 @@ class ActiveDeliveryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final d = ref.watch(courierDeliveryProvider(deliveryId));
     return Scaffold(
-      appBar: AppBar(title: const Text('Active delivery')),
+      backgroundColor: context.colors.bg,
       body: SafeArea(
-        child: d.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('$e')),
-          data: (dl) => _Body(delivery: dl),
+        child: Column(
+          children: [
+            const AppScreenHeader('Active delivery'),
+            Expanded(
+              child: d.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('$e')),
+                data: (dl) => _Body(delivery: dl),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -298,6 +306,7 @@ Future<String?> _askCode(BuildContext context, String title, String hint, {bool 
       title: Text(title),
       content: AppField(
         label: hint,
+        hintText: numeric ? '4-digit code' : 'Enter value',
         controller: ctrl,
         keyboardType: numeric ? TextInputType.number : TextInputType.text,
         autofocus: true,

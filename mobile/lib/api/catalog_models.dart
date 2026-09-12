@@ -2,6 +2,36 @@
 
 int? _int(dynamic v) => v == null ? null : (v as num).toInt();
 
+/// One field in a category's product field template
+/// (`Category.attributeSchema`). `type` is one of "text"/"number"/"boolean"/
+/// "select"; `options` is only present (and only meaningful) for "select".
+class CategoryAttributeField {
+  const CategoryAttributeField({
+    required this.key,
+    required this.label,
+    required this.type,
+    this.required = false,
+    this.options = const [],
+  });
+
+  final String key;
+  final String label;
+  final String type;
+  final bool required;
+  final List<String> options;
+
+  factory CategoryAttributeField.fromJson(Map<String, dynamic> j) =>
+      CategoryAttributeField(
+        key: j['key'] as String,
+        label: j['label'] as String,
+        type: j['type'] as String,
+        required: j['required'] as bool? ?? false,
+        options: (j['options'] as List<dynamic>? ?? const [])
+            .map((e) => e as String)
+            .toList(growable: false),
+      );
+}
+
 class CategoryDto {
   const CategoryDto({
     required this.id,
@@ -12,6 +42,8 @@ class CategoryDto {
     required this.path,
     this.sortOrder = 0,
     this.children = const [],
+    this.count,
+    this.attributeSchema,
   });
 
   final String id;
@@ -23,6 +55,16 @@ class CategoryDto {
   final int sortOrder;
   final List<CategoryDto> children;
 
+  /// Present (non-null) only when fetched via a ranked `rootCategories`
+  /// filter — the real signal (order volume / recent publishes / live
+  /// auctions) that ranking is sorted by.
+  final int? count;
+
+  /// This category's product field template, or `null` if it has none — a
+  /// category with no schema just gets the generic listing form, nothing
+  /// category-specific.
+  final List<CategoryAttributeField>? attributeSchema;
+
   factory CategoryDto.fromJson(Map<String, dynamic> j) => CategoryDto(
         id: j['id'] as String,
         parentId: j['parentId'] as String?,
@@ -33,6 +75,10 @@ class CategoryDto {
         sortOrder: _int(j['sortOrder']) ?? 0,
         children: (j['children'] as List<dynamic>? ?? const [])
             .map((e) => CategoryDto.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false),
+        count: _int(j['count']),
+        attributeSchema: (j['attributeSchema'] as List<dynamic>?)
+            ?.map((e) => CategoryAttributeField.fromJson(e as Map<String, dynamic>))
             .toList(growable: false),
       );
 }
@@ -110,6 +156,33 @@ class WishlistItemDto {
         image: j['image'] as String?,
         fromPriceMinor: _int(j['fromPriceMinor']),
         currency: (j['currency'] as String?) ?? 'GHS',
+      );
+}
+
+class RecentlyViewedItemDto extends WishlistItemDto {
+  const RecentlyViewedItemDto({
+    required super.productId,
+    required super.slug,
+    required super.title,
+    required this.viewedAt,
+    super.image,
+    super.fromPriceMinor,
+    super.currency = 'GHS',
+  });
+
+  final DateTime viewedAt;
+
+  factory RecentlyViewedItemDto.fromJson(Map<String, dynamic> j) =>
+      RecentlyViewedItemDto(
+        productId: j['productId'] as String,
+        slug: j['slug'] as String? ?? '',
+        title: j['title'] as String? ?? '',
+        image: j['image'] as String?,
+        fromPriceMinor: _int(j['fromPriceMinor']),
+        currency: (j['currency'] as String?) ?? 'GHS',
+        viewedAt:
+            DateTime.tryParse(j['viewedAt'] as String? ?? '') ??
+            DateTime.now(),
       );
 }
 
@@ -212,6 +285,43 @@ class ReviewDto {
       );
 }
 
+class RatingBar {
+  const RatingBar({required this.star, required this.count, required this.pct});
+  final int star;
+  final int count;
+  final int pct;
+
+  factory RatingBar.fromJson(Map<String, dynamic> j) => RatingBar(
+        star: _int(j['star']) ?? 0,
+        count: _int(j['count']) ?? 0,
+        pct: _int(j['pct']) ?? 0,
+      );
+}
+
+class ReviewsPage {
+  const ReviewsPage({
+    required this.items,
+    this.nextCursor,
+    this.total = 0,
+    this.distribution = const [],
+  });
+  final List<ReviewDto> items;
+  final String? nextCursor;
+  final int total;
+  final List<RatingBar> distribution;
+
+  factory ReviewsPage.fromJson(Map<String, dynamic> j) => ReviewsPage(
+        items: (j['items'] as List<dynamic>? ?? const [])
+            .map((e) => ReviewDto.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+        nextCursor: j['nextCursor'] as String?,
+        total: _int(j['total']) ?? 0,
+        distribution: (j['distribution'] as List<dynamic>? ?? const [])
+            .map((e) => RatingBar.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+      );
+}
+
 class ProductMediaDto {
   const ProductMediaDto({required this.kind, required this.fileKey, this.alt});
 
@@ -248,6 +358,7 @@ class ProductDetail {
     this.reviewCount = 0,
     this.questionCount = 0,
     this.reviews = const [],
+    this.activeAuction,
   });
 
   final String id;
@@ -272,6 +383,10 @@ class ProductDetail {
   final int reviewCount;
   final int questionCount;
   final List<ReviewDto> reviews;
+
+  /// The live Inverse Draw for this exact product, when the platform links
+  /// one — lets the PDP show a "Join Draw" CTA alongside "Buy Retail".
+  final ProductActiveAuction? activeAuction;
 
   factory ProductDetail.fromJson(Map<String, dynamic> j) => ProductDetail(
         id: j['id'] as String,
@@ -304,6 +419,44 @@ class ProductDetail {
         reviews: (j['reviews'] as List<dynamic>? ?? const [])
             .map((r) => ReviewDto.fromJson(r as Map<String, dynamic>))
             .toList(growable: false),
+        activeAuction: (j['activeAuction'] as Map<String, dynamic>?) == null
+            ? null
+            : ProductActiveAuction.fromJson(
+                j['activeAuction'] as Map<String, dynamic>,
+              ),
+      );
+}
+
+class ProductActiveAuction {
+  const ProductActiveAuction({
+    required this.slug,
+    required this.status,
+    required this.ticketPriceMinor,
+    required this.winTargetMinor,
+    required this.seatsTotal,
+    required this.seatsSold,
+    required this.currency,
+  });
+
+  final String slug;
+  final String status;
+  final int ticketPriceMinor;
+  final int winTargetMinor;
+  final int seatsTotal;
+  final int seatsSold;
+  final String currency;
+
+  double get fillPct => seatsTotal == 0 ? 0 : (seatsSold / seatsTotal) * 100;
+
+  factory ProductActiveAuction.fromJson(Map<String, dynamic> j) =>
+      ProductActiveAuction(
+        slug: j['slug'] as String,
+        status: j['status'] as String,
+        ticketPriceMinor: _int(j['ticketPriceMinor']) ?? 0,
+        winTargetMinor: _int(j['winTargetMinor']) ?? 0,
+        seatsTotal: _int(j['seatsTotal']) ?? 0,
+        seatsSold: _int(j['seatsSold']) ?? 0,
+        currency: (j['currency'] as String?) ?? 'GHS',
       );
 }
 
@@ -387,12 +540,26 @@ class NearbyVendorDto {
 }
 
 class VendorStatus {
-  const VendorStatus({required this.onboarded, this.kycStatus, this.profileStatus, this.vendorId, this.note});
+  const VendorStatus({
+    required this.onboarded,
+    this.kycStatus,
+    this.profileStatus,
+    this.vendorId,
+    this.note,
+    this.displayName,
+    this.bio,
+    this.logo,
+    this.banner,
+  });
   final bool onboarded;
   final String? kycStatus; // NONE | PENDING | APPROVED | REJECTED
   final String? profileStatus;
   final String? vendorId;
   final String? note;
+  final String? displayName;
+  final String? bio;
+  final String? logo;
+  final String? banner;
 
   bool get isApproved => kycStatus == 'APPROVED';
   bool get isPending => kycStatus == 'PENDING' || kycStatus == 'IN_REVIEW';
@@ -403,6 +570,10 @@ class VendorStatus {
         profileStatus: j['profileStatus'] as String?,
         vendorId: j['vendorId'] as String?,
         note: j['note'] as String?,
+        displayName: j['displayName'] as String?,
+        bio: j['bio'] as String?,
+        logo: j['logo'] as String?,
+        banner: j['banner'] as String?,
       );
 }
 
@@ -412,27 +583,92 @@ class MyProduct {
     required this.slug,
     required this.title,
     required this.status,
+    this.offerStatus,
     this.image,
     this.priceMinor,
     this.currency = 'GHS',
+    this.quantity = 0,
+    this.viewCount = 0,
   });
 
   final String id;
   final String slug;
   final String title;
   final String status;
+  final String? offerStatus;
   final String? image;
   final int? priceMinor;
   final String currency;
+  final int quantity;
+  final int viewCount;
 
   factory MyProduct.fromJson(Map<String, dynamic> j) => MyProduct(
         id: j['id'] as String,
         slug: j['slug'] as String? ?? '',
         title: j['title'] as String,
         status: j['status'] as String? ?? 'DRAFT',
+        offerStatus: j['offerStatus'] as String?,
         image: j['image'] as String?,
         priceMinor: _int(j['priceMinor']),
         currency: (j['currency'] as String?) ?? 'GHS',
+        quantity: _int(j['quantity']) ?? 0,
+        viewCount: _int(j['viewCount']) ?? 0,
+      );
+}
+
+/// Full editable detail for one of the vendor's own products — used to
+/// pre-populate the edit-listing form (previously it opened blank).
+class VendorProductDetail {
+  const VendorProductDetail({
+    required this.id,
+    required this.slug,
+    required this.title,
+    required this.description,
+    required this.condition,
+    required this.categoryId,
+    required this.status,
+    this.brand,
+    this.offerStatus,
+    this.priceMinor,
+    this.currency = 'GHS',
+    this.images = const [],
+    this.quantity = 0,
+    this.attributes = const {},
+  });
+
+  final String id;
+  final String slug;
+  final String title;
+  final String description;
+  final String? brand;
+  final String condition;
+  final String categoryId;
+  final String status;
+  final String? offerStatus;
+  final int? priceMinor;
+  final String currency;
+  final List<String> images;
+  final int quantity;
+  final Map<String, dynamic> attributes;
+
+  factory VendorProductDetail.fromJson(Map<String, dynamic> j) =>
+      VendorProductDetail(
+        id: j['id'] as String,
+        slug: j['slug'] as String? ?? '',
+        title: j['title'] as String,
+        description: j['description'] as String? ?? '',
+        brand: j['brand'] as String?,
+        condition: j['condition'] as String? ?? 'NEW',
+        categoryId: j['categoryId'] as String,
+        status: j['status'] as String? ?? 'DRAFT',
+        offerStatus: j['offerStatus'] as String?,
+        priceMinor: _int(j['priceMinor']),
+        currency: (j['currency'] as String?) ?? 'GHS',
+        images: (j['images'] as List<dynamic>? ?? const [])
+            .map((e) => e as String)
+            .toList(growable: false),
+        quantity: _int(j['quantity']) ?? 0,
+        attributes: (j['attributes'] as Map<String, dynamic>?) ?? const {},
       );
 }
 

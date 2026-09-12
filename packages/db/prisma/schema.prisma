@@ -1036,6 +1036,11 @@ model Category {
   platformSlugs String[]
   sortOrder     Int      @default(0)
   isActive      Boolean  @default(true)
+  /// Per-category product field template: `{key,label,type,required?,options?}[]`.
+  /// `type` is one of "text"|"number"|"boolean"|"select". Drives the dynamic
+  /// attribute form in the product editor; `null` ⇒ no category-specific
+  /// fields (the generic listing form still applies).
+  attributeSchema Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -2259,6 +2264,10 @@ enum DrawTrigger {
 }
 
 enum NonWinnerPolicy {
+  /// Default: the platform keeps non-winners' ticket stakes (collective
+  /// stakes fund the below-retail win target) — refunds only happen when
+  /// the draw itself doesn't sell out (see Auction.status = UNSOLD).
+  NONE
   REFUND
   CREDIT
   VOUCHER

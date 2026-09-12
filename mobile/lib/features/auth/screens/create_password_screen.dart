@@ -75,6 +75,7 @@ class _PasswordSetFormState extends ConsumerState<PasswordSetForm> {
       children: [
         AppField(
           label: 'New password',
+          hintText: 'At least 8 characters',
           controller: _pw,
           obscureText: true,
           autofocus: true,
@@ -83,15 +84,73 @@ class _PasswordSetFormState extends ConsumerState<PasswordSetForm> {
         const SizedBox(height: AppSpace.s16),
         AppField(
           label: 'Confirm password',
+          hintText: 'Re-enter your password',
           controller: _confirm,
           obscureText: true,
           onChanged: (_) => setState(() {}),
         ),
+        if (_pw.text.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.s12),
+          _PasswordStrengthMeter(password: _pw.text),
+        ],
         InlineError(_error),
         const SizedBox(height: AppSpace.s12),
         Text(
           'At least 8 characters. You can still sign in with a one-time code any time.',
           style: context.text.bodyMedium?.copyWith(color: context.colors.textMed),
+        ),
+      ],
+    );
+  }
+}
+
+int _passwordScore(String pw) {
+  var score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (RegExp(r'[A-Z]').hasMatch(pw) && RegExp(r'[a-z]').hasMatch(pw)) score++;
+  if (RegExp(r'[0-9]').hasMatch(pw)) score++;
+  if (RegExp(r'[^A-Za-z0-9]').hasMatch(pw)) score++;
+  return score.clamp(0, 4);
+}
+
+/// Live strength feedback as the user types — Figma's `reset-password` frame
+/// designs this, but no client-side signal existed before password submit.
+class _PasswordStrengthMeter extends StatelessWidget {
+  const _PasswordStrengthMeter({required this.password});
+  final String password;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final score = _passwordScore(password);
+    final (label, color) = switch (score) {
+      0 || 1 => ('Weak', c.error),
+      2 || 3 => ('Fair', c.primary),
+      _ => ('Strong', c.success),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            for (var i = 0; i < 4; i++)
+              Expanded(
+                child: Container(
+                  height: 4,
+                  margin: EdgeInsets.only(right: i == 3 ? 0 : AppSpace.s4),
+                  decoration: BoxDecoration(
+                    color: i < score ? color : c.border,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpace.s4),
+        Text(
+          'Password strength: $label',
+          style: context.text.labelSmall?.copyWith(color: color),
         ),
       ],
     );

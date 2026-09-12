@@ -262,6 +262,23 @@ export async function conversationForOrder(userId: string, orderId: string) {
   return { conversationId: convo.id };
 }
 
+/** Convenience: open (or reuse) the customer↔vendor thread from a vendor's
+ * storefront, without an order in context yet (e.g. a pre-sale question). */
+export async function conversationForVendor(userId: string, vendorId: string) {
+  const vendor = await prisma.vendorProfile.findUnique({ where: { id: vendorId }, select: { userId: true } });
+  if (!vendor) throw new AppError("NOT_FOUND", "Vendor not found");
+  const convo = await getOrCreateConversation({
+    kind: "CUSTOMER_VENDOR",
+    subjectType: "VENDOR",
+    subjectId: vendorId,
+    participants: [
+      { userId, role: "CUSTOMER" },
+      { userId: vendor.userId, role: "VENDOR" },
+    ],
+  });
+  return { conversationId: convo.id };
+}
+
 /** Convenience: open (or reuse) the customer↔courier thread for a delivery. */
 export async function conversationForDelivery(userId: string, deliveryId: string) {
   const d = await prisma.delivery.findUnique({ where: { id: deliveryId }, include: { courier: { select: { userId: true } } } });

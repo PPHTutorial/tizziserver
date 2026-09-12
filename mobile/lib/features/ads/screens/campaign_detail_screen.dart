@@ -21,104 +21,164 @@ class CampaignDetailScreen extends ConsumerWidget {
     final c = context.colors;
     final detail = ref.watch(campaignDetailProvider(id));
     return Scaffold(
-      appBar: AppBar(title: const Text('Campaign')),
+      backgroundColor: c.bg,
       body: SafeArea(
-        child: detail.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('$e')),
-          data: (d) {
-            final camp = d.campaign;
-            final p = d.performance;
-            return ListView(
-              padding: const EdgeInsets.all(AppSpace.s16),
-              children: [
-                Text(camp.name, style: context.text.titleLarge),
-                const SizedBox(height: 4),
-                Text('${camp.status.replaceAll('_', ' ')} · ${camp.objective.replaceAll('_', ' ')}',
-                    style: context.text.bodySmall?.copyWith(color: c.textMed)),
-                const SizedBox(height: AppSpace.s16),
-                Row(children: [
-                  StatTile(label: 'Impressions', value: '${p.impressions}'),
-                  StatTile(label: 'Clicks', value: '${p.clicks}'),
-                  StatTile(label: 'CTR', value: '${p.ctr}%'),
-                ]),
-                const SizedBox(height: AppSpace.s8),
-                Row(children: [
-                  StatTile(label: 'Conversions', value: '${p.conversions}'),
-                  StatTile(label: 'Spent', value: formatMoney(p.spentMinor, 'GHS')),
-                  StatTile(label: 'Left', value: formatMoney(p.remainingMinor, 'GHS')),
-                ]),
-                const SizedBox(height: AppSpace.s16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: LinearProgressIndicator(
-                    value: p.budgetMinor == 0 ? 0 : p.spentMinor / p.budgetMinor,
-                    minHeight: 8,
-                    backgroundColor: c.border,
-                    color: c.primary,
-                  ),
-                ),
-                const SizedBox(height: AppSpace.s24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Creatives (${d.creatives.length})', style: context.text.titleMedium),
-                    TextButton.icon(
-                      onPressed: () => showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        builder: (_) => _CreativeFormSheet(campaignId: camp.id),
+        child: Column(
+          children: [
+            const AppScreenHeader('Campaign'),
+            Expanded(
+              child: detail.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('$e')),
+                data: (d) {
+                  final camp = d.campaign;
+                  final p = d.performance;
+                  return ListView(
+                    padding: const EdgeInsets.all(AppSpace.s16),
+                    children: [
+                      Text(camp.name, style: context.text.titleLarge),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${camp.status.replaceAll('_', ' ')} · ${camp.objective.replaceAll('_', ' ')}',
+                        style: context.text.bodySmall?.copyWith(
+                          color: c.textMed,
+                        ),
                       ),
-                      icon: const Icon(AppIcons.add, size: 18),
-                      label: const Text('Add'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpace.s4),
-                if (d.creatives.isEmpty)
-                  Text(
-                    'No creatives yet — add one to start showing this campaign in the app.',
-                    style: context.text.bodySmall?.copyWith(color: c.textMed),
-                  )
-                else
-                  ...d.creatives.map((a) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpace.s8),
-                        child: AppCard(
-                          onTap: () => showModalBottomSheet<void>(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (_) => _CreativeFormSheet(campaignId: camp.id, existing: a),
+                      const SizedBox(height: AppSpace.s16),
+                      Row(
+                        children: [
+                          StatTile(
+                            label: 'Impressions',
+                            value: '${p.impressions}',
                           ),
-                          child: Row(
-                            children: [
-                              Icon(AppIcons.image_outlined, color: c.textMed),
-                              const SizedBox(width: AppSpace.s12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('${a['slot']}'.replaceAll('_', ' '), style: context.text.titleSmall),
-                                    Text('${a['headline'] ?? a['creativeKind']}',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: context.text.bodySmall?.copyWith(color: c.textMed)),
-                                  ],
+                          StatTile(label: 'Clicks', value: '${p.clicks}'),
+                          StatTile(label: 'CTR', value: '${p.ctr}%'),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.s8),
+                      Row(
+                        children: [
+                          StatTile(
+                            label: 'Conversions',
+                            value: '${p.conversions}',
+                          ),
+                          StatTile(
+                            label: 'Spent',
+                            value: formatMoney(p.spentMinor, 'GHS'),
+                          ),
+                          StatTile(
+                            label: 'Left',
+                            value: formatMoney(p.remainingMinor, 'GHS'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.s16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
+                        child: LinearProgressIndicator(
+                          value: p.budgetMinor == 0
+                              ? 0
+                              : p.spentMinor / p.budgetMinor,
+                          minHeight: 8,
+                          backgroundColor: c.border,
+                          color: c.primary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpace.s24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Creatives (${d.creatives.length})',
+                            style: context.text.titleMedium,
+                          ),
+                          TextButton.icon(
+                            onPressed: () => showModalBottomSheet<void>(
+                              context: context,
+                              isScrollControlled: true,
+                              showDragHandle: true,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.r2xl)),
+                              ),
+                              builder: (_) =>
+                                  _CreativeFormSheet(campaignId: camp.id),
+                            ),
+                            icon: const Icon(AppIcons.add, size: 18),
+                            label: const Text('Add'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpace.s4),
+                      if (d.creatives.isEmpty)
+                        Text(
+                          'No creatives yet — add one to start showing this campaign in the app.',
+                          style: context.text.bodySmall?.copyWith(
+                            color: c.textMed,
+                          ),
+                        )
+                      else
+                        ...d.creatives.map(
+                          (a) => Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpace.s8),
+                            child: AppCard(
+                              onTap: () => showModalBottomSheet<void>(
+                                context: context,
+                                isScrollControlled: true,
+                                showDragHandle: true,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.r2xl)),
+                                ),
+                                builder: (_) => _CreativeFormSheet(
+                                  campaignId: camp.id,
+                                  existing: a,
                                 ),
                               ),
-                              const SizedBox(width: AppSpace.s8),
-                              StatusBadge(
-                                a['isActive'] == true ? 'active' : 'paused',
-                                tone: a['isActive'] == true ? BadgeTone.success : BadgeTone.neutral,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    AppIcons.image_outlined,
+                                    color: c.textMed,
+                                  ),
+                                  const SizedBox(width: AppSpace.s12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${a['slot']}'.replaceAll('_', ' '),
+                                          style: context.text.titleSmall,
+                                        ),
+                                        Text(
+                                          '${a['headline'] ?? a['creativeKind']}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: context.text.bodySmall
+                                              ?.copyWith(color: c.textMed),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpace.s8),
+                                  StatusBadge(
+                                    a['isActive'] == true ? 'active' : 'paused',
+                                    tone: a['isActive'] == true
+                                        ? BadgeTone.success
+                                        : BadgeTone.neutral,
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      )),
-                const SizedBox(height: AppSpace.s24),
-                _Actions(camp: camp),
-              ],
-            );
-          },
+                      const SizedBox(height: AppSpace.s24),
+                      _Actions(camp: camp),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -156,15 +216,32 @@ class _ActionsState extends ConsumerState<_Actions> {
     await _run(() async {
       final method = await showModalBottomSheet<String>(
         context: context,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.r2xl)),
+        ),
         builder: (_) => SafeArea(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            ListTile(leading: const Icon(AppIcons.account_balance_wallet_outlined), title: const Text('Pay from wallet'), onTap: () => Navigator.pop(context, 'wallet')),
-            ListTile(leading: const Icon(AppIcons.credit_card), title: const Text('Card / Mobile Money'), onTap: () => Navigator.pop(context, 'gateway')),
-          ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(AppIcons.account_balance_wallet_outlined),
+                title: const Text('Pay from wallet'),
+                onTap: () => Navigator.pop(context, 'wallet'),
+              ),
+              ListTile(
+                leading: const Icon(AppIcons.credit_card),
+                title: const Text('Card / Mobile Money'),
+                onTap: () => Navigator.pop(context, 'gateway'),
+              ),
+            ],
+          ),
         ),
       );
       if (method == null) return widget.camp;
-      return ref.read(stallApiProvider).submitCampaign(widget.camp.id, paymentMethod: method);
+      return ref
+          .read(stallApiProvider)
+          .submitCampaign(widget.camp.id, paymentMethod: method);
     });
   }
 
@@ -174,25 +251,57 @@ class _ActionsState extends ConsumerState<_Actions> {
     final s = widget.camp.status;
     final buttons = <Widget>[];
     if (s == 'DRAFT' || s == 'REJECTED') {
-      buttons.add(FilledButton(onPressed: _busy ? null : _submit, child: const Text('Submit & fund')));
+      buttons.add(
+        FilledButton(
+          onPressed: _busy ? null : _submit,
+          child: const Text('Submit & fund'),
+        ),
+      );
     }
     if (s == 'ACTIVE') {
-      buttons.add(OutlinedButton(onPressed: _busy ? null : () => _run(() => api.pauseCampaign(widget.camp.id)), child: const Text('Pause')));
+      buttons.add(
+        OutlinedButton(
+          onPressed: _busy
+              ? null
+              : () => _run(() => api.pauseCampaign(widget.camp.id)),
+          child: const Text('Pause'),
+        ),
+      );
     }
     if (s == 'PAUSED') {
-      buttons.add(FilledButton(onPressed: _busy ? null : () => _run(() => api.resumeCampaign(widget.camp.id)), child: const Text('Resume')));
+      buttons.add(
+        FilledButton(
+          onPressed: _busy
+              ? null
+              : () => _run(() => api.resumeCampaign(widget.camp.id)),
+          child: const Text('Resume'),
+        ),
+      );
     }
     if (s != 'COMPLETED' && s != 'CANCELLED') {
-      buttons.add(TextButton(
-        onPressed: _busy ? null : () => _run(() => api.cancelCampaign(widget.camp.id)),
-        child: Text('Cancel campaign', style: TextStyle(color: context.colors.error)),
-      ));
+      buttons.add(
+        TextButton(
+          onPressed: _busy
+              ? null
+              : () => _run(() => api.cancelCampaign(widget.camp.id)),
+          child: Text(
+            'Cancel campaign',
+            style: TextStyle(color: context.colors.error),
+          ),
+        ),
+      );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(_error!, style: TextStyle(color: context.colors.error))),
-        ...buttons.map((b) => Padding(padding: const EdgeInsets.only(bottom: 8), child: b)),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(_error!, style: TextStyle(color: context.colors.error)),
+          ),
+        ...buttons.map(
+          (b) => Padding(padding: const EdgeInsets.only(bottom: 8), child: b),
+        ),
       ],
     );
   }
@@ -213,17 +322,29 @@ class _CreativeFormSheet extends ConsumerStatefulWidget {
 }
 
 class _CreativeFormSheetState extends ConsumerState<_CreativeFormSheet> {
-  static const _slots = ['HOME_RAIL', 'SEARCH_TOP', 'CATEGORY_TOP', 'PRODUCT_RELATED', 'CHECKOUT_CROSS_SELL'];
+  static const _slots = [
+    'HOME_RAIL',
+    'SEARCH_TOP',
+    'CATEGORY_TOP',
+    'PRODUCT_RELATED',
+    'CHECKOUT_CROSS_SELL',
+  ];
   static const _kinds = ['PRODUCT_CARD', 'BANNER'];
 
   late String _slot = widget.existing?['slot'] as String? ?? _slots.first;
   late String _kind = _kinds.first;
-  late final _headline = TextEditingController(text: widget.existing?['headline'] as String? ?? '');
-  late final _subtext = TextEditingController(text: widget.existing?['subtext'] as String? ?? '');
-  late final _destinationRoute =
-      TextEditingController(text: widget.existing?['destinationRoute'] as String? ?? '');
+  late final _headline = TextEditingController(
+    text: widget.existing?['headline'] as String? ?? '',
+  );
+  late final _subtext = TextEditingController(
+    text: widget.existing?['subtext'] as String? ?? '',
+  );
+  late final _destinationRoute = TextEditingController(
+    text: widget.existing?['destinationRoute'] as String? ?? '',
+  );
   late String? _productId = widget.existing?['productId'] as String?;
-  late double _weight = ((widget.existing?['weight'] as num?)?.toDouble()) ?? 100;
+  late double _weight =
+      ((widget.existing?['weight'] as num?)?.toDouble()) ?? 100;
   late bool _isActive = widget.existing?['isActive'] as bool? ?? true;
   bool _busy = false;
   String? _error;
@@ -255,38 +376,43 @@ class _CreativeFormSheetState extends ConsumerState<_CreativeFormSheet> {
   }
 
   Future<void> _save() => _run(() {
-        final api = ref.read(stallApiProvider);
-        final headline = _headline.text.trim();
-        final subtext = _subtext.text.trim();
-        final route = _destinationRoute.text.trim();
-        if (_isEdit) {
-          return api.updateCampaignCreative(
-            widget.campaignId,
-            widget.existing!['id'] as String,
-            slot: _slot,
-            headline: headline.isEmpty ? null : headline,
-            subtext: subtext.isEmpty ? null : subtext,
-            productId: _productId,
-            destinationRoute: route.isEmpty ? null : route,
-            weight: _weight.round(),
-            isActive: _isActive,
-          );
-        }
-        return api.addCampaignCreative(
-          widget.campaignId,
-          slot: _slot,
-          creativeKind: _kind,
-          headline: headline.isEmpty ? null : headline,
-          subtext: subtext.isEmpty ? null : subtext,
-          productId: _productId,
-          destinationRoute: route.isEmpty ? null : route,
-          weight: _weight.round(),
-        );
-      });
+    final api = ref.read(stallApiProvider);
+    final headline = _headline.text.trim();
+    final subtext = _subtext.text.trim();
+    final route = _destinationRoute.text.trim();
+    if (_isEdit) {
+      return api.updateCampaignCreative(
+        widget.campaignId,
+        widget.existing!['id'] as String,
+        slot: _slot,
+        headline: headline.isEmpty ? null : headline,
+        subtext: subtext.isEmpty ? null : subtext,
+        productId: _productId,
+        destinationRoute: route.isEmpty ? null : route,
+        weight: _weight.round(),
+        isActive: _isActive,
+      );
+    }
+    return api.addCampaignCreative(
+      widget.campaignId,
+      slot: _slot,
+      creativeKind: _kind,
+      headline: headline.isEmpty ? null : headline,
+      subtext: subtext.isEmpty ? null : subtext,
+      productId: _productId,
+      destinationRoute: route.isEmpty ? null : route,
+      weight: _weight.round(),
+    );
+  });
 
   Future<void> _remove() => _run(
-        () => ref.read(stallApiProvider).removeCampaignCreative(widget.campaignId, widget.existing!['id'] as String),
-      );
+    () => ref
+        .read(stallApiProvider)
+        .removeCampaignCreative(
+          widget.campaignId,
+          widget.existing!['id'] as String,
+        ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -304,7 +430,10 @@ class _CreativeFormSheetState extends ConsumerState<_CreativeFormSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_isEdit ? 'Edit creative' : 'New creative', style: context.text.titleMedium),
+            Text(
+              _isEdit ? 'Edit creative' : 'New creative',
+              style: context.text.titleMedium,
+            ),
             const SizedBox(height: AppSpace.s16),
             Text('Placement', style: context.text.labelLarge),
             const SizedBox(height: 6),
@@ -336,9 +465,21 @@ class _CreativeFormSheetState extends ConsumerState<_CreativeFormSheet> {
               ),
             ],
             const SizedBox(height: AppSpace.s16),
-            TextField(controller: _headline, decoration: const InputDecoration(labelText: 'Headline (optional)')),
+            TextField(
+              controller: _headline,
+              decoration: const InputDecoration(
+                labelText: 'Headline (optional)',
+                hintText: 'e.g. 20% off this week',
+              ),
+            ),
             const SizedBox(height: AppSpace.s12),
-            TextField(controller: _subtext, decoration: const InputDecoration(labelText: 'Subtext (optional)')),
+            TextField(
+              controller: _subtext,
+              decoration: const InputDecoration(
+                labelText: 'Subtext (optional)',
+                hintText: 'Short supporting line',
+              ),
+            ),
             const SizedBox(height: AppSpace.s16),
             Text('Product', style: context.text.labelLarge),
             const SizedBox(height: 6),
@@ -365,10 +506,16 @@ class _CreativeFormSheetState extends ConsumerState<_CreativeFormSheet> {
             const SizedBox(height: AppSpace.s16),
             TextField(
               controller: _destinationRoute,
-              decoration: const InputDecoration(labelText: 'Destination route (optional, e.g. /deals)'),
+              decoration: const InputDecoration(
+                labelText: 'Destination route (optional)',
+                hintText: '/deals',
+              ),
             ),
             const SizedBox(height: AppSpace.s16),
-            Text('Weight: ${_weight.round()} (higher = shown more often)', style: context.text.bodyMedium),
+            Text(
+              'Weight: ${_weight.round()} (higher = shown more often)',
+              style: context.text.bodyMedium,
+            ),
             Slider(
               value: _weight,
               min: 1,
@@ -395,7 +542,10 @@ class _CreativeFormSheetState extends ConsumerState<_CreativeFormSheet> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _busy ? null : _remove,
-                      style: OutlinedButton.styleFrom(foregroundColor: c.error, side: BorderSide(color: c.error)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: c.error,
+                        side: BorderSide(color: c.error),
+                      ),
                       child: const Text('Remove'),
                     ),
                   ),
@@ -405,7 +555,11 @@ class _CreativeFormSheetState extends ConsumerState<_CreativeFormSheet> {
                   child: FilledButton(
                     onPressed: _busy ? null : _save,
                     child: _busy
-                        ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : Text(_isEdit ? 'Save' : 'Add creative'),
                   ),
                 ),

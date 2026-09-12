@@ -21,7 +21,9 @@ if (hasReleaseSigning) {
 
 android {
     namespace = "com.grandprice.grandprice"
-    compileSdk = flutter.compileSdkVersion
+    // mobile_scanner's androidx.camera dependency needs compileSdk 36 + AGP
+    // 8.9.1+ — overriding the Flutter SDK's own (lower) default here.
+    compileSdk = 36
     // Several plugins (flutter_secure_storage, geolocator, google_maps_flutter,
     // path_provider, share_plus, video_player) want this NDK; it's backward
     // compatible with flutter.ndkVersion.
@@ -41,7 +43,8 @@ android {
         applicationId = "com.stall.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // mobile_scanner needs 23+ (Android 6.0) — below the Flutter default of 21.
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

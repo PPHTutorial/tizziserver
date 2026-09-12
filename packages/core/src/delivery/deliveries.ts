@@ -30,6 +30,7 @@ import { isServiceable } from "./zones.ts";
 import { dispatchDelivery } from "./dispatch.ts";
 import { postCourierEarning } from "./earnings.ts";
 import { upsertCourierPresence } from "./presence.ts";
+import { completeVendorOrderSystem } from "../commerce/orders.ts";
 
 const CUR = "GHS";
 const BREADCRUMB_MIN_GAP_MS = 8_000;
@@ -523,6 +524,7 @@ async function completeDelivery(courierId: string, deliveryId: string): Promise<
 
   const courierCut = d.courierPayoutMinor;
   const platformCut = d.feeMinor - courierCut;
+  let completedVendorOrderId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
     await tx.delivery.update({ where: { id: deliveryId }, data: { status: "COMPLETED", completedAt: new Date() } });
@@ -558,6 +560,7 @@ async function completeDelivery(courierId: string, deliveryId: string): Promise<
       await tx.fulfilment.updateMany({ where: { id: d.sourceId }, data: { status: "COMPLETED", completedAt: new Date() } });
       const ful = await tx.fulfilment.findUnique({ where: { id: d.sourceId } });
       if (ful) {
+        completedVendorOrderId = ful.vendorOrderId;
         await tx.orderEvent.create({ data: { orderId: (await tx.vendorOrder.findUnique({ where: { id: ful.vendorOrderId } }))!.orderId, type: "DELIVERY_COMPLETED", actorType: "USER", actorId: courierId, data: { deliveryId, code: d.code } } });
       }
     }
@@ -570,6 +573,19 @@ async function completeDelivery(courierId: string, deliveryId: string): Promise<
 
     await emit(tx, deliveryId, "COMPLETED", { actorType: "USER", actorId: courierId, data: { courierCut, platformCut } as Prisma.InputJsonValue, outbox: "delivery.completed" });
   });
+
+  // A verified drop-off is unambiguous proof of fulfilment — close out the
+  // vendor-order (and, once every vendor-order on the parent Order is done,
+  // the Order itself) right away. Outside the transaction above since it
+  // opens its own; a failure here doesn't undo the now-COMPLETED delivery,
+  // and is safe to retry (completeVendorOrderSystem no-ops if already done).
+  if (completedVendorOrderId) {
+    try {
+      await completeVendorOrderSystem(completedVendorOrderId);
+    } catch (e) {
+      console.error("[delivery-completion] vendor-order settle failed", e);
+    }
+  }
 
   return getDeliveryForCourier(courierId, deliveryId);
 }
@@ -842,18 +858,26 @@ export async function getDeliveryTrack(deliveryId: string, viewerUserId: string)
   if (!d) throw new AppError("NOT_FOUND", "Delivery not found");
   if (d.customerId !== viewerUserId && d.courier?.userId !== viewerUserId) throw new AppError("NOT_FOUND", "Delivery not found");
   const latest = d.breadcrumbs[0];
+
+  // Road route for the leg the courier is currently on: from wherever they are
+  // (or the pickup, pre-assignment) to the point they're headed for.
+  const headingToDropoff = ["PICKED_UP", "EN_ROUTE_DROPOFF", "ARRIVED_DROPOFF", "DELIVERED"].includes(d.status);
+  const from = latest ? { lat: latest.lat, lng: latest.lng } : { lat: d.pickupLat, lng: d.pickupLng };
+  const to = headingToDropoff ? { lat: d.dropoffLat, lng: d.dropoffLng } : { lat: d.pickupLat, lng: d.pickupLng };
+  const isFinal = ["DELIVERED", "CANCELLED_BY_CUSTOMER", "CANCELLED_BY_COURIER", "CANCELLED_BY_SYSTEM"].includes(d.status);
+  const route = isFinal ? null : await estimateRoute(from, to).catch(() => null);
+
   return {
     status: d.status,
     etaAt: d.etaAt?.toISOString() ?? null,
     pickup: { lat: d.pickupLat, lng: d.pickupLng },
     dropoff: { lat: d.dropoffLat, lng: d.dropoffLng },
     courier: latest ? { lat: latest.lat, lng: latest.lng, heading: latest.heading, at: latest.at.toISOString() } : null,
+    routePolyline: route?.polyline ?? null,
     trail: d.breadcrumbs
-      .slice()
+      .slice(0, 25)
       .reverse()
       .map((b) => ({ lat: b.lat, lng: b.lng, at: b.at.toISOString() })),
-    distanceRemainingM: latest
-      ? haversineM({ lat: latest.lat, lng: latest.lng }, ["PICKED_UP", "EN_ROUTE_DROPOFF", "ARRIVED_DROPOFF"].includes(d.status) ? { lat: d.dropoffLat, lng: d.dropoffLng } : { lat: d.pickupLat, lng: d.pickupLng })
-      : d.distanceM,
+    distanceRemainingM: route?.distanceM ?? (latest ? haversineM(from, to) : d.distanceM),
   };
 }

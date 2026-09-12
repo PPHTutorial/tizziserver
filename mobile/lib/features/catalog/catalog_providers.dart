@@ -13,10 +13,22 @@ final flatCategoriesProvider = FutureProvider.autoDispose<List<CategoryDto>>(
   (ref) => ref.watch(stallApiProvider).categories(),
 );
 
+/// Top-level categories for the "Browse categories" grid and the home rail,
+/// ranked by [filter] ('all' | 'trending' | 'new' | 'auction').
+final rootCategoriesProvider =
+    FutureProvider.autoDispose.family<List<CategoryDto>, String>(
+  (ref, filter) => ref.watch(stallApiProvider).rootCategories(filter: filter),
+);
+
 /// First page of products, optionally scoped to a category slug.
 final productPageProvider = FutureProvider.autoDispose
     .family<PageResult<ProductCard>, ({String? category, String sort})>(
   (ref, args) => ref.watch(stallApiProvider).products(category: args.category, sort: args.sort),
+);
+
+final productReviewsProvider =
+    FutureProvider.autoDispose.family<ReviewsPage, String>(
+  (ref, slug) => ref.watch(stallApiProvider).productReviews(slug),
 );
 
 final productDetailProvider =
@@ -41,6 +53,11 @@ final vendorStatusProvider = FutureProvider.autoDispose<VendorStatus>(
 final myProductsProvider =
     FutureProvider.autoDispose.family<List<MyProduct>, String?>(
   (ref, status) => ref.watch(stallApiProvider).myProducts(status: status),
+);
+
+final myProductDetailProvider =
+    FutureProvider.autoDispose.family<VendorProductDetail, String>(
+  (ref, id) => ref.watch(stallApiProvider).myProduct(id),
 );
 
 final wishlistProvider = FutureProvider.autoDispose<List<WishlistItemDto>>(

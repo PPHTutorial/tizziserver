@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../api/catalog_models.dart';
 import '../../../app/router.dart';
+import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
@@ -11,32 +13,55 @@ import '../catalog_providers.dart';
 import '../widgets/product_card_tile.dart';
 import '../../../design/icons.dart';
 
-/// Screens 32–33, 39–40 — all running flash deals, grouped by promotion.
+/// Screens 32–33, 39–40 — all running promotions of one [kind], grouped by
+/// promotion. Defaults to flash deals; also reused as the "View All"
+/// destination for the home feed's campaign rails (`kind: 'CAMPAIGN'`).
 class DealsScreen extends ConsumerWidget {
-  const DealsScreen({super.key});
+  const DealsScreen({
+    super.key,
+    this.kind = 'FLASH_DEAL',
+    this.title = 'Flash deals',
+  });
+  final String kind;
+  final String title;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
-    final async = ref.watch(promotionsProvider('FLASH_DEAL'));
+    final async = ref.watch(promotionsProvider(kind));
 
     return Scaffold(
       backgroundColor: c.bg,
-      appBar: AppBar(title: const Text('Flash deals')),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => CenteredState.error(
-          title: 'Couldn\'t load deals',
-          action: PrimaryButton(label: 'Retry', onPressed: () => ref.invalidate(promotionsProvider)),
-        ),
-        data: (promos) => promos.isEmpty
-            ? const CenteredState(icon: AppIcons.bolt, title: 'No deals right now', body: 'Check back soon.')
-            : ListView(
-                padding: const EdgeInsets.all(AppSpace.s16),
-                children: [
-                  for (final promo in promos) _DealGroup(promo: promo),
-                ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            AppScreenHeader(title),
+            Expanded(
+              child: async.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => CenteredState.error(
+                  title: 'Couldn\'t load deals',
+                  action: PrimaryButton(
+                    label: 'Retry',
+                    onPressed: () => ref.invalidate(promotionsProvider),
+                  ),
+                ),
+                data: (promos) => promos.isEmpty
+                    ? const CenteredState(
+                        icon: AppIcons.bolt,
+                        title: 'No deals right now',
+                        body: 'Check back soon.',
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.all(AppSpace.s16),
+                        children: [
+                          for (final promo in promos) _DealGroup(promo: promo),
+                        ],
+                      ),
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -60,17 +85,26 @@ class _DealGroup extends StatelessWidget {
           ],
         ),
         if (promo.subtitle != null)
-          Text(promo.subtitle!, style: context.text.bodyMedium?.copyWith(color: c.textMed)),
+          Text(
+            promo.subtitle!,
+            style: context.text.bodyMedium?.copyWith(color: c.textMed),
+          ),
+        if (promo.endsAtDate != null) ...[
+          const SizedBox(height: AppSpace.s4),
+          CountdownText(
+            until: promo.endsAtDate!,
+            showSeconds: true,
+            prefix: 'Ending soon: ',
+            style: context.text.labelMedium?.copyWith(color: c.error),
+          ),
+        ],
         const SizedBox(height: AppSpace.s12),
-        GridView.builder(
+        MasonryGridView.extent(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 220,
-            mainAxisSpacing: AppSpace.s12,
-            crossAxisSpacing: AppSpace.s12,
-            childAspectRatio: 0.7,
-          ),
+          maxCrossAxisExtent: 220,
+          mainAxisSpacing: AppSpace.s12,
+          crossAxisSpacing: AppSpace.s12,
           itemCount: promo.items.length,
           itemBuilder: (context, i) {
             final it = promo.items[i];

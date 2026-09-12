@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../api/models.dart';
 import '../../design/context_ext.dart';
+import '../../design/tokens.g.dart';
 
 /// Font Awesome icon names used by the server-driven nav (`packages/core/src/
 /// platform/nav.ts`). Unknown names fall back to a question mark.
@@ -45,23 +46,73 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (items.isEmpty) return const SizedBox.shrink();
-    return NavigationBarTheme(
-      data: NavigationBarThemeData(
-        backgroundColor: c.surface,
-        indicatorColor: c.primaryContainer,
-        labelTextStyle: WidgetStatePropertyAll(
-          context.text.labelSmall?.copyWith(color: c.textMed),
+    final sel = currentIndex.clamp(0, items.length - 1);
+    return Container(
+      decoration: BoxDecoration(
+        color: c.surface,
+        border: Border(top: BorderSide(color: c.border.withValues(alpha: 0.6))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(
+                  child: _NavCell(
+                    icon: navIconFor(items[i].icon),
+                    label: items[i].label,
+                    selected: i == sel,
+                    onTap: () => onTap(i),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
-      child: NavigationBar(
-        selectedIndex: currentIndex.clamp(0, items.length - 1),
-        onDestinationSelected: onTap,
-        destinations: [
-          for (final item in items)
-            NavigationDestination(
-              icon: FaIcon(navIconFor(item.icon), size: 18),
-              label: item.label,
+    );
+  }
+}
+
+class _NavCell extends StatelessWidget {
+  const _NavCell({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return InkResponse(
+      onTap: onTap,
+      radius: 40,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+            decoration: BoxDecoration(
+              color: selected ? c.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
+            child: FaIcon(icon, size: 17, color: selected ? c.onPrimary : c.textLow),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: context.text.labelSmall?.copyWith(
+              color: selected ? c.textHi : c.textLow,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );

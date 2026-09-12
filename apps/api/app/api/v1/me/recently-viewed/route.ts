@@ -13,3 +13,8 @@ export const POST = withApi(
   { auth: true, body: z.object({ productId: z.string().min(6) }) },
   async ({ ctx, body }) => catalog.recordView(ctx.principal!.userId, body.productId),
 );
+
+export const DELETE = withApi(
+  { auth: true },
+  async ({ ctx }) => catalog.clearRecentlyViewed(ctx.principal!.userId),
+);

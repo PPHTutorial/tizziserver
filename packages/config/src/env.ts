@@ -95,6 +95,10 @@ const schema = z.object({
   // Server-proxied Directions / Distance Matrix. Unset ⇒ a haversine + fixed
   // average-speed fallback is used (dev / B5 not yet provisioned).
   GOOGLE_MAPS_API_KEY: z.string().optional(),
+  // Road routing (OSRM). Defaults to the public demo server — fine for dev;
+  // point at a self-hosted OSRM (docker) for production. Unset it entirely to
+  // force the haversine fallback (no road-following polyline).
+  OSRM_URL: z.string().url().default("https://router.project-osrm.org"),
   MAPS_AVG_SPEED_KMH: z.coerce.number().positive().default(22),
   MAPS_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(120),
 

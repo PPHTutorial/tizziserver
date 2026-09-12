@@ -111,6 +111,7 @@ class _SponsoredCard extends ConsumerWidget {
                 child: ProductThumb(
                   seed: item.adId ?? item.campaignId,
                   label: item.productTitle ?? item.headline,
+                  imageKey: item.imageKey ?? item.productImage,
                   size: double.infinity,
                   radius: AppRadius.lg,
                 ),

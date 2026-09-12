@@ -23,8 +23,17 @@ const String kMediaBaseUrl =
     String.fromEnvironment('STALL_MEDIA_URL', defaultValue: 'http://localhost:9000/stall-media');
 
 /// Resolve a stored object key to a fetchable URL. Absolute URLs pass through.
+/// Legacy `seed/…` / `banners/…` placeholder keys (from before real uploads /
+/// while MinIO isn't running) resolve to a stable stock photo so the UI never
+/// shows a broken image.
 String mediaUrl(String key) {
   if (key.isEmpty) return key;
   if (key.startsWith('http://') || key.startsWith('https://')) return key;
+  if (key.startsWith('seed/') || key.startsWith('banners/') || key.startsWith('pod/')) {
+    // picsum's /seed/:seed/:w/:h route 404s if :seed contains an encoded
+    // slash (%2F) — flatten the key to a single path segment first.
+    final seed = key.replaceAll('/', '-');
+    return 'https://picsum.photos/seed/${Uri.encodeComponent(seed)}/800/800';
+  }
   return '$kMediaBaseUrl/${key.replaceFirst(RegExp(r'^/+'), '')}';
 }

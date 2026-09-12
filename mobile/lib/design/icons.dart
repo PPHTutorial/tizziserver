@@ -14,6 +14,11 @@ class AppIcons {
 
   // navigation / chrome
   static const chevron_right = FontAwesomeIcons.chevronRight;
+  static const chevron_left = FontAwesomeIcons.chevronLeft;
+  static const arrow_back = FontAwesomeIcons.arrowLeft;
+  static const logout = FontAwesomeIcons.rightFromBracket;
+  static const mic = FontAwesomeIcons.microphone;
+  static const camera = FontAwesomeIcons.camera;
   static const close = FontAwesomeIcons.xmark;
   static const check = FontAwesomeIcons.check;
   static const add = FontAwesomeIcons.plus;
@@ -67,6 +72,10 @@ class AppIcons {
   // money
   static const account_balance_wallet_outlined = FontAwesomeIcons.wallet;
   static const payments_outlined = FontAwesomeIcons.moneyBillWave;
+  static const language = FontAwesomeIcons.language;
+  static const settings_outlined = FontAwesomeIcons.gear;
+  static const expand = FontAwesomeIcons.expand;
+  static const compress = FontAwesomeIcons.compress;
   static const credit_card = FontAwesomeIcons.creditCard;
   static const savings_outlined = FontAwesomeIcons.piggyBank;
 

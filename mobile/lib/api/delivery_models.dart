@@ -212,6 +212,7 @@ class DeliveryTrackDto {
     required this.pickup,
     required this.dropoff,
     this.courier,
+    this.route = const [],
     required this.trail,
     required this.distanceRemainingM,
   });
@@ -220,6 +221,10 @@ class DeliveryTrackDto {
   final LatLngDto pickup;
   final LatLngDto dropoff;
   final ({double lat, double lng, double? heading, DateTime at})? courier;
+
+  /// Road route for the courier's current leg (decoded from the server's
+  /// encoded polyline); empty when the server had no routing provider.
+  final List<LatLngDto> route;
   final List<LatLngDto> trail;
   final int distanceRemainingM;
 
@@ -231,10 +236,37 @@ class DeliveryTrackDto {
       pickup: LatLngDto.fromJson((j['pickup'] as Map).cast<String, dynamic>()),
       dropoff: LatLngDto.fromJson((j['dropoff'] as Map).cast<String, dynamic>()),
       courier: c == null ? null : (lat: _d(c['lat']), lng: _d(c['lng']), heading: _dN(c['heading']), at: _dt(c['at']) ?? DateTime.now()),
+      route: decodePolyline(j['routePolyline'] as String?),
       trail: (j['trail'] as List<dynamic>? ?? const []).map((e) => LatLngDto.fromJson((e as Map).cast<String, dynamic>())).toList(),
       distanceRemainingM: _i(j['distanceRemainingM']),
     );
   }
+}
+
+/// Decodes a Google-encoded polyline string into lat/lng points (precision 5).
+List<LatLngDto> decodePolyline(String? encoded) {
+  if (encoded == null || encoded.isEmpty) return const [];
+  final points = <LatLngDto>[];
+  int index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    int shift = 0, result = 0, b;
+    do {
+      b = encoded.codeUnitAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.codeUnitAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+    points.add(LatLngDto(lat / 1e5, lng / 1e5));
+  }
+  return points;
 }
 
 class DeliveryEstimateDto {

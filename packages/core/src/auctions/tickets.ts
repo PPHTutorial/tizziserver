@@ -196,6 +196,31 @@ export async function myTicketWallets(userId: string) {
   };
 }
 
+const LIVE_AUCTION_STATUSES = ["ANNOUNCED", "OPEN", "FILLING", "CLOSING"];
+
+/** Profile-card summary (Figma's `profile-screen` frame: Total Tickets /
+ * Amount Won / Active Entries) — nothing computed this across all of a
+ * user's auctions before; each existing endpoint was scoped to one auction. */
+export async function myTicketStats(userId: string) {
+  const wallets = await prisma.ticketWallet.findMany({
+    where: { userId },
+    include: { auction: { select: { status: true, currency: true } } },
+  });
+  const totalTickets = wallets.reduce((sum, w) => sum + w.activeCount, 0);
+  const activeEntries = wallets.filter(
+    (w) => w.activeCount > 0 && LIVE_AUCTION_STATUSES.includes(w.auction.status),
+  ).length;
+
+  const winners = await prisma.winner.findMany({
+    where: { participant: { userId }, status: { not: "FORFEITED" } },
+    include: { participant: { select: { auction: { select: { retailValueMinor: true, currency: true } } } } },
+  });
+  const amountWonMinor = winners.reduce((sum, w) => sum + w.participant.auction.retailValueMinor, 0);
+  const currency = winners[0]?.participant.auction.currency ?? wallets[0]?.auction.currency ?? "GHS";
+
+  return { totalTickets, activeEntries, amountWonMinor, currency };
+}
+
 export async function myTickets(userId: string, auctionSlug: string) {
   const auction = await prisma.auction.findUnique({ where: { slug: auctionSlug }, select: { id: true, currency: true } });
   if (!auction) throw new AppError("NOT_FOUND", "Auction not found");

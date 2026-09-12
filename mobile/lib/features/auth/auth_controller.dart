@@ -49,8 +49,14 @@ class AuthController extends Notifier<AuthState> {
   Future<void> chooseRole(String role) async {
     final api = ref.read(stallApiProvider);
     final res = await api.switchRole(role);
-    await ref.read(tokenStoreProvider).updateAccess(res.accessToken, res.activeRole, res.roles);
-    state = state.copyWith(activeRole: res.activeRole, roles: res.roles, roleChosen: true);
+    await ref
+        .read(tokenStoreProvider)
+        .updateAccess(res.accessToken, res.activeRole, res.roles);
+    state = state.copyWith(
+      activeRole: res.activeRole,
+      roles: res.roles,
+      roleChosen: true,
+    );
   }
 
   /// Mark role selection satisfied without a server round-trip (single-role, or
@@ -73,5 +79,11 @@ class AuthController extends Notifier<AuthState> {
     state = const AuthState.signedOut();
   }
 
-  void applyAccountStatus(String status) => state = state.copyWith(accountStatus: status);
+  void applyAccountStatus(String status) =>
+      state = state.copyWith(accountStatus: status);
+
+  /// Updates the cached user projection in place — used after a profile edit
+  /// so the Account tab / home header reflect the new name immediately
+  /// without a full re-fetch.
+  void setUser(PublicUser user) => state = state.copyWith(user: user);
 }

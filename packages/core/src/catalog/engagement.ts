@@ -77,7 +77,13 @@ export async function listRecentlyViewed(userId: string, limit?: number) {
     image: r.product.media[0]?.fileKey ?? null,
     fromPriceMinor: r.product.offers.length ? Math.min(...r.product.offers.map((o) => o.priceMinor)) : null,
     currency: r.product.offers[0]?.currency ?? "GHS",
+    viewedAt: r.at.toISOString(),
   }));
+}
+
+export async function clearRecentlyViewed(userId: string) {
+  await prisma.recentlyViewed.deleteMany({ where: { userId } });
+  return { cleared: true };
 }
 
 // --- reviews + Q&A --------------------------------------------
@@ -110,6 +116,48 @@ export async function addReview(input: {
     data: { ratingAvg: agg._avg.rating ?? 0, ratingCount: agg._count },
   });
   return { rating: input.rating, ratingAvg: agg._avg.rating ?? 0, ratingCount: agg._count };
+}
+
+/** Paginated review list + a 1-5★ distribution — Figma's `reviews-screen`
+ * frame designs a dedicated full-list page with a rating-breakdown bar
+ * chart; only an inline top-4 preview existed on the product-detail page. */
+export async function listProductReviews(productId: string, opts: { cursor?: string; limit?: number } = {}) {
+  const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
+  const rows = await prisma.productReview.findMany({
+    where: { productId },
+    orderBy: { createdAt: "desc" },
+    take: limit + 1,
+    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    include: { user: { select: { firstName: true, avatar: true } } },
+  });
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+
+  const byRating = await prisma.productReview.groupBy({
+    by: ["rating"],
+    where: { productId },
+    _count: true,
+  });
+  const total = byRating.reduce((sum, r) => sum + r._count, 0);
+  const distribution = [5, 4, 3, 2, 1].map((star) => {
+    const count = byRating.find((r) => r.rating === star)?._count ?? 0;
+    return { star, count, pct: total ? Math.round((count / total) * 100) : 0 };
+  });
+
+  return {
+    items: page.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      author: r.user.firstName ?? "Customer",
+      avatar: r.user.avatar,
+      at: r.createdAt.toISOString(),
+    })),
+    nextCursor: hasMore ? page[page.length - 1]!.id : null,
+    total,
+    distribution,
+  };
 }
 
 export async function askQuestion(userId: string, productId: string, body: string) {

@@ -163,7 +163,7 @@ export async function createAuction(input: CreateAuctionInput) {
       seatsTotal: input.seatsTotal,
       minSeatsToDraw: input.minSeatsToDraw ?? Math.ceil(input.seatsTotal * 0.6),
       drawTrigger: input.drawTrigger ?? "EITHER",
-      nonWinnerPolicy: input.nonWinnerPolicy ?? "REFUND",
+      nonWinnerPolicy: input.nonWinnerPolicy ?? "NONE",
       opensAt: input.opensAt,
       closesAt: input.closesAt,
       drawAt: input.drawAt,

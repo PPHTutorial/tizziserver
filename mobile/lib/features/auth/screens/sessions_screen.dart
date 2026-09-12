@@ -27,28 +27,39 @@ class SessionsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: c.bg,
-      appBar: AppBar(title: const Text('Signed-in devices')),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => CenteredState.error(
-          title: 'Couldn\'t load your sessions',
-          body: 'Check your connection and try again.',
-          action: PrimaryButton(
-            label: 'Retry',
-            onPressed: () => ref.invalidate(_sessionsProvider),
-          ),
-        ),
-        data: (sessions) => ListView(
-          padding: const EdgeInsets.all(AppSpace.s16),
+      body: SafeArea(
+        child: Column(
           children: [
-            for (final s in sessions) _SessionCard(session: s, ref: ref),
-            const SizedBox(height: AppSpace.s16),
-            SecondaryButton(
-              label: 'Sign out of all other devices',
-              onPressed: () async {
-                await ref.read(authControllerProvider.notifier).logout(everywhere: true);
-                if (context.mounted) context.go(RoutePaths.welcome);
-              },
+            const AppScreenHeader('Signed-in devices'),
+            Expanded(
+              child: async.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => CenteredState.error(
+                  title: 'Couldn\'t load your sessions',
+                  body: 'Check your connection and try again.',
+                  action: PrimaryButton(
+                    label: 'Retry',
+                    onPressed: () => ref.invalidate(_sessionsProvider),
+                  ),
+                ),
+                data: (sessions) => ListView(
+                  padding: const EdgeInsets.all(AppSpace.s16),
+                  children: [
+                    for (final s in sessions)
+                      _SessionCard(session: s, ref: ref),
+                    const SizedBox(height: AppSpace.s16),
+                    SecondaryButton(
+                      label: 'Sign out of all other devices',
+                      onPressed: () async {
+                        await ref
+                            .read(authControllerProvider.notifier)
+                            .logout(everywhere: true);
+                        if (context.mounted) context.go(RoutePaths.welcome);
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -72,14 +83,19 @@ class _SessionCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpace.s16),
         child: Row(
           children: [
-            Icon(session.current ? AppIcons.verified_user : AppIcons.devices, color: c.textMed),
+            Icon(
+              session.current ? AppIcons.verified_user : AppIcons.devices,
+              color: c.textMed,
+            ),
             const SizedBox(width: AppSpace.s12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    session.userAgent ?? session.platformSlug ?? 'Unknown device',
+                    session.userAgent ??
+                        session.platformSlug ??
+                        'Unknown device',
                     style: context.text.titleSmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

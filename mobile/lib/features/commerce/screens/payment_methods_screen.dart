@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../api/catalog_models.dart' show formatMoney;
 import '../../../api/commerce_models.dart';
 import '../../../app/providers.dart';
 import '../../../design/components.dart';
@@ -17,30 +18,99 @@ class PaymentMethodsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
     final async = ref.watch(paymentMethodsProvider);
+    final walletAsync = ref.watch(walletProvider);
     return Scaffold(
-      backgroundColor: context.colors.bg,
-      appBar: AppBar(title: const Text('Payment methods')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _addSheet(context, ref),
-        icon: const Icon(AppIcons.add),
-        label: const Text('Add method'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(paymentMethodsProvider),
-        child: async.when(
-          loading: () => const SkeletonList(rows: 3, rowHeight: 72),
-          error: (e, _) => AppErrorView(e, onRetry: () => ref.invalidate(paymentMethodsProvider)),
-          data: (list) => list.isEmpty
-              ? const EmptyState(
-                  icon: AppIcons.credit_card,
-                  title: 'No payment methods',
-                  message: 'Add a card or mobile-money account to check out faster.',
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s16, AppSpace.s16, 96),
-                  children: [for (final m in list) _MethodCard(method: m)],
+      backgroundColor: c.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppScreenHeader('Payment Methods'),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => ref.invalidate(paymentMethodsProvider),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.s16,
+                    0,
+                    AppSpace.s16,
+                    AppSpace.s16,
+                  ),
+                  children: [
+                    walletAsync.maybeWhen(
+                      data: (w) => Container(
+                        padding: const EdgeInsets.all(AppSpace.s20),
+                        decoration: BoxDecoration(
+                          color: c.primary,
+                          borderRadius: BorderRadius.circular(AppRadius.r2xl),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Wallet balance',
+                              style: context.text.labelLarge?.copyWith(
+                                color: Colors.white70,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              formatMoney(w.balanceMinor, w.currency),
+                              style: context.text.displayLarge?.copyWith(
+                                color: Colors.white,
+                                fontSize: 30,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      orElse: () => const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: AppSpace.s20),
+                    Text(
+                      'SAVED ACCOUNTS',
+                      style: context.text.labelSmall?.copyWith(
+                        color: c.textMed,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.s10),
+                    async.when(
+                      loading: () => const SkeletonList(rows: 3, rowHeight: 72),
+                      error: (e, _) => AppErrorView(
+                        e,
+                        onRetry: () => ref.invalidate(paymentMethodsProvider),
+                      ),
+                      data: (list) => list.isEmpty
+                          ? const EmptyState(
+                              icon: AppIcons.credit_card,
+                              title: 'No payment methods',
+                              message:
+                                  'Add a card or mobile-money account to check out faster.',
+                            )
+                          : Column(
+                              children: [
+                                for (final m in list) _MethodCard(method: m),
+                              ],
+                            ),
+                    ),
+                    const SizedBox(height: AppSpace.s8),
+                    OutlinedButton(
+                      onPressed: () => _addSheet(context, ref),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 52),
+                        shape: const StadiumBorder(),
+                        side: BorderSide(color: c.primary),
+                        foregroundColor: c.primary,
+                      ),
+                      child: const Text('+ Add New Payment Method'),
+                    ),
+                  ],
                 ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -55,12 +125,22 @@ class _MethodCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final m = method;
+    final isMobileMoney = const {
+      'momo',
+      'mtn momo',
+      'vodafone cash',
+      'airteltigo',
+    }.contains(m.gateway.toLowerCase()) || m.label.toLowerCase().contains('cash');
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.s12),
       child: AppCard(
         child: Row(
           children: [
-            Icon(AppIcons.credit_card, size: 22, color: c.textMed),
+            Icon(
+              isMobileMoney ? AppIcons.smartphone : AppIcons.credit_card,
+              size: 22,
+              color: c.textMed,
+            ),
             const SizedBox(width: AppSpace.s12),
             Expanded(
               child: Column(
@@ -68,25 +148,35 @@ class _MethodCard extends ConsumerWidget {
                 children: [
                   Text(m.label, style: context.text.titleSmall),
                   Text(
-                    [m.gateway, if (m.expiry != null) 'exp ${m.expiry}'].join(' · '),
+                    [
+                      m.gateway,
+                      if (m.expiry != null) 'exp ${m.expiry}',
+                    ].join(' · '),
                     style: context.text.labelSmall?.copyWith(color: c.textMed),
                   ),
                 ],
               ),
             ),
-            if (m.isDefault) const StatusBadge('default', tone: BadgeTone.success),
+            if (m.isDefault)
+              const StatusBadge('default', tone: BadgeTone.success),
             IconButton(
               icon: Icon(AppIcons.delete_outline, size: 18, color: c.textLow),
               onPressed: () async {
-                final ok = await confirmDialog(context,
-                    title: 'Remove ${m.label}?', confirmLabel: 'Remove', destructive: true);
+                final ok = await confirmDialog(
+                  context,
+                  title: 'Remove ${m.label}?',
+                  confirmLabel: 'Remove',
+                  destructive: true,
+                );
                 if (!ok || !context.mounted) return;
                 try {
                   await ref.read(stallApiProvider).removePaymentMethod(m.id);
                   ref.invalidate(paymentMethodsProvider);
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('$e')));
                   }
                 }
               },
@@ -104,14 +194,22 @@ Future<void> _addSheet(BuildContext context, WidgetRef ref) async {
   final exp = TextEditingController();
   var makeDefault = false;
 
-  final ok = await showDialog<bool>(
-    context: context,
+  final ok = await showAppSheet<bool>(
+    context,
     builder: (context) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: const Text('Add payment method'),
-        content: Column(
+      builder: (context, setState) => Padding(
+        padding: EdgeInsets.only(
+          left: AppSpace.s20,
+          right: AppSpace.s20,
+          top: AppSpace.s8,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpace.s20,
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Add payment method', style: context.text.titleMedium),
+            const SizedBox(height: AppSpace.s16),
             ValueListenableBuilder<String>(
               valueListenable: brand,
               builder: (context, value, _) => DropdownButtonFormField<String>(
@@ -119,29 +217,45 @@ Future<void> _addSheet(BuildContext context, WidgetRef ref) async {
                 decoration: const InputDecoration(labelText: 'Type'),
                 items: const [
                   DropdownMenuItem(value: 'Visa', child: Text('Visa')),
-                  DropdownMenuItem(value: 'Mastercard', child: Text('Mastercard')),
+                  DropdownMenuItem(
+                    value: 'Mastercard',
+                    child: Text('Mastercard'),
+                  ),
                   DropdownMenuItem(value: 'MTN MoMo', child: Text('MTN MoMo')),
-                  DropdownMenuItem(value: 'Vodafone Cash', child: Text('Vodafone Cash')),
+                  DropdownMenuItem(
+                    value: 'Vodafone Cash',
+                    child: Text('Vodafone Cash'),
+                  ),
                 ],
                 onChanged: (v) => brand.value = v ?? value,
               ),
             ),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Last 4 digits', controller: last4, keyboardType: TextInputType.number),
+            AppField(
+              label: 'Last 4 digits',
+              hintText: '1234',
+              controller: last4,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Expiry (MM/YY)', controller: exp),
+            AppField(
+              label: 'Expiry (MM/YY)',
+              hintText: '09/28',
+              controller: exp,
+            ),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               value: makeDefault,
               onChanged: (v) => setState(() => makeDefault = v ?? false),
               title: const Text('Set as default'),
             ),
+            const SizedBox(height: AppSpace.s8),
+            PrimaryButton(
+              label: 'Add',
+              onPressed: () => Navigator.pop(context, true),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add')),
-        ],
       ),
     ),
   );
@@ -153,7 +267,9 @@ Future<void> _addSheet(BuildContext context, WidgetRef ref) async {
   final yy = parts.length > 1 ? int.tryParse(parts[1].trim()) : null;
 
   try {
-    await ref.read(stallApiProvider).addPaymentMethod(
+    await ref
+        .read(stallApiProvider)
+        .addPaymentMethod(
           // Real gateways hand back a client-side token; the mock sandbox accepts any.
           gateway: 'mock',
           token: 'tok_${DateTime.now().microsecondsSinceEpoch}',
@@ -165,6 +281,8 @@ Future<void> _addSheet(BuildContext context, WidgetRef ref) async {
         );
     ref.invalidate(paymentMethodsProvider);
   } catch (e) {
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 }

@@ -518,6 +518,7 @@ class SellerOrderDto {
     required this.status,
     required this.fulfilmentMethod,
     required this.currency,
+    this.buyerName,
     required this.subtotalMinor,
     required this.commissionMinor,
     required this.payoutMinor,
@@ -532,6 +533,7 @@ class SellerOrderDto {
   final String status;
   final String fulfilmentMethod;
   final String currency;
+  final String? buyerName;
   final int subtotalMinor;
   final int commissionMinor;
   final int payoutMinor;
@@ -546,6 +548,7 @@ class SellerOrderDto {
         status: _s(j['status']),
         fulfilmentMethod: j['fulfilmentMethod'] as String? ?? 'DELIVERY',
         currency: j['currency'] as String? ?? 'GHS',
+        buyerName: j['buyerName'] as String?,
         subtotalMinor: _i(j['subtotalMinor']),
         commissionMinor: _i(j['commissionMinor']),
         payoutMinor: _i(j['payoutMinor']),

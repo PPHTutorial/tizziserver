@@ -80,42 +80,31 @@ class CourierDashboardBody extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpace.s16),
               if (d.activeDeliveryId != null)
-                Card(
-                  child: ListTile(
-                    leading: Icon(AppIcons.route, color: c.primary),
-                    title: Text('Active delivery · ${d.activeDeliveryCode}'),
-                    subtitle: Text(d.activeDeliveryStatus ?? ''),
-                    trailing: const Icon(AppIcons.chevron_right),
-                    onTap: () => context.push(RoutePaths.courierDelivery(d.activeDeliveryId!)),
-                  ),
+                _DashRow(
+                  icon: AppIcons.route,
+                  title: 'Active delivery · ${d.activeDeliveryCode}',
+                  subtitle: d.activeDeliveryStatus ?? '',
+                  onTap: () => context.push(RoutePaths.courierDelivery(d.activeDeliveryId!)),
                 )
               else
-                Card(
-                  child: ListTile(
-                    leading: Icon(AppIcons.list_alt, color: c.primary),
-                    title: const Text('Available jobs'),
-                    subtitle: Text(online == 'OFFLINE' ? 'Go online to receive offers' : 'Tap to view offers'),
-                    trailing: const Icon(AppIcons.chevron_right),
-                    onTap: () => context.push(RoutePaths.courierJobs),
-                  ),
+                _DashRow(
+                  icon: AppIcons.list_alt,
+                  title: 'Available jobs',
+                  subtitle: online == 'OFFLINE' ? 'Go online to receive offers' : 'Tap to view offers',
+                  onTap: () => context.push(RoutePaths.courierJobs),
                 ),
-              const SizedBox(height: AppSpace.s8),
-              Card(
-                child: ListTile(
-                  leading: Icon(AppIcons.savings_outlined, color: c.primary),
-                  title: Text('Balance ${formatMoney(d.balanceMinor, d.currency)}'),
-                  subtitle: Text('${d.completedDeliveries} deliveries · ${(d.acceptanceRate).round()}% acceptance'),
-                  trailing: const Icon(AppIcons.chevron_right),
-                  onTap: () => context.push(RoutePaths.courierEarnings),
-                ),
+              const SizedBox(height: AppSpace.s10),
+              _DashRow(
+                icon: AppIcons.savings_outlined,
+                title: 'Balance ${formatMoney(d.balanceMinor, d.currency)}',
+                subtitle: '${d.completedDeliveries} deliveries · ${(d.acceptanceRate).round()}% acceptance',
+                onTap: () => context.push(RoutePaths.courierEarnings),
               ),
-              Card(
-                child: ListTile(
-                  leading: Icon(AppIcons.insights_outlined, color: c.textMed),
-                  title: const Text('Performance'),
-                  trailing: const Icon(AppIcons.chevron_right),
-                  onTap: () => context.push(RoutePaths.courierPerformance),
-                ),
+              const SizedBox(height: AppSpace.s10),
+              _DashRow(
+                icon: AppIcons.insights_outlined,
+                title: 'Performance',
+                onTap: () => context.push(RoutePaths.courierPerformance),
               ),
             ],
           );
@@ -163,12 +152,65 @@ class _OnlineCard extends StatelessWidget {
   }
 }
 
+class _DashRow extends StatelessWidget {
+  const _DashRow({required this.icon, required this.title, this.subtitle, required this.onTap});
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16, vertical: AppSpace.s14),
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: c.primaryContainer,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, size: 16, color: c.onPrimaryContainer),
+          ),
+          const SizedBox(width: AppSpace.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.text.titleSmall),
+                if (subtitle != null && subtitle!.isNotEmpty)
+                  Text(subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodySmall?.copyWith(color: c.textMed)),
+              ],
+            ),
+          ),
+          Icon(AppIcons.chevron_right, size: 16, color: c.textLow),
+        ],
+      ),
+    );
+  }
+}
+
 /// Standalone route wrapper for deep links / non-shell entry.
 class CourierHubScreen extends StatelessWidget {
   const CourierHubScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Courier')),
-        body: const SafeArea(child: CourierDashboardBody()),
+        backgroundColor: context.colors.bg,
+        body: const SafeArea(
+          child: Column(
+            children: [
+              AppScreenHeader('Courier'),
+              Expanded(child: CourierDashboardBody()),
+            ],
+          ),
+        ),
       );
 }

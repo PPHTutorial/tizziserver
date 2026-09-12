@@ -30,11 +30,22 @@ export async function getMyWin(userId: string, auctionSlug: string) {
     const backup = auction.draw
       ? await prisma.backupWinner.findFirst({ where: { drawId: auction.draw.id, participant: { userId } } })
       : null;
+    // Runner-up standing — Figma's "Your Position: #N ... 3 tickets (Score:
+    // 72/100)" — only meaningful once the draw has actually run.
+    const participant = auction.draw
+      ? await prisma.auctionParticipant.findFirst({
+          where: { auctionId: auction.id, userId },
+          select: { rank: true, qualificationScore: true, ticketCount: true },
+        })
+      : null;
     return {
       isWinner: false as const,
       isBackup: !!backup,
       backupOrder: backup?.order ?? null,
       auctionStatus: auction.status,
+      myRank: participant?.rank ?? null,
+      myScore: participant?.qualificationScore ?? null,
+      myTicketCount: participant?.ticketCount ?? null,
     };
   }
   return {

@@ -13,19 +13,19 @@ import '../courier_providers.dart';
 const _vehicleTypes = ['BICYCLE', 'MOTORBIKE', 'CAR', 'VAN', 'TRUCK', 'OTHER'];
 
 IconData vehicleIcon(String type) => switch (type) {
-      'BICYCLE' => AppIcons.directions_bike,
-      'MOTORBIKE' => AppIcons.two_wheeler,
-      'CAR' => AppIcons.directions_car,
-      'VAN' => AppIcons.airport_shuttle,
-      'TRUCK' => AppIcons.local_shipping,
-      _ => AppIcons.local_shipping_outlined,
-    };
+  'BICYCLE' => AppIcons.directions_bike,
+  'MOTORBIKE' => AppIcons.two_wheeler,
+  'CAR' => AppIcons.directions_car,
+  'VAN' => AppIcons.airport_shuttle,
+  'TRUCK' => AppIcons.local_shipping,
+  _ => AppIcons.local_shipping_outlined,
+};
 
 BadgeTone _vehicleTone(String status) => switch (status) {
-      'APPROVED' => BadgeTone.success,
-      'REJECTED' => BadgeTone.danger,
-      _ => BadgeTone.neutral,
-    };
+  'APPROVED' => BadgeTone.success,
+  'REJECTED' => BadgeTone.danger,
+  _ => BadgeTone.neutral,
+};
 
 /// §10 — the courier's fleet: add / edit / remove vehicles, pick the active one,
 /// attach registration & insurance documents.
@@ -37,33 +37,50 @@ class CourierVehiclesScreen extends ConsumerWidget {
     final async = ref.watch(courierMeProvider);
     return Scaffold(
       backgroundColor: context.colors.bg,
-      appBar: AppBar(title: const Text('My vehicles')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _vehicleForm(context, ref),
         icon: const Icon(AppIcons.add),
         label: const Text('Add vehicle'),
       ),
-      body: async.when(
-        loading: () => const SkeletonList(rows: 3, rowHeight: 128),
-        error: (e, _) => CenteredState.error(
-          title: 'Couldn\'t load your vehicles',
-          action: PrimaryButton(label: 'Retry', onPressed: () => ref.invalidate(courierMeProvider)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppScreenHeader('My vehicles'),
+            Expanded(
+              child: async.when(
+                loading: () => const SkeletonList(rows: 3, rowHeight: 128),
+                error: (e, _) => CenteredState.error(
+                  title: 'Couldn\'t load your vehicles',
+                  action: PrimaryButton(
+                    label: 'Retry',
+                    onPressed: () => ref.invalidate(courierMeProvider),
+                  ),
+                ),
+                data: (me) {
+                  if (me.vehicles.isEmpty) {
+                    return const CenteredState(
+                      icon: AppIcons.two_wheeler,
+                      title: 'No vehicles yet',
+                      body:
+                          'Add a vehicle and attach its documents so ops can approve it.',
+                    );
+                  }
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpace.s16,
+                      AppSpace.s16,
+                      AppSpace.s16,
+                      96,
+                    ),
+                    children: [
+                      for (final v in me.vehicles) _VehicleCard(vehicle: v),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-        data: (me) {
-          if (me.vehicles.isEmpty) {
-            return const CenteredState(
-              icon: AppIcons.two_wheeler,
-              title: 'No vehicles yet',
-              body: 'Add a vehicle and attach its documents so ops can approve it.',
-            );
-          }
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s16, AppSpace.s16, 96),
-            children: [
-              for (final v in me.vehicles) _VehicleCard(vehicle: v),
-            ],
-          );
-        },
       ),
     );
   }
@@ -73,13 +90,19 @@ class _VehicleCard extends ConsumerWidget {
   const _VehicleCard({required this.vehicle});
   final CourierVehicleViewDto vehicle;
 
-  Future<void> _mutate(BuildContext context, WidgetRef ref, Future<void> Function() op) async {
+  Future<void> _mutate(
+    BuildContext context,
+    WidgetRef ref,
+    Future<void> Function() op,
+  ) async {
     try {
       await op();
       ref.invalidate(courierMeProvider);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     }
   }
@@ -88,7 +111,9 @@ class _VehicleCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final v = vehicle;
-    final title = v.label.isEmpty ? v.type[0] + v.type.substring(1).toLowerCase() : v.label;
+    final title = v.label.isEmpty
+        ? v.type[0] + v.type.substring(1).toLowerCase()
+        : v.label;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.s12),
       child: AppCard(
@@ -105,9 +130,13 @@ class _VehicleCard extends ConsumerWidget {
                     children: [
                       Text(title, style: context.text.titleSmall),
                       Text(
-                        [if (v.plate != null && v.plate!.isNotEmpty) v.plate, if (v.year != null) '${v.year}']
-                            .join(' · '),
-                        style: context.text.labelSmall?.copyWith(color: c.textMed),
+                        [
+                          if (v.plate != null && v.plate!.isNotEmpty) v.plate,
+                          if (v.year != null) '${v.year}',
+                        ].join(' · '),
+                        style: context.text.labelSmall?.copyWith(
+                          color: c.textMed,
+                        ),
                       ),
                     ],
                   ),
@@ -140,8 +169,13 @@ class _VehicleCard extends ConsumerWidget {
                   )
                 else
                   TextButton(
-                    onPressed: () => _mutate(context, ref,
-                        () => ref.read(stallApiProvider).courierSetActiveVehicle(v.id)),
+                    onPressed: () => _mutate(
+                      context,
+                      ref,
+                      () => ref
+                          .read(stallApiProvider)
+                          .courierSetActiveVehicle(v.id),
+                    ),
                     child: const Text('Set active'),
                   ),
                 TextButton(
@@ -154,11 +188,19 @@ class _VehicleCard extends ConsumerWidget {
                 ),
                 TextButton(
                   onPressed: () async {
-                    final ok = await confirmDialog(context,
-                        title: 'Remove this vehicle?', confirmLabel: 'Remove', destructive: true);
+                    final ok = await confirmDialog(
+                      context,
+                      title: 'Remove this vehicle?',
+                      confirmLabel: 'Remove',
+                      destructive: true,
+                    );
                     if (!ok || !context.mounted) return;
-                    await _mutate(context, ref,
-                        () => ref.read(stallApiProvider).courierRemoveVehicle(v.id));
+                    await _mutate(
+                      context,
+                      ref,
+                      () =>
+                          ref.read(stallApiProvider).courierRemoveVehicle(v.id),
+                    );
                   },
                   child: Text('Remove', style: TextStyle(color: c.error)),
                 ),
@@ -171,7 +213,11 @@ class _VehicleCard extends ConsumerWidget {
   }
 }
 
-Future<void> _addDocument(BuildContext context, WidgetRef ref, String vehicleId) async {
+Future<void> _addDocument(
+  BuildContext context,
+  WidgetRef ref,
+  String vehicleId,
+) async {
   final type = ValueNotifier<String>('REGISTRATION');
   final ok = await showDialog<bool>(
     context: context,
@@ -183,7 +229,10 @@ Future<void> _addDocument(BuildContext context, WidgetRef ref, String vehicleId)
           value: value,
           decoration: const InputDecoration(labelText: 'Document type'),
           items: const [
-            DropdownMenuItem(value: 'REGISTRATION', child: Text('Registration')),
+            DropdownMenuItem(
+              value: 'REGISTRATION',
+              child: Text('Registration'),
+            ),
             DropdownMenuItem(value: 'INSURANCE', child: Text('Insurance')),
             DropdownMenuItem(value: 'INSPECTION', child: Text('Inspection')),
           ],
@@ -191,30 +240,45 @@ Future<void> _addDocument(BuildContext context, WidgetRef ref, String vehicleId)
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Upload')),
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Upload'),
+        ),
       ],
     ),
   );
   if (ok != true) return;
   try {
     // No media server yet — reference a deterministic placeholder key.
-    await ref.read(stallApiProvider).courierAddVehicleDocument(
+    await ref
+        .read(stallApiProvider)
+        .courierAddVehicleDocument(
           vehicleId,
           type: type.value,
           fileKey: 'vehicle-docs/$vehicleId/${type.value.toLowerCase()}.jpg',
         );
     ref.invalidate(courierMeProvider);
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Document submitted for review')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Document submitted for review')),
+      );
     }
   } catch (e) {
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 }
 
-Future<void> _vehicleForm(BuildContext context, WidgetRef ref, {CourierVehicleViewDto? existing}) async {
+Future<void> _vehicleForm(
+  BuildContext context,
+  WidgetRef ref, {
+  CourierVehicleViewDto? existing,
+}) async {
   final type = ValueNotifier<String>(existing?.type ?? 'MOTORBIKE');
   final make = TextEditingController(text: existing?.make ?? '');
   final model = TextEditingController(text: existing?.model ?? '');
@@ -237,33 +301,56 @@ Future<void> _vehicleForm(BuildContext context, WidgetRef ref, {CourierVehicleVi
                 decoration: const InputDecoration(labelText: 'Type'),
                 items: [
                   for (final t in _vehicleTypes)
-                    DropdownMenuItem(value: t, child: Text(t[0] + t.substring(1).toLowerCase())),
+                    DropdownMenuItem(
+                      value: t,
+                      child: Text(t[0] + t.substring(1).toLowerCase()),
+                    ),
                 ],
                 onChanged: (v) => type.value = v ?? value,
               ),
             ),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Make', controller: make),
+            AppField(label: 'Make', hintText: 'e.g. Honda', controller: make),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Model', controller: model),
+            AppField(
+              label: 'Model',
+              hintText: 'e.g. Wave 110',
+              controller: model,
+            ),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Colour', controller: color),
+            AppField(label: 'Colour', hintText: 'e.g. Red', controller: color),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Plate', controller: plate),
+            AppField(
+              label: 'Plate',
+              hintText: 'e.g. GT 1234-20',
+              controller: plate,
+            ),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Year', controller: year, keyboardType: TextInputType.number),
+            AppField(
+              label: 'Year',
+              hintText: 'e.g. 2021',
+              controller: year,
+              keyboardType: TextInputType.number,
+            ),
           ],
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Save'),
+        ),
       ],
     ),
   );
   if (ok != true) return;
 
-  String? t(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
+  String? t(TextEditingController c) =>
+      c.text.trim().isEmpty ? null : c.text.trim();
   final yr = int.tryParse(year.text.trim());
   try {
     final api = ref.read(stallApiProvider);
@@ -289,6 +376,8 @@ Future<void> _vehicleForm(BuildContext context, WidgetRef ref, {CourierVehicleVi
     }
     ref.invalidate(courierMeProvider);
   } catch (e) {
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 }

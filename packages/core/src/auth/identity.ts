@@ -45,6 +45,26 @@ export async function activeRolesFor(userId: string): Promise<Role[]> {
   return rows.map((r) => r.role);
 }
 
+export interface ProfileUpdateInput {
+  firstName?: string;
+  lastName?: string;
+  /** Storage object key from `POST /api/v1/media/upload` (kind: "avatar"). */
+  avatar?: string;
+}
+
+/** Edit the caller's own display name / avatar — the "Edit Profile" row in Settings. */
+export async function updateProfile(userId: string, input: ProfileUpdateInput) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(input.firstName !== undefined ? { firstName: input.firstName.trim() || null } : {}),
+      ...(input.lastName !== undefined ? { lastName: input.lastName.trim() || null } : {}),
+      ...(input.avatar !== undefined ? { avatar: input.avatar.trim() || null } : {}),
+    },
+    select: { id: true, firstName: true, lastName: true, avatar: true, phone: true, email: true },
+  });
+}
+
 export interface DeviceInput {
   deviceId: string;
   platform: DevicePlatform;

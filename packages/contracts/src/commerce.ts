@@ -257,6 +257,7 @@ export const VendorOrderCard = z.object({
   commissionMinor: z.number().int(),
   payoutMinor: z.number().int(),
   fulfilmentMethod: FulfilmentMethod,
+  buyerName: z.string(),
   itemCount: z.number().int(),
   items: z.array(z.object({ title: z.string(), qty: z.number().int(), totalMinor: z.number().int() })),
   createdAt: z.string(),

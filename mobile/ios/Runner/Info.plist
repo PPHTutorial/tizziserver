@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Used for voice search — say what you're looking for instead of typing it.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Used to turn your voice search into text.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Used to scan a product barcode and jump straight to it.</string>
 </dict>
 </plist>

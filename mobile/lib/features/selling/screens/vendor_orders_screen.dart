@@ -20,8 +20,14 @@ class VendorOrdersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: context.colors.bg,
-        appBar: AppBar(title: const Text('Incoming orders')),
-        body: const VendorOrdersBody(),
+        body: const SafeArea(
+          child: Column(
+            children: [
+              AppScreenHeader('Incoming orders'),
+              Expanded(child: VendorOrdersBody()),
+            ],
+          ),
+        ),
       );
 }
 
@@ -49,21 +55,17 @@ class _VendorOrdersBodyState extends ConsumerState<VendorOrdersBody> {
     return Column(
       children: [
         SizedBox(
-          height: 52,
-          child: ListView(
+          height: 48,
+          child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12),
-            children: [
-              for (var i = 0; i < _tabs.length; i++)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                  child: ChoiceChip(
-                    label: Text(_tabs[i].$1),
-                    selected: _tab == i,
-                    onSelected: (_) => setState(() => _tab = i),
-                  ),
-                ),
-            ],
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
+            itemCount: _tabs.length,
+            separatorBuilder: (_, __) => const SizedBox(width: AppSpace.s8),
+            itemBuilder: (_, i) => AppChip(
+              _tabs[i].$1,
+              selected: _tab == i,
+              onTap: () => setState(() => _tab = i),
+            ),
           ),
         ),
         Expanded(
@@ -117,6 +119,11 @@ class _OrderTile extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpace.s6),
+            if (order.buyerName != null)
+              Text(
+                'Buyer: ${order.buyerName}',
+                style: context.text.bodyMedium?.copyWith(color: c.textMed),
+              ),
             Text(
               '${order.itemCount} item${order.itemCount == 1 ? '' : 's'} · '
               '${order.fulfilmentMethod == 'PICKUP' ? 'Pickup' : 'Delivery'}',

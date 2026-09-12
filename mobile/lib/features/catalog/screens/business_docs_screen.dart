@@ -35,64 +35,79 @@ class BusinessDocsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: c.bg,
-      appBar: AppBar(title: const Text('Verification documents')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context, ref),
         icon: const Icon(AppIcons.upload_file),
         label: const Text('Add'),
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => CenteredState.error(
-          title: 'Couldn\'t load documents',
-          action: PrimaryButton(
-            label: 'Retry',
-            onPressed: () => ref.invalidate(businessDocsProvider),
-          ),
-        ),
-        data: (docs) => docs.isEmpty
-            ? const CenteredState(
-                icon: AppIcons.description_outlined,
-                title: 'No documents yet',
-                body: 'Add your business registration and ID to speed up KYC.',
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.all(AppSpace.s16),
-                itemCount: docs.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpace.s8),
-                itemBuilder: (context, i) {
-                  final d = docs[i];
-                  return AppCard(
-                    child: Row(
-                      children: [
-                        Icon(AppIcons.description_outlined, color: c.textMed),
-                        const SizedBox(width: AppSpace.s12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                d.type.replaceAll('_', ' '),
-                                style: context.text.titleSmall,
-                              ),
-                              Text(
-                                d.fileKey,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: context.text.bodyMedium?.copyWith(
+      body: SafeArea(
+        child: Column(
+          children: [
+            const AppScreenHeader('Verification documents'),
+            Expanded(
+              child: async.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => CenteredState.error(
+                  title: 'Couldn\'t load documents',
+                  action: PrimaryButton(
+                    label: 'Retry',
+                    onPressed: () => ref.invalidate(businessDocsProvider),
+                  ),
+                ),
+                data: (docs) => docs.isEmpty
+                    ? const CenteredState(
+                        icon: AppIcons.description_outlined,
+                        title: 'No documents yet',
+                        body:
+                            'Add your business registration and ID to speed up KYC.',
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.all(AppSpace.s16),
+                        itemCount: docs.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: AppSpace.s8),
+                        itemBuilder: (context, i) {
+                          final d = docs[i];
+                          return AppCard(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  AppIcons.description_outlined,
                                   color: c.textMed,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        StatusBadge(d.status, tone: _docStatusTone(d.status)),
-                      ],
-                    ),
-                  );
-                },
+                                const SizedBox(width: AppSpace.s12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        d.type.replaceAll('_', ' '),
+                                        style: context.text.titleSmall,
+                                      ),
+                                      Text(
+                                        d.fileKey,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: context.text.bodyMedium
+                                            ?.copyWith(color: c.textMed),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                StatusBadge(
+                                  d.status,
+                                  tone: _docStatusTone(d.status),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ),
+            ),
+          ],
+        ),
       ),
     );
   }

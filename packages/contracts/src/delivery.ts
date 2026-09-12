@@ -94,6 +94,8 @@ export const DeliveryTrack = z.object({
   pickup: LatLng,
   dropoff: LatLng,
   courier: z.object({ lat: z.number(), lng: z.number(), heading: z.number().nullable(), at: z.string() }).nullable(),
+  /** Google-encoded polyline of the road route for the courier's current leg; null on the fallback / when finished. */
+  routePolyline: z.string().nullable(),
   trail: z.array(z.object({ lat: z.number(), lng: z.number(), at: z.string() })),
   distanceRemainingM: z.number().int(),
 });

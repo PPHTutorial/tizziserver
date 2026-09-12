@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../api/api_exception.dart';
@@ -100,23 +101,29 @@ class _DetailState extends ConsumerState<_Detail> {
   List<Widget> _actions(BuildContext context) {
     final c = context.colors;
     return [
-      IconButton(
-        icon: Icon(_wished ? AppIcons.favorite : AppIcons.favorite_border,
-            color: _wished ? c.error : null),
-        onPressed: _toggleWish,
+      _RoundAction(
+        icon: _wished ? AppIcons.favorite : AppIcons.favorite_border,
+        color: _wished ? c.error : null,
+        onTap: _toggleWish,
       ),
-      IconButton(icon: const Icon(AppIcons.share_outlined), onPressed: () {}),
-      PopupMenuButton<String>(
-        onSelected: (v) {
-          if (v == 'report') {
-            showReportSheet(context, ref,
-                targetType: 'PRODUCT', targetId: p.id, targetLabel: 'product');
-          }
-        },
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'report', child: Text('Report product')),
-        ],
+      const SizedBox(width: AppSpace.s8),
+      _RoundAction(
+        icon: AppIcons.share_outlined,
+        onTap: () => SharePlus.instance.share(
+          ShareParams(
+            text:
+                '${p.title} — ${formatMoney(p.fromPriceMinor, p.currency)}\n'
+                'Check it out on ${ref.read(bootstrapProvider).valueOrNull?.platform.name ?? 'Stall'}.',
+          ),
+        ),
       ),
+      const SizedBox(width: AppSpace.s8),
+      _RoundAction(
+        icon: AppIcons.flag,
+        onTap: () => showReportSheet(context, ref,
+            targetType: 'PRODUCT', targetId: p.id, targetLabel: 'product'),
+      ),
+      const SizedBox(width: AppSpace.s8),
     ];
   }
 
@@ -128,36 +135,73 @@ class _DetailState extends ConsumerState<_Detail> {
   }
 
   Widget _buildNarrow(BuildContext context, List<String> images) {
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          pinned: true,
-          expandedHeight: 320,
-          actions: _actions(context),
-          flexibleSpace: FlexibleSpaceBar(
-            background: _Gallery(
-              images: images,
-              index: _gallery,
-              productId: p.id,
-              label: p.brand ?? p.title,
-              onPageChanged: (i) => setState(() => _gallery = i),
-              onOpen: (i) => _openGallery(context, i, images.length),
+    final c = context.colors;
+    return Scaffold(
+      backgroundColor: c.bg,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: null,
+        leadingWidth: 60,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: AppSpace.s12),
+          child: _RoundAction(icon: AppIcons.chevron_left, onTap: () => Navigator.of(context).maybePop()),
+        ),
+        actions: [Row(children: _actions(context))],
+      ),
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 340,
+              child: _Gallery(
+                images: images,
+                index: _gallery,
+                productId: p.id,
+                label: p.brand ?? p.title,
+                onPageChanged: (i) => setState(() => _gallery = i),
+                onOpen: (i) => _openGallery(context, i, images.length),
+              ),
             ),
           ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpace.s16),
-            child: _InfoSection(
-              product: p,
-              slug: widget.slug,
-              addingToCart: _addingToCart,
-              onAddToCart: _addToCart,
-              onAskQuestion: () => _askQuestion(context),
+          SliverToBoxAdapter(
+            child: Transform.translate(
+              offset: const Offset(0, -22),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: c.bg,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.r3xl)),
+                ),
+                padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s20, AppSpace.s16, AppSpace.s24),
+                child: _InfoSection(
+                  product: p,
+                  slug: widget.slug,
+                  addingToCart: _addingToCart,
+                  onAddToCart: _addToCart,
+                  onAskQuestion: () => _askQuestion(context),
+                ),
+              ),
             ),
           ),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s12, AppSpace.s16, AppSpace.s12),
+        decoration: BoxDecoration(
+          color: c.surface,
+          border: Border(top: BorderSide(color: c.border.withValues(alpha: 0.6))),
         ),
-      ],
+        child: SafeArea(
+          top: false,
+          child: PrimaryButton(
+            label: 'Add to cart',
+            loading: _addingToCart,
+            onPressed: p.offers.isEmpty || _addingToCart ? null : _addToCart,
+          ),
+        ),
+      ),
     );
   }
 
@@ -230,7 +274,7 @@ class _DetailState extends ConsumerState<_Detail> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Ask about this product'),
-        content: AppField(label: 'Your question', controller: controller),
+        content: AppField(label: 'Your question', hintText: 'Ask about size, delivery, warranty…', controller: controller),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Send')),
@@ -263,7 +307,12 @@ class _DetailState extends ConsumerState<_Detail> {
               itemCount: count,
               itemBuilder: (context, i) => InteractiveViewer(
                 child: Center(
-                  child: ProductThumb(seed: '${p.id}$i', label: p.brand ?? p.title, size: 320),
+                  child: ProductThumb(
+                    seed: '${p.id}$i',
+                    label: p.brand ?? p.title,
+                    imageKey: i < p.images.length && p.images[i].isNotEmpty ? p.images[i] : null,
+                    size: 320,
+                  ),
                 ),
               ),
             ),
@@ -321,6 +370,7 @@ class _Gallery extends StatelessWidget {
                 child: ProductThumb(
                   seed: '$productId$i',
                   label: label,
+                  imageKey: i < images.length && images[i].isNotEmpty ? images[i] : null,
                   size: double.infinity,
                   radius: 0,
                 ),
@@ -354,6 +404,32 @@ class _Gallery extends StatelessWidget {
 
 /// Title through add-to-cart — the scrollable info column, shared between the
 /// phone (below the gallery) and tablet (beside the gallery) layouts.
+/// A floating circular icon button over the product image (Figma treatment).
+class _RoundAction extends StatelessWidget {
+  const _RoundAction({required this.icon, required this.onTap, this.color});
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Material(
+      color: c.surface,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          width: 38,
+          height: 38,
+          child: Icon(icon, size: 15, color: color ?? c.textHi),
+        ),
+      ),
+    );
+  }
+}
+
 class _InfoSection extends StatelessWidget {
   const _InfoSection({
     required this.product,
@@ -383,13 +459,17 @@ class _InfoSection extends StatelessWidget {
         Text(p.title, style: context.text.headlineMedium),
         const SizedBox(height: AppSpace.s8),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(formatMoney(p.fromPriceMinor, p.currency),
-                style: context.text.titleLarge?.copyWith(color: c.onPrimaryContainer)),
+                style: context.text.headlineMedium?.copyWith(color: c.success)),
             const SizedBox(width: AppSpace.s8),
             if (p.offers.length > 1)
-              Text('from ${p.offers.length} sellers',
-                  style: context.text.bodyMedium?.copyWith(color: c.textMed)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text('from ${p.offers.length} sellers',
+                    style: context.text.bodyMedium?.copyWith(color: c.textMed)),
+              ),
           ],
         ),
         if (p.ratingCount > 0) ...[
@@ -399,6 +479,10 @@ class _InfoSection extends StatelessWidget {
             Text(' ${p.ratingAvg.toStringAsFixed(1)} · ${p.ratingCount} reviews',
                 style: context.text.bodyMedium),
           ]),
+        ],
+        if (p.activeAuction != null) ...[
+          const SizedBox(height: AppSpace.s16),
+          _InverseDrawCrossSell(auction: p.activeAuction!),
         ],
         if (p.variants.length > 1) ...[
           const SizedBox(height: AppSpace.s16),
@@ -431,25 +515,106 @@ class _InfoSection extends StatelessWidget {
         const SizedBox(height: AppSpace.s24),
         _SimilarRail(slug: slug),
         const SizedBox(height: AppSpace.s16),
-        Row(
+        SecondaryButton(label: 'Ask a question', onPressed: onAskQuestion),
+      ],
+    );
+  }
+}
+
+/// The "GrandPrice Inverse Draw Active" cross-sell card — Figma's
+/// `product-detail` frame designs this, and the schema's `Auction.productId`
+/// was explicitly added ("optional link to a retail listing so the PDP can
+/// show dual CTAs") but the lookup was never wired into `getProductDetail`
+/// or rendered here. Tapping it opens the draw; retail purchase stays via the
+/// normal offers/add-to-cart flow below.
+class _InverseDrawCrossSell extends StatelessWidget {
+  const _InverseDrawCrossSell({required this.auction});
+  final ProductActiveAuction auction;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final a = auction;
+    return InkWell(
+      onTap: () => context.push('/auctions/${a.slug}'),
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpace.s16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [c.primary, c.onPrimaryContainer],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: SecondaryButton(
-                label: 'Ask a question',
-                onPressed: onAskQuestion,
+            Row(
+              children: [
+                Icon(AppIcons.bolt, color: Colors.white, size: 18),
+                const SizedBox(width: AppSpace.s6),
+                Text(
+                  'GrandPrice Inverse Draw Active',
+                  style: context.text.titleSmall?.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpace.s10),
+            Row(
+              children: [
+                Text(
+                  'Ticket: ${formatMoney(a.ticketPriceMinor, a.currency)}',
+                  style: context.text.bodyMedium?.copyWith(color: Colors.white),
+                ),
+                const SizedBox(width: AppSpace.s16),
+                Text(
+                  'Win for: ${formatMoney(a.winTargetMinor, a.currency)}',
+                  style: context.text.bodyMedium?.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpace.s10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${a.seatsSold} of ${a.seatsTotal} tickets sold',
+                  style: context.text.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                ),
+                Text(
+                  '${a.fillPct.round()}%',
+                  style: context.text.labelLarge?.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpace.s6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: LinearProgressIndicator(
+                value: a.fillPct / 100,
+                minHeight: 6,
+                backgroundColor: Colors.white.withValues(alpha: 0.25),
+                color: Colors.white,
               ),
             ),
-            const SizedBox(width: AppSpace.s12),
-            Expanded(
-              child: PrimaryButton(
-                label: 'Add to cart',
-                loading: addingToCart,
-                onPressed: p.offers.isEmpty || addingToCart ? null : onAddToCart,
-              ),
+            const SizedBox(height: AppSpace.s10),
+            Row(
+              children: [
+                Text(
+                  'Join Draw • ${formatMoney(a.ticketPriceMinor, a.currency)}',
+                  style: context.text.titleSmall?.copyWith(color: Colors.white),
+                ),
+                const SizedBox(width: AppSpace.s4),
+                const Icon(AppIcons.chevron_right, size: 14, color: Colors.white),
+              ],
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -618,7 +783,16 @@ class _ReviewsBlock extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Reviews (${product.reviewCount})', style: context.text.titleMedium),
-            TextButton(onPressed: () => _writeReview(context, ref), child: const Text('Write one')),
+            Row(
+              children: [
+                if (product.reviewCount > 0)
+                  TextButton(
+                    onPressed: () => context.push(RoutePaths.productReviews(slug)),
+                    child: const Text('See all'),
+                  ),
+                TextButton(onPressed: () => _writeReview(context, ref), child: const Text('Write one')),
+              ],
+            ),
           ],
         ),
         if (product.reviews.isEmpty)
@@ -669,7 +843,7 @@ class _ReviewsBlock extends ConsumerWidget {
                   ),
                 ),
               ),
-              AppField(label: 'Your review', controller: body),
+              AppField(label: 'Your review', hintText: 'How was your experience?', controller: body),
             ],
           ),
           actions: [

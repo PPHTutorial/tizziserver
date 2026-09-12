@@ -7,10 +7,15 @@
  * publishes `resultHash` — anyone can recompute the outcome. Weighting only
  * changes the window widths; it never guarantees selection.
  *
- * Money: ticket stakes sit in `auctionEscrow`. On a completed draw, non-winners
- * are settled per `nonWinnerPolicy` (REFUND/CREDIT → wallet, VOUCHER → coupon)
- * and the remainder releases to platform REVENUE. An UNSOLD draw refunds
- * everyone in full. `auctionEscrow` nets to zero either way.
+ * Money: ticket stakes sit in `auctionEscrow`. On a completed (sold-out) draw,
+ * non-winners are settled per `nonWinnerPolicy` — the default, `NONE`, keeps
+ * their stake (it funds the below-retail win target, which is the whole
+ * mechanic); REFUND/CREDIT send it to the wallet instead, VOUCHER issues a
+ * coupon — all three are opt-in exceptions, not the norm. Either way,
+ * whatever isn't paid out to a non-winner releases to platform REVENUE. Only
+ * an UNSOLD draw (didn't reach `minSeatsToDraw`) refunds everyone in full —
+ * that's the *only* case a non-winner gets their stake back by default.
+ * `auctionEscrow` nets to zero either way.
  */
 import { prisma, type Prisma } from "@stall/db";
 import { AppError } from "../errors.ts";
@@ -193,6 +198,9 @@ export async function runDraw(auctionId: string): Promise<DrawResult> {
   });
 
   // --- settle escrow: non-winner policy, then remainder → revenue ---
+  // nonWinnerPolicy "NONE" (the default) intentionally matches neither
+  // branch below — that stake just stays in escrow and gets swept to
+  // revenue in the remainder step, same as VOUCHER.
   const paid = await paidByUser(auctionId);
   for (const [userId, amountMinor] of paid) {
     if (userId === winner.userId || amountMinor <= 0) continue;

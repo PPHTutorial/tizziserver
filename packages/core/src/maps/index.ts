@@ -21,9 +21,9 @@ export const DEFAULT_LATLNG: LatLng = { lat: 5.6037, lng: -0.187 };
 export interface RouteEstimate {
   distanceM: number;
   durationS: number;
-  /** encoded polyline when a real provider returned one; null on the fallback. */
+  /** Google-encoded polyline of the road route; null on the haversine fallback. */
   polyline: string | null;
-  source: "google" | "haversine";
+  source: "google" | "osrm" | "haversine";
 }
 
 const R_EARTH_M = 6_371_000;
@@ -89,7 +89,30 @@ async function googleRoute(origin: LatLng, dest: LatLng): Promise<RouteEstimate 
   }
 }
 
-/** Distance + duration between two points, cached, provider-or-fallback. */
+async function osrmRoute(origin: LatLng, dest: LatLng): Promise<RouteEstimate | null> {
+  if (!env.OSRM_URL) return null;
+  const coords = `${origin.lng},${origin.lat};${dest.lng},${dest.lat}`;
+  const url = `${env.OSRM_URL.replace(/\/$/, "")}/route/v1/driving/${coords}?overview=full&geometries=polyline`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+    const json = (await res.json()) as {
+      code?: string;
+      routes?: { distance?: number; duration?: number; geometry?: string }[];
+    };
+    const r = json.routes?.[0];
+    if (json.code !== "Ok" || !r || r.distance == null || r.duration == null || !r.geometry) return null;
+    return {
+      distanceM: Math.round(r.distance),
+      durationS: Math.max(60, Math.round(r.duration)),
+      polyline: r.geometry,
+      source: "osrm",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Distance + duration + road polyline between two points, cached, provider-or-fallback. */
 export async function estimateRoute(origin: LatLng, dest: LatLng): Promise<RouteEstimate> {
   const redis = getRedis();
   const k = cacheKey(origin, dest);
@@ -103,7 +126,7 @@ export async function estimateRoute(origin: LatLng, dest: LatLng): Promise<Route
       }
     }
   }
-  const estimate = (await googleRoute(origin, dest)) ?? fallbackRoute(origin, dest);
+  const estimate = (await googleRoute(origin, dest)) ?? (await osrmRoute(origin, dest)) ?? fallbackRoute(origin, dest);
   if (redis) {
     await redis.set(k, JSON.stringify(estimate), "EX", env.MAPS_CACHE_TTL_SECONDS).catch(() => {});
   }

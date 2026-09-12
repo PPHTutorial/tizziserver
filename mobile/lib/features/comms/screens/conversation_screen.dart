@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
+import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../comms_providers.dart';
@@ -69,34 +70,27 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
     final msgs = ref.watch(messagesProvider(widget.conversationId));
     final peerTyping = msgs.valueOrNull?.peerTyping ?? false;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title ?? 'Conversation'),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (v) {
-              if (v == 'report') {
-                showReportSheet(context, ref,
-                    targetType: 'CONVERSATION',
-                    targetId: widget.conversationId,
-                    targetLabel: 'conversation');
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'report', child: Text('Report conversation')),
-            ],
-          ),
-        ],
-      ),
+      backgroundColor: c.bg,
       body: SafeArea(
         child: Column(
           children: [
+            AppScreenHeader(
+              widget.title ?? 'Conversation',
+              trailing: IconButton(
+                icon: const Icon(AppIcons.flag, size: 15),
+                onPressed: () => showReportSheet(context, ref,
+                    targetType: 'CONVERSATION',
+                    targetId: widget.conversationId,
+                    targetLabel: 'conversation'),
+              ),
+            ),
             Expanded(
               child: msgs.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('$e')),
                 data: (page) => ListView.builder(
                   controller: _scroll,
-                  padding: const EdgeInsets.all(AppSpace.s12),
+                  padding: const EdgeInsets.all(AppSpace.s16),
                   itemCount: page.items.length,
                   itemBuilder: (_, i) {
                     final m = page.items[i];
@@ -104,16 +98,34 @@ class _ConversationScreenState extends ConsumerState<ConversationScreen> {
                       alignment: m.fromMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 3),
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12, vertical: AppSpace.s8),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpace.s14, vertical: AppSpace.s10),
                         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                         decoration: BoxDecoration(
-                          color: m.fromMe ? c.primary : c.surfaceSunken,
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          color: m.fromMe ? c.primary : c.surface,
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(AppRadius.r2xl),
+                            topRight: const Radius.circular(AppRadius.r2xl),
+                            bottomLeft: Radius.circular(m.fromMe ? AppRadius.r2xl : AppRadius.xs),
+                            bottomRight: Radius.circular(m.fromMe ? AppRadius.xs : AppRadius.r2xl),
+                          ),
+                          border: m.fromMe ? null : Border.all(color: c.border.withValues(alpha: 0.6)),
                         ),
-                        child: Text(
-                          m.body ?? '[${m.kind.toLowerCase()}]',
-                          style: context.text.bodyMedium?.copyWith(color: m.fromMe ? c.onPrimary : c.textHi),
-                        ),
+                        child: m.body != null
+                            ? Text(
+                                m.body!,
+                                style: context.text.bodyLarge
+                                    ?.copyWith(color: m.fromMe ? c.onPrimary : c.textHi),
+                              )
+                            : Text(
+                                // No structured product-card payload is exposed by
+                                // ChatMessageDto.attachments yet — an honest label
+                                // instead of the old raw "[kind]" debug text.
+                                m.kind == 'PRODUCT_SHARE' ? 'Shared a product' : 'Attachment',
+                                style: context.text.bodyMedium?.copyWith(
+                                  color: m.fromMe ? c.onPrimary.withValues(alpha: 0.85) : c.textMed,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
                       ),
                     );
                   },

@@ -107,6 +107,35 @@ const catalogVendors: CatVendor[] = [
   { slug: "tizzi-gas", phone: "+233200000002", displayName: "SwiftGas Depot", legalName: "SwiftGas Depot Ltd" },
 ];
 
+/**
+ * Per-category product field template — drives the dynamic attribute form in
+ * `product_editor_screen.dart`. Categories with no entry here fall back to
+ * the generic listing form (no category-specific fields), which is fine —
+ * `attributeSchema` is optional, nothing blocks publishing without it.
+ */
+const attributeSchemaBySlug: Record<
+  string,
+  { key: string; label: string; type: "text" | "number" | "boolean" | "select"; required?: boolean; options?: string[] }[]
+> = {
+  phones: [
+    { key: "storage", label: "Storage", type: "select", required: true, options: ["32GB", "64GB", "128GB", "256GB", "512GB", "1TB"] },
+    { key: "ram", label: "RAM", type: "select", options: ["3GB", "4GB", "6GB", "8GB", "12GB", "16GB"] },
+    { key: "color", label: "Color", type: "text" },
+    { key: "networkUnlocked", label: "Network unlocked", type: "boolean" },
+  ],
+  laptops: [
+    { key: "processor", label: "Processor", type: "text", required: true },
+    { key: "ram", label: "RAM", type: "select", options: ["4GB", "8GB", "16GB", "32GB", "64GB"] },
+    { key: "storage", label: "Storage", type: "select", options: ["128GB SSD", "256GB SSD", "512GB SSD", "1TB SSD", "1TB HDD"] },
+    { key: "screenSizeIn", label: "Screen size (inches)", type: "number" },
+  ],
+  fashion: [
+    { key: "size", label: "Size", type: "select", options: ["XS", "S", "M", "L", "XL", "XXL"] },
+    { key: "color", label: "Color", type: "text" },
+    { key: "material", label: "Material", type: "text" },
+  ],
+};
+
 /** Categories: (slug, name, icon, parentSlug|null, platformSlugs) */
 const categories: [string, string, string, string | null, string[]][] = [
   // GrandPrice — general tree
@@ -173,10 +202,11 @@ async function seedCatalog() {
     const parentId = parentSlug ? catIdBySlug[parentSlug] : undefined;
     const parent = parentSlug ? categories.find((c) => c[0] === parentSlug) : undefined;
     const path = parent ? `/${parentSlug}/${slug}` : `/${slug}`;
+    const attributeSchema = attributeSchemaBySlug[slug];
     const row = await prisma.category.upsert({
       where: { slug },
-      create: { slug, name, icon, parentId, path, platformSlugs, sortOrder: Object.keys(catIdBySlug).length },
-      update: { name, icon, parentId, path, platformSlugs },
+      create: { slug, name, icon, parentId, path, platformSlugs, sortOrder: Object.keys(catIdBySlug).length, attributeSchema },
+      update: { name, icon, parentId, path, platformSlugs, attributeSchema },
     });
     catIdBySlug[slug] = row.id;
   }
@@ -202,7 +232,7 @@ async function seedCatalog() {
       brand: "SwiftGas",
       description: "Full 12.5 kg LPG cylinder on exchange. Bring your empty; we deliver a certified full one.",
       priceMinor: 28000,
-      image: "seed/gas-12kg.jpg",
+      image: "https://loremflickr.com/800/800/gas,cylinder?lock=12",
       gas: { cylinderType: "STANDARD", weightKg: 12.5, capacityL: 26.2, depositMinor: 0 },
     },
     {
@@ -213,7 +243,7 @@ async function seedCatalog() {
       brand: "SwiftGas",
       description: "Brand-new 6 kg cylinder, filled, with refundable cylinder deposit.",
       priceMinor: 45000,
-      image: "seed/gas-6kg.jpg",
+      image: "https://loremflickr.com/800/800/gas,cylinder?lock=6",
       gas: { cylinderType: "NEW", weightKg: 6, capacityL: 12.6, depositMinor: 20000 },
     },
     {
@@ -224,7 +254,7 @@ async function seedCatalog() {
       brand: "SwiftGas",
       description: "Low-pressure regulator, 1.5 m armoured hose and two clamps.",
       priceMinor: 9500,
-      image: "seed/regulator.jpg",
+      image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=800&q=80",
     },
     {
       slug: "orbit-a54-phone",
@@ -234,7 +264,7 @@ async function seedCatalog() {
       brand: "Orbit",
       description: "6.4-inch AMOLED, 5000 mAh, 128/256 GB. Dual SIM. One-year warranty.",
       priceMinor: 189900,
-      image: "seed/phone.jpg",
+      image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80",
       variants: [
         { sku: "ORBIT-A54-128", name: "128 GB", priceMinor: 189900, qty: 25 },
         { sku: "ORBIT-A54-256", name: "256 GB", priceMinor: 219900, qty: 12 },
@@ -248,7 +278,7 @@ async function seedCatalog() {
       brand: "Nimbus",
       description: "14-inch IPS, 16 GB RAM, 512 GB SSD, backlit keyboard. Ships next day in Accra.",
       priceMinor: 649900,
-      image: "seed/laptop.jpg",
+      image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&q=80",
     },
     {
       slug: "orbit-a34-phone",
@@ -258,7 +288,7 @@ async function seedCatalog() {
       brand: "Orbit",
       description: "6.1-inch LCD, 5000 mAh, 64/128 GB. The budget pick in the Orbit A-series.",
       priceMinor: 129900,
-      image: "seed/phone-a34.jpg",
+      image: "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&q=80",
     },
     {
       slug: "nimbus-pro-16-laptop",
@@ -268,7 +298,7 @@ async function seedCatalog() {
       brand: "Nimbus",
       description: "16-inch 2.5K, 32 GB RAM, 1 TB SSD, discrete graphics. For heavy workloads.",
       priceMinor: 1149900,
-      image: "seed/laptop-pro.jpg",
+      image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&q=80",
     },
   ];
 
@@ -291,6 +321,12 @@ async function seedCatalog() {
         media: { create: { kind: "IMAGE", fileKey: p.image, sortOrder: 0 } },
       },
       update: { title: p.title, description: p.description, status: "PUBLISHED", categoryId },
+    });
+
+    // Keep the primary image in sync on re-seed (media lives outside `update`).
+    await prisma.productMedia.deleteMany({ where: { productId: product.id, sortOrder: 0 } });
+    await prisma.productMedia.create({
+      data: { productId: product.id, kind: "IMAGE", fileKey: p.image, sortOrder: 0 },
     });
 
     // Variants + inventory.
@@ -448,7 +484,7 @@ async function seedPromotions() {
       kind: "BANNER",
       title: "New in Electronics",
       subtitle: "Fresh arrivals every week",
-      imageKey: "banners/electronics.jpg",
+      imageKey: "https://images.unsplash.com/photo-1498049794561-7780e7231661?w=1200&q=80",
       ctaRoute: "/category/electronics",
       platform: "grandprice",
       priority: 1,
@@ -468,7 +504,7 @@ async function seedPromotions() {
       kind: "BANNER",
       title: "Gas safety checklist",
       subtitle: "Keep your home safe",
-      imageKey: "banners/gas-safety.jpg",
+      imageKey: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=1200&q=80",
       ctaRoute: "/category/gas-accessories",
       platform: "tizzi-gas",
       priority: 1,
@@ -491,7 +527,7 @@ async function seedPromotions() {
         startsAt: new Date(Date.now() - 3_600_000),
         endsAt,
       },
-      update: { title: p.title, subtitle: p.subtitle, priority: p.priority ?? 0, endsAt },
+      update: { title: p.title, subtitle: p.subtitle, imageKey: p.imageKey, priority: p.priority ?? 0, endsAt },
     });
 
     let order = 0;
@@ -625,14 +661,13 @@ async function seedDelivery() {
   console.log(`  delivery — 2 zones, 2 live couriers (Accra)`);
 }
 
-// --- Phase 5: one live Inverse Draw on GrandPrice ----------------------
+// --- Phase 5: live Inverse Draws on GrandPrice --------------------------
 async function seedAuctions() {
   const slug = "seed-inverse-draw-s-class";
   const existing = await prisma.auction.findUnique({ where: { slug } });
   if (existing) {
-    console.log(`  auctions — 1 draw (exists)`);
-    return;
-  }
+    console.log(`  auctions — S-Class draw (exists)`);
+  } else {
   await prisma.auction.create({
     data: {
       slug,
@@ -649,13 +684,13 @@ async function seedAuctions() {
       seatsTotal: 5000,
       minSeatsToDraw: 5,
       drawTrigger: "EITHER",
-      nonWinnerPolicy: "REFUND",
+      nonWinnerPolicy: "NONE",
       opensAt: new Date(Date.now() - 3_600_000),
       closesAt: new Date(Date.now() + 30 * 86_400_000),
       drawAt: new Date(Date.now() + 30 * 86_400_000),
       rules: { region: "GH only", minAge: 21 },
       assets: {
-        create: { title: "Mercedes-Benz S-Class 2024", media: ["seed/s-class.jpg"], specs: { engine: "3.0L I6 turbo", year: 2024 }, retailValueMinor: 185_000_000 },
+        create: { title: "Mercedes-Benz S-Class 2024", media: ["https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=1200&q=80"], specs: { engine: "3.0L I6 turbo", year: 2024 }, retailValueMinor: 185_000_000 },
       },
       packages: {
         create: [
@@ -674,7 +709,47 @@ async function seedAuctions() {
       },
     },
   });
-  console.log(`  auctions — 1 live draw (grandprice)`);
+  }
+
+  // A second draw explicitly linked to a real catalog product (`productId`)
+  // rather than a standalone `PremiumAsset` — demonstrates the PDP's dual
+  // "Join Draw" / "Buy Retail" CTA (the field existed on `Auction` since
+  // Phase 5 but nothing ever populated it until now).
+  const phoneSlug = "orbit-a54-phone-draw";
+  const phone = await prisma.product.findUnique({ where: { slug: "orbit-a54-phone" } });
+  if (phone && !(await prisma.auction.findUnique({ where: { slug: phoneSlug } }))) {
+    await prisma.auction.create({
+      data: {
+        slug: phoneSlug,
+        title: "Win an Orbit A54 Smartphone",
+        description: "LIVE INVERSE DRAW — hold a seat, and if the pool fills, one buyer takes the phone for a fraction of retail.",
+        type: "SEAT_DRAW",
+        status: "OPEN",
+        platformSlug: "grandprice",
+        regionCodes: ["GH"],
+        productId: phone.id,
+        retailValueMinor: 189_900,
+        ticketPriceMinor: 5_000, // GHS 50 / seat
+        winTargetMinor: 30_000, // GHS 300
+        currency: "GHS",
+        seatsTotal: 500,
+        minSeatsToDraw: 5,
+        drawTrigger: "EITHER",
+        nonWinnerPolicy: "NONE",
+        opensAt: new Date(Date.now() - 3_600_000),
+        closesAt: new Date(Date.now() + 14 * 86_400_000),
+        drawAt: new Date(Date.now() + 14 * 86_400_000),
+        rules: { region: "GH only", minAge: 21 },
+        packages: {
+          create: [{ name: "Single seat", ticketCount: 1, bonusTickets: 0, priceMinor: 5_000, sortOrder: 0 }],
+        },
+        qualRules: {
+          create: [{ factor: "TICKETS", weight: 1 }],
+        },
+      },
+    });
+  }
+  console.log(`  auctions — 2 live draws (grandprice)`);
 }
 
 async function main() {

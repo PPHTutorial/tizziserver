@@ -11,6 +11,15 @@ export const ProductStatus = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED", "SUSPENDE
 export const ProductSort = z.enum(["relevance", "newest", "price_asc", "price_desc", "rating"]);
 
 // --- shared shapes ------------------------------------------------------
+export const CategoryAttributeType = z.enum(["text", "number", "boolean", "select"]);
+export const CategoryAttributeField = z.object({
+  key: z.string(),
+  label: z.string(),
+  type: CategoryAttributeType,
+  required: z.boolean().optional(),
+  options: z.array(z.string()).optional(),
+});
+
 export const Category = z.object({
   id: z.string(),
   parentId: z.string().nullable(),
@@ -19,7 +28,11 @@ export const Category = z.object({
   icon: z.string().nullable(),
   path: z.string(),
   sortOrder: z.number().int(),
+  /** Category-specific product field template — `null` if none defined. */
+  attributeSchema: z.array(CategoryAttributeField).nullable(),
 });
+
+export const RootCategory = Category.extend({ count: z.number().int().nullable() });
 
 export const ProductCard = z.object({
   id: z.string(),
@@ -105,11 +118,32 @@ export const ProductDetail = z.object({
       answers: z.array(z.object({ id: z.string(), body: z.string(), at: z.string() })),
     }),
   ),
+  /** The live Inverse Draw for this exact product, if the platform links one
+   * (`Auction.productId`) — lets the PDP show the dual "Join Draw" / "Buy
+   * Retail" CTA alongside the normal offers. */
+  activeAuction: z
+    .object({
+      slug: z.string(),
+      status: z.string(),
+      ticketPriceMinor: z.number().int(),
+      winTargetMinor: z.number().int(),
+      seatsTotal: z.number().int(),
+      seatsSold: z.number().int(),
+      currency: z.string(),
+    })
+    .nullable(),
 });
 
 // --- responses --------------------------------------------------------
-export const CategoriesResponse = ok(z.object({ items: z.array(Category).optional(), tree: z.array(z.unknown()).optional() }));
+export const CategoriesResponse = ok(
+  z.object({
+    items: z.array(Category).optional(),
+    tree: z.array(z.unknown()).optional(),
+    roots: z.array(RootCategory).optional(),
+  }),
+);
 export const ProductListResponse = ok(z.object({ items: z.array(ProductCard), nextCursor: z.string().nullable() }));
+export const ScanResponse = ok(z.object({ slug: z.string().nullable() }));
 export const ProductDetailResponse = ok(ProductDetail);
 export const SearchResponse = ok(
   z.object({ items: z.array(ProductCard), page: z.number().int(), limit: z.number().int(), total: z.number().int() }),
@@ -192,12 +226,33 @@ export const UpdateProductRequest = z.object({
   title: z.string().min(3).max(140).optional(),
   description: z.string().min(10).max(4000).optional(),
   brand: z.string().max(80).optional(),
+  condition: ProductCondition.optional(),
   categoryId: z.string().optional(),
   priceMinor: z.number().int().positive().optional(),
   images: z.array(z.string()).max(8).optional(),
   quantity: z.number().int().nonnegative().optional(),
+  attributes: z.record(z.string(), z.unknown()).optional(),
 });
 export const ProductMutationResponse = ok(z.object({ id: z.string(), status: z.string().optional(), updated: z.boolean().optional() }));
+export const SetListingPausedRequest = z.object({ paused: z.boolean() });
+export const MyProductDetailResponse = ok(
+  z.object({
+    id: z.string(),
+    slug: z.string(),
+    title: z.string(),
+    description: z.string(),
+    brand: z.string().nullable(),
+    condition: ProductCondition,
+    categoryId: z.string(),
+    status: ProductStatus,
+    offerStatus: z.string().nullable(),
+    priceMinor: z.number().int().nullable(),
+    currency: z.string(),
+    images: z.array(z.string()),
+    quantity: z.number().int(),
+    attributes: z.record(z.string(), z.unknown()),
+  }),
+);
 
 export const MyProductsResponse = ok(
   z.object({
@@ -207,9 +262,12 @@ export const MyProductsResponse = ok(
         slug: z.string(),
         title: z.string(),
         status: ProductStatus,
+        offerStatus: z.string().nullable(),
         image: z.string().nullable(),
         priceMinor: z.number().int().nullable(),
         currency: z.string(),
+        quantity: z.number().int(),
+        viewCount: z.number().int(),
         updatedAt: z.string(),
       }),
     ),
@@ -229,6 +287,24 @@ export const ReviewRequest = z.object({
   body: z.string().max(2000).optional(),
 });
 export const ReviewResponse = ok(z.object({ rating: z.number().int(), ratingAvg: z.number(), ratingCount: z.number().int() }));
+export const ReviewsListResponse = ok(
+  z.object({
+    items: z.array(
+      z.object({
+        id: z.string(),
+        rating: z.number().int(),
+        title: z.string().nullable(),
+        body: z.string().nullable(),
+        author: z.string(),
+        avatar: z.string().nullable(),
+        at: z.string(),
+      }),
+    ),
+    nextCursor: z.string().nullable(),
+    total: z.number().int(),
+    distribution: z.array(z.object({ star: z.number().int(), count: z.number().int(), pct: z.number().int() })),
+  }),
+);
 
 export const QuestionRequest = z.object({ body: z.string().min(3).max(500) });
 export const IdResponse = ok(z.object({ id: z.string() }));
@@ -244,7 +320,8 @@ export const WishlistItem = z.object({
 export const WishlistResponse = ok(z.object({ items: z.array(WishlistItem) }));
 export const WishlistMutationRequest = z.object({ productId: z.string() });
 export const WishlistToggleResponse = ok(z.object({ wished: z.boolean() }));
-export const RecentlyViewedResponse = ok(z.object({ items: z.array(WishlistItem) }));
+export const RecentlyViewedItem = WishlistItem.extend({ viewedAt: z.string() });
+export const RecentlyViewedResponse = ok(z.object({ items: z.array(RecentlyViewedItem) }));
 
 // --- promotions (Domain 8 read side) -------------------------------
 export const PromotionKind = z.enum(["FLASH_DEAL", "CAMPAIGN", "BANNER"]);

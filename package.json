@@ -27,6 +27,7 @@
     "@types/node": "^22.10.0",
     "dotenv-cli": "^8.0.0",
     "maildev": "^2.2.1",
+    "socket.io-client": "^4.8.3",
     "turbo": "^2.5.0",
     "typescript": "^5.7.0"
   },

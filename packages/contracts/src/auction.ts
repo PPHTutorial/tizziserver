@@ -37,7 +37,7 @@ export const AuctionCard = z.object({
   fillPct: z.number().int(),
   minSeatsToDraw: z.number().int(),
   drawTrigger: z.enum(["SOLD_OUT", "SCHEDULED", "EITHER"]),
-  nonWinnerPolicy: z.enum(["REFUND", "CREDIT", "VOUCHER"]),
+  nonWinnerPolicy: z.enum(["NONE", "REFUND", "CREDIT", "VOUCHER"]),
   opensAt: z.string().nullable(),
   closesAt: z.string().nullable(),
   drawAt: z.string().nullable(),
@@ -127,6 +127,15 @@ export const MyTicketsResponse = ok(
   z.object({ items: z.array(z.object({ serial: z.string(), seatNo: z.number().int().nullable(), source: z.string(), status: z.string(), acquiredAt: z.string() })) }),
 );
 
+export const MyTicketStatsResponse = ok(
+  z.object({
+    totalTickets: z.number().int(),
+    activeEntries: z.number().int(),
+    amountWonMinor: z.number().int(),
+    currency: z.string(),
+  }),
+);
+
 export const MyWinResponse = ok(z.unknown());
 export const ClaimResponse = ok(z.object({ claimId: z.string(), status: z.string() }));
 export const ClaimKycRequest = z.object({ documents: z.array(z.object({ type: z.string(), fileKey: z.string() })).min(1) });
@@ -149,7 +158,7 @@ export const CreateAuctionRequest = z.object({
   seatsTotal: z.number().int().positive(),
   minSeatsToDraw: z.number().int().positive().optional(),
   drawTrigger: z.enum(["SOLD_OUT", "SCHEDULED", "EITHER"]).optional(),
-  nonWinnerPolicy: z.enum(["REFUND", "CREDIT", "VOUCHER"]).optional(),
+  nonWinnerPolicy: z.enum(["NONE", "REFUND", "CREDIT", "VOUCHER"]).optional(),
   opensAt: z.string().datetime().optional(),
   closesAt: z.string().datetime().optional(),
   drawAt: z.string().datetime().optional(),

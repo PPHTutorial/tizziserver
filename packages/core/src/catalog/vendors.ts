@@ -124,7 +124,36 @@ export async function vendorKycStatus(userId: string) {
     profileStatus: vendor.status,
     kycStatus: kyc?.status ?? "NONE",
     note: kyc?.note ?? null,
+    displayName: vendor.displayName,
+    bio: vendor.bio,
+    logo: vendor.logo,
+    banner: vendor.banner,
   };
+}
+
+/**
+ * Edit the caller's own shop profile (name/bio/logo/banner) — distinct from
+ * `startVendorOnboarding`, which also touches Business + re-opens a KYC case.
+ * Available regardless of KYC status: a vendor should be able to tidy up
+ * their shop profile while a review is pending, not just once ACTIVE.
+ */
+export async function updateMyVendorProfile(
+  userId: string,
+  input: { displayName?: string; bio?: string; logo?: string; banner?: string },
+) {
+  const vendor = await prisma.vendorProfile.findUnique({ where: { userId } });
+  if (!vendor) throw new AppError("FORBIDDEN", "Complete vendor onboarding first");
+  const updated = await prisma.vendorProfile.update({
+    where: { id: vendor.id },
+    data: {
+      ...(input.displayName !== undefined ? { displayName: input.displayName.trim() } : {}),
+      ...(input.bio !== undefined ? { bio: input.bio.trim() || null } : {}),
+      ...(input.logo !== undefined ? { logo: input.logo.trim() || null } : {}),
+      ...(input.banner !== undefined ? { banner: input.banner.trim() || null } : {}),
+    },
+    select: { id: true, displayName: true, bio: true, logo: true, banner: true },
+  });
+  return updated;
 }
 
 /**
@@ -232,10 +261,12 @@ export async function updateProductDraft(input: {
   title?: string;
   description?: string;
   brand?: string;
+  condition?: "NEW" | "USED" | "REFURBISHED";
   categoryId?: string;
   priceMinor?: number;
   images?: string[];
   quantity?: number;
+  attributes?: Record<string, unknown>;
 }) {
   const vendor = await requireActiveVendor(input.userId);
   const product = await prisma.product.findFirst({
@@ -250,9 +281,14 @@ export async function updateProductDraft(input: {
       title: input.title,
       description: input.description,
       brand: input.brand,
+      condition: input.condition,
       categoryId: input.categoryId,
+      ...(input.attributes !== undefined ? { attributes: input.attributes as Prisma.InputJsonValue } : {}),
     },
   });
+  if (input.condition && product.offers[0]) {
+    await prisma.vendorOffer.update({ where: { id: product.offers[0].id }, data: { condition: input.condition } });
+  }
 
   if (input.images) {
     await prisma.productMedia.deleteMany({ where: { productId: product.id } });
@@ -297,6 +333,45 @@ export async function publishProduct(userId: string, productId: string) {
     }),
   ]);
   return { id: product.id, status: "PUBLISHED" as const };
+}
+
+/** Pause/resume a live listing (Figma's edit-listing "Pause Listing" action)
+ * — toggles the vendor's own offer, not the shared `Product` row, so it
+ * doesn't affect other vendors selling the same catalog product. */
+export async function setListingPaused(userId: string, productId: string, paused: boolean) {
+  const vendor = await requireActiveVendor(userId);
+  const product = await prisma.product.findFirst({
+    where: { id: productId, vendorId: vendor.id },
+    include: { offers: { where: { vendorId: vendor.id }, take: 1 } },
+  });
+  if (!product) throw new AppError("NOT_FOUND", "Product not found");
+  const offer = product.offers[0];
+  if (!offer) throw new AppError("CONFLICT", "This listing has no offer yet");
+  if (offer.status === "OUT_OF_STOCK" && paused) throw new AppError("CONFLICT", "Already unavailable");
+  await prisma.vendorOffer.update({
+    where: { id: offer.id },
+    data: { status: paused ? "PAUSED" : "ACTIVE" },
+  });
+  return { id: product.id, status: paused ? "PAUSED" : "ACTIVE" };
+}
+
+/** Soft-delete a listing (Figma's "Delete Listing"). Archives the product and
+ * pauses the vendor's offer rather than a hard delete, so existing order
+ * history referencing this product stays intact. */
+export async function archiveProduct(userId: string, productId: string) {
+  const vendor = await requireActiveVendor(userId);
+  const product = await prisma.product.findFirst({
+    where: { id: productId, vendorId: vendor.id },
+    include: { offers: { where: { vendorId: vendor.id }, take: 1 } },
+  });
+  if (!product) throw new AppError("NOT_FOUND", "Product not found");
+  await prisma.$transaction([
+    prisma.product.update({ where: { id: product.id }, data: { status: "ARCHIVED" } }),
+    ...(product.offers[0]
+      ? [prisma.vendorOffer.update({ where: { id: product.offers[0].id }, data: { status: "PAUSED" } })]
+      : []),
+  ]);
+  return { id: product.id, status: "ARCHIVED" as const };
 }
 
 // --- business documents (KYC evidence) ----------------------------
@@ -361,6 +436,44 @@ export async function vendorStats(userId: string) {
   };
 }
 
+/** Full editable detail for one of the vendor's own products — the "Edit
+ * Listing" screen needs this to pre-populate the form; previously it opened
+ * blank and, since `updateProductDraft` always writes whatever title/
+ * description the form holds, saving without retyping everything would
+ * silently blank out the product. */
+export async function getMyProduct(userId: string, productId: string) {
+  const vendor = await requireActiveVendor(userId);
+  const product = await prisma.product.findFirst({
+    where: { id: productId, vendorId: vendor.id },
+    include: {
+      media: { orderBy: { sortOrder: "asc" }, select: { fileKey: true } },
+      offers: { where: { vendorId: vendor.id }, take: 1 },
+      variants: { take: 1 },
+    },
+  });
+  if (!product) throw new AppError("NOT_FOUND", "Product not found");
+  const variant = product.variants[0];
+  const inventory = variant
+    ? await prisma.inventory.findUnique({ where: { variantId_vendorId: { variantId: variant.id, vendorId: vendor.id } } })
+    : null;
+  return {
+    id: product.id,
+    slug: product.slug,
+    title: product.title,
+    description: product.description,
+    brand: product.brand,
+    condition: product.condition,
+    categoryId: product.categoryId,
+    status: product.status,
+    offerStatus: product.offers[0]?.status ?? null,
+    priceMinor: product.offers[0]?.priceMinor ?? null,
+    currency: product.offers[0]?.currency ?? "GHS",
+    images: product.media.map((m) => m.fileKey),
+    quantity: inventory?.quantity ?? 0,
+    attributes: product.attributes ?? {},
+  };
+}
+
 export async function listMyProducts(userId: string, status?: "DRAFT" | "PUBLISHED" | "ARCHIVED") {
   const vendor = await prisma.vendorProfile.findUnique({ where: { userId } });
   if (!vendor) return [];
@@ -369,18 +482,28 @@ export async function listMyProducts(userId: string, status?: "DRAFT" | "PUBLISH
     orderBy: { updatedAt: "desc" },
     include: {
       media: { take: 1, orderBy: { sortOrder: "asc" }, select: { fileKey: true } },
-      offers: { where: { vendorId: vendor.id }, take: 1, select: { priceMinor: true, currency: true } },
-      _count: { select: { offers: true } },
+      offers: { where: { vendorId: vendor.id }, take: 1, select: { priceMinor: true, currency: true, status: true } },
+      variants: { take: 1, select: { id: true } },
+      _count: { select: { offers: true, views: true } },
     },
   });
+  const quantities = new Map<string, number>();
+  const variantIds = rows.map((p) => p.variants[0]?.id).filter((id): id is string => !!id);
+  if (variantIds.length) {
+    const inv = await prisma.inventory.findMany({ where: { variantId: { in: variantIds }, vendorId: vendor.id } });
+    for (const row of inv) quantities.set(row.variantId, row.quantity);
+  }
   return rows.map((p) => ({
     id: p.id,
     slug: p.slug,
     title: p.title,
     status: p.status,
+    offerStatus: p.offers[0]?.status ?? null,
     image: p.media[0]?.fileKey ?? null,
     priceMinor: p.offers[0]?.priceMinor ?? null,
     currency: p.offers[0]?.currency ?? "GHS",
+    quantity: p.variants[0] ? quantities.get(p.variants[0].id) ?? 0 : 0,
+    viewCount: p._count.views,
     updatedAt: p.updatedAt.toISOString(),
   }));
 }

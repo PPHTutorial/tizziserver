@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
+import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
@@ -15,10 +16,12 @@ class CourierOnboardingScreen extends ConsumerStatefulWidget {
   const CourierOnboardingScreen({super.key});
 
   @override
-  ConsumerState<CourierOnboardingScreen> createState() => _CourierOnboardingScreenState();
+  ConsumerState<CourierOnboardingScreen> createState() =>
+      _CourierOnboardingScreenState();
 }
 
-class _CourierOnboardingScreenState extends ConsumerState<CourierOnboardingScreen> {
+class _CourierOnboardingScreenState
+    extends ConsumerState<CourierOnboardingScreen> {
   final _first = TextEditingController();
   final _last = TextEditingController();
   final _plate = TextEditingController();
@@ -35,7 +38,8 @@ class _CourierOnboardingScreenState extends ConsumerState<CourierOnboardingScree
     super.dispose();
   }
 
-  bool get _ready => _first.text.trim().isNotEmpty && _idFront && _idBack && _selfie && _agree;
+  bool get _ready =>
+      _first.text.trim().isNotEmpty && _idFront && _idBack && _selfie && _agree;
 
   Future<void> _submit() async {
     setState(() {
@@ -44,20 +48,38 @@ class _CourierOnboardingScreenState extends ConsumerState<CourierOnboardingScree
     });
     final api = ref.read(stallApiProvider);
     try {
-      await api.courierOnboard(firstName: _first.text.trim(), lastName: _last.text.trim(), agreementAccepted: true);
-      await api.courierAddVehicle(type: _vehicle, plate: _plate.text.trim().isEmpty ? null : _plate.text.trim());
+      await api.courierOnboard(
+        firstName: _first.text.trim(),
+        lastName: _last.text.trim(),
+        agreementAccepted: true,
+      );
+      await api.courierAddVehicle(
+        type: _vehicle,
+        plate: _plate.text.trim().isEmpty ? null : _plate.text.trim(),
+      );
       await api.courierSubmitKyc(
         documents: [
-          {'type': 'ID_FRONT', 'fileKey': 'kyc/${DateTime.now().millisecondsSinceEpoch}-front.jpg'},
-          {'type': 'ID_BACK', 'fileKey': 'kyc/${DateTime.now().millisecondsSinceEpoch}-back.jpg'},
+          {
+            'type': 'ID_FRONT',
+            'fileKey': 'kyc/${DateTime.now().millisecondsSinceEpoch}-front.jpg',
+          },
+          {
+            'type': 'ID_BACK',
+            'fileKey': 'kyc/${DateTime.now().millisecondsSinceEpoch}-back.jpg',
+          },
         ],
         selfieKey: 'kyc/${DateTime.now().millisecondsSinceEpoch}-selfie.jpg',
       );
       ref.invalidate(courierMeProvider);
       ref.invalidate(courierDashboardProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Submitted — we\'ll review your application shortly.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Submitted — we\'ll review your application shortly.',
+            ),
+          ),
+        );
         context.pop();
       }
     } catch (e) {
@@ -71,54 +93,93 @@ class _CourierOnboardingScreenState extends ConsumerState<CourierOnboardingScree
   Widget build(BuildContext context) {
     final c = context.colors;
     return Scaffold(
-      appBar: AppBar(title: const Text('Courier sign-up')),
+      backgroundColor: c.bg,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpace.s16),
+        child: Column(
           children: [
-            Text('Your details', style: context.text.titleMedium),
-            const SizedBox(height: AppSpace.s8),
-            AppField(label: 'First name', controller: _first, onChanged: (_) => setState(() {})),
-            const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Last name', controller: _last),
-            const SizedBox(height: AppSpace.s20),
-            Text('Vehicle', style: context.text.titleMedium),
-            const SizedBox(height: AppSpace.s8),
-            Wrap(
-              spacing: AppSpace.s8,
-              children: ['BICYCLE', 'MOTORBIKE', 'CAR', 'VAN']
-                  .map((v) => ChoiceChip(
-                        label: Text(v[0] + v.substring(1).toLowerCase()),
-                        selected: _vehicle == v,
-                        onSelected: (_) => setState(() => _vehicle = v),
-                      ))
-                  .toList(),
+            const AppScreenHeader('Courier sign-up'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpace.s16),
+                children: [
+                  Text('Your details', style: context.text.titleMedium),
+                  const SizedBox(height: AppSpace.s8),
+                  AppField(
+                    label: 'First name',
+                    hintText: 'e.g. Kwabena',
+                    controller: _first,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: AppSpace.s8),
+                  AppField(
+                    label: 'Last name',
+                    hintText: 'e.g. Owusu',
+                    controller: _last,
+                  ),
+                  const SizedBox(height: AppSpace.s20),
+                  Text('Vehicle', style: context.text.titleMedium),
+                  const SizedBox(height: AppSpace.s8),
+                  Wrap(
+                    spacing: AppSpace.s8,
+                    children: ['BICYCLE', 'MOTORBIKE', 'CAR', 'VAN']
+                        .map(
+                          (v) => ChoiceChip(
+                            label: Text(v[0] + v.substring(1).toLowerCase()),
+                            selected: _vehicle == v,
+                            onSelected: (_) => setState(() => _vehicle = v),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: AppSpace.s8),
+                  AppField(
+                    label: 'Plate number (optional)',
+                    hintText: 'e.g. GT 1234-20',
+                    controller: _plate,
+                  ),
+                  const SizedBox(height: AppSpace.s20),
+                  Text('Identity check', style: context.text.titleMedium),
+                  const SizedBox(height: AppSpace.s8),
+                  _UploadTile(
+                    label: 'ID — front',
+                    done: _idFront,
+                    onTap: () => setState(() => _idFront = true),
+                  ),
+                  _UploadTile(
+                    label: 'ID — back',
+                    done: _idBack,
+                    onTap: () => setState(() => _idBack = true),
+                  ),
+                  _UploadTile(
+                    label: 'Selfie / liveness',
+                    done: _selfie,
+                    onTap: () => setState(() => _selfie = true),
+                  ),
+                  const SizedBox(height: AppSpace.s12),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _agree,
+                    onChanged: (v) => setState(() => _agree = v ?? false),
+                    title: Text(
+                      'I accept the courier agreement and terms',
+                      style: context.text.bodyMedium,
+                    ),
+                  ),
+                  if (_error != null) InlineError(_error),
+                  const SizedBox(height: AppSpace.s16),
+                  PrimaryButton(
+                    label: 'Submit application',
+                    loading: _busy,
+                    onPressed: _ready ? _submit : null,
+                  ),
+                  const SizedBox(height: AppSpace.s8),
+                  Text(
+                    'Dev build: document capture is stubbed with placeholder keys.',
+                    style: context.text.bodySmall?.copyWith(color: c.textLow),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Plate number (optional)', controller: _plate),
-            const SizedBox(height: AppSpace.s20),
-            Text('Identity check', style: context.text.titleMedium),
-            const SizedBox(height: AppSpace.s8),
-            _UploadTile(label: 'ID — front', done: _idFront, onTap: () => setState(() => _idFront = true)),
-            _UploadTile(label: 'ID — back', done: _idBack, onTap: () => setState(() => _idBack = true)),
-            _UploadTile(label: 'Selfie / liveness', done: _selfie, onTap: () => setState(() => _selfie = true)),
-            const SizedBox(height: AppSpace.s12),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _agree,
-              onChanged: (v) => setState(() => _agree = v ?? false),
-              title: Text('I accept the courier agreement and terms', style: context.text.bodyMedium),
-            ),
-            if (_error != null) InlineError(_error),
-            const SizedBox(height: AppSpace.s16),
-            PrimaryButton(
-              label: 'Submit application',
-              loading: _busy,
-              onPressed: _ready ? _submit : null,
-            ),
-            const SizedBox(height: AppSpace.s8),
-            Text('Dev build: document capture is stubbed with placeholder keys.',
-                style: context.text.bodySmall?.copyWith(color: c.textLow)),
           ],
         ),
       ),
@@ -127,7 +188,11 @@ class _CourierOnboardingScreenState extends ConsumerState<CourierOnboardingScree
 }
 
 class _UploadTile extends StatelessWidget {
-  const _UploadTile({required this.label, required this.done, required this.onTap});
+  const _UploadTile({
+    required this.label,
+    required this.done,
+    required this.onTap,
+  });
   final String label;
   final bool done;
   final VoidCallback onTap;
@@ -137,9 +202,15 @@ class _UploadTile extends StatelessWidget {
     final c = context.colors;
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(done ? AppIcons.check_circle : AppIcons.upload_file, color: done ? c.success : c.textMed),
+      leading: Icon(
+        done ? AppIcons.check_circle : AppIcons.upload_file,
+        color: done ? c.success : c.textMed,
+      ),
       title: Text(label),
-      trailing: TextButton(onPressed: onTap, child: Text(done ? 'Replace' : 'Upload')),
+      trailing: TextButton(
+        onPressed: onTap,
+        child: Text(done ? 'Replace' : 'Upload'),
+      ),
     );
   }
 }

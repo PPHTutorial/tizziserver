@@ -14,7 +14,7 @@ const Body = z.object({
   seatsTotal: z.number().int().positive().max(1000000),
   minSeatsToDraw: z.number().int().positive().optional(),
   drawTrigger: z.enum(["SOLD_OUT","SCHEDULED","EITHER"]).optional(),
-  nonWinnerPolicy: z.enum(["REFUND","CREDIT","VOUCHER"]).optional(),
+  nonWinnerPolicy: z.enum(["NONE","REFUND","CREDIT","VOUCHER"]).optional(),
   opensAt: z.string().datetime().optional(),
   closesAt: z.string().datetime().optional(),
   drawAt: z.string().datetime().optional(),

@@ -165,6 +165,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
         else
           AppField(
             label: '6-digit code',
+            hintText: '000000',
             controller: _totpController,
             keyboardType: TextInputType.number,
             autofocus: true,

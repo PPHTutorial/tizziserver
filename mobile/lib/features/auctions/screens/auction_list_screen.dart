@@ -13,39 +13,120 @@ import '../../../design/icons.dart';
 
 /// Inverse Draw marketplace. Gated `auction` — only rendered where the tenant
 /// has the feature (GrandPrice).
-class AuctionsBody extends ConsumerWidget {
+const _kLive = {'OPEN', 'FILLING', 'CLOSING'};
+const _kUpcoming = {'ANNOUNCED'};
+const _kEnded = {'DRAW_PENDING', 'DRAWING', 'COMPLETED', 'UNSOLD'};
+
+class AuctionsBody extends ConsumerStatefulWidget {
   const AuctionsBody({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AuctionsBody> createState() => _AuctionsBodyState();
+}
+
+class _AuctionsBodyState extends ConsumerState<AuctionsBody> {
+  String _filter = 'live';
+
+  @override
+  Widget build(BuildContext context) {
     final list = ref.watch(auctionsProvider);
-    return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(auctionsProvider);
-        await ref.read(auctionsProvider.future);
-      },
-      child: list.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ListView(children: [const SizedBox(height: 120), Center(child: Text('$e'))]),
-        data: (items) {
-          if (items.isEmpty) {
-            return ListView(children: [
-              const SizedBox(height: 140),
-              Icon(AppIcons.emoji_events_outlined, size: 48, color: context.colors.textLow),
-              const SizedBox(height: AppSpace.s8),
-              Center(child: Text('No live draws right now', style: context.text.bodyMedium)),
-            ]);
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpace.s16),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpace.s16),
-            itemBuilder: (_, i) => _AuctionCard(a: items[i]),
-          );
-        },
-      ),
+    return Column(
+      children: [
+        SizedBox(
+          height: 44,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
+            children: [
+              AppChip(
+                'Live Draws',
+                selected: _filter == 'live',
+                onTap: () => setState(() => _filter = 'live'),
+              ),
+              const SizedBox(width: AppSpace.s8),
+              AppChip(
+                'Upcoming',
+                selected: _filter == 'upcoming',
+                onTap: () => setState(() => _filter = 'upcoming'),
+              ),
+              const SizedBox(width: AppSpace.s8),
+              AppChip(
+                'My Tickets',
+                selected: false,
+                onTap: () => context.push(RoutePaths.myTickets),
+              ),
+              const SizedBox(width: AppSpace.s8),
+              AppChip(
+                'Ended',
+                selected: _filter == 'ended',
+                onTap: () => setState(() => _filter = 'ended'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpace.s8),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(auctionsProvider);
+              await ref.read(auctionsProvider.future);
+            },
+            child: list.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => ListView(
+                children: [
+                  const SizedBox(height: 120),
+                  Center(child: Text('$e')),
+                ],
+              ),
+              data: (all) {
+                final wanted = switch (_filter) {
+                  'upcoming' => _kUpcoming,
+                  'ended' => _kEnded,
+                  _ => _kLive,
+                };
+                final items = all.where((a) => wanted.contains(a.status)).toList();
+                if (items.isEmpty) {
+                  return ListView(
+                    children: [
+                      const SizedBox(height: 140),
+                      Icon(
+                        AppIcons.emoji_events_outlined,
+                        size: 48,
+                        color: context.colors.textLow,
+                      ),
+                      const SizedBox(height: AppSpace.s8),
+                      Center(
+                        child: Text(
+                          'Nothing here right now',
+                          style: context.text.bodyMedium,
+                        ),
+                      ),
+                    ],
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(AppSpace.s16),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: AppSpace.s16),
+                  itemBuilder: (_, i) => _AuctionCard(a: items[i]),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
+}
+
+String _timeLeft(DateTime? drawAt) {
+  if (drawAt == null) return '';
+  final d = drawAt.difference(DateTime.now());
+  if (d.isNegative) return 'Closing soon';
+  if (d.inDays > 0) return '${d.inDays}d ${d.inHours % 24}h left';
+  if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes % 60}m left';
+  return '${d.inMinutes}m left';
 }
 
 class _AuctionCard extends StatelessWidget {
@@ -64,13 +145,42 @@ class _AuctionCard extends StatelessWidget {
           Container(
             height: 130,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [c.primary, c.onPrimaryContainer]),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+              gradient: LinearGradient(
+                colors: [c.primary, c.onPrimaryContainer],
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppRadius.lg),
+              ),
             ),
             alignment: Alignment.bottomLeft,
             padding: const EdgeInsets.all(AppSpace.s12),
-            child: Text('LIVE INVERSE DRAW',
-                style: context.text.labelSmall?.copyWith(color: Colors.white, letterSpacing: 1.5)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'LIVE INVERSE DRAW',
+                  style: context.text.labelSmall?.copyWith(
+                    color: Colors.white,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                if (a.drawAt != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpace.s8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.22),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                    child: Text(
+                      _timeLeft(a.drawAt),
+                      style: context.text.labelSmall?.copyWith(color: Colors.white),
+                    ),
+                  ),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(AppSpace.s16),
@@ -81,11 +191,25 @@ class _AuctionCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text(formatMoney(a.winTargetMinor, a.currency),
-                        style: context.text.titleSmall?.copyWith(color: c.primary)),
+                    Text(
+                      formatMoney(a.winTargetMinor, a.currency),
+                      style: context.text.titleSmall?.copyWith(
+                        color: c.primary,
+                      ),
+                    ),
                     const SizedBox(width: AppSpace.s8),
-                    Text(formatMoney(a.retailValueMinor, a.currency),
-                        style: context.text.bodySmall?.copyWith(color: c.textLow, decoration: TextDecoration.lineThrough)),
+                    Text(
+                      formatMoney(a.retailValueMinor, a.currency),
+                      style: context.text.bodySmall?.copyWith(
+                        color: c.textLow,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${formatMoney(a.ticketPriceMinor, a.currency)} / ticket',
+                      style: context.text.bodySmall?.copyWith(color: c.textMed),
+                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpace.s12),
@@ -99,8 +223,22 @@ class _AuctionCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text('${a.seatsSold} of ${a.seatsTotal} seats · ${auctionStatusLabel(a.status)}',
-                    style: context.text.bodySmall?.copyWith(color: c.textMed)),
+                Text(
+                  '${auctionDemandLabel(a.fillPct)} · ${auctionStatusLabel(a.status)}',
+                  style: context.text.bodySmall?.copyWith(color: c.textMed),
+                ),
+                const SizedBox(height: AppSpace.s12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => context.push(RoutePaths.auction(a.slug)),
+                    style: FilledButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      minimumSize: const Size(0, 44),
+                    ),
+                    child: Text('Buy Ticket (${formatMoney(a.ticketPriceMinor, a.currency)})'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -114,7 +252,14 @@ class AuctionListScreen extends StatelessWidget {
   const AuctionListScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Inverse Draws')),
-        body: const SafeArea(child: AuctionsBody()),
-      );
+    backgroundColor: context.colors.bg,
+    body: const SafeArea(
+      child: Column(
+        children: [
+          AppScreenHeader('Inverse Draws'),
+          Expanded(child: AuctionsBody()),
+        ],
+      ),
+    ),
+  );
 }

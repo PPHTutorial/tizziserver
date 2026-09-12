@@ -29,7 +29,10 @@ class CourierEarningsBody extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpace.s16),
         children: [
           summary.when(
-            loading: () => const SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
+            loading: () => const SizedBox(
+              height: 120,
+              child: Center(child: CircularProgressIndicator()),
+            ),
             error: (e, _) => Text('$e'),
             data: (s) => Column(
               children: [
@@ -42,13 +45,23 @@ class CourierEarningsBody extends ConsumerWidget {
                   ),
                   child: Column(
                     children: [
-                      Text('Available to withdraw', style: context.text.bodySmall?.copyWith(color: c.textMed)),
+                      Text(
+                        'Available to withdraw',
+                        style: context.text.bodySmall?.copyWith(
+                          color: c.textMed,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(formatMoney(s.balanceMinor, s.currency), style: context.text.headlineMedium),
+                      Text(
+                        formatMoney(s.balanceMinor, s.currency),
+                        style: context.text.headlineMedium,
+                      ),
                       const SizedBox(height: AppSpace.s12),
                       PrimaryButton(
                         label: 'Withdraw earnings',
-                        onPressed: s.balanceMinor <= 0 ? null : () => _withdraw(context, ref, s.balanceMinor),
+                        onPressed: s.balanceMinor <= 0
+                            ? null
+                            : () => _withdraw(context, ref, s.balanceMinor),
                       ),
                     ],
                   ),
@@ -56,14 +69,25 @@ class CourierEarningsBody extends ConsumerWidget {
                 const SizedBox(height: AppSpace.s12),
                 Row(
                   children: [
-                    StatTile(label: 'Today', value: formatMoney(s.today, s.currency)),
-                    StatTile(label: 'Week', value: formatMoney(s.week, s.currency)),
-                    StatTile(label: 'Month', value: formatMoney(s.month, s.currency)),
+                    StatTile(
+                      label: 'Today',
+                      value: formatMoney(s.today, s.currency),
+                    ),
+                    StatTile(
+                      label: 'Week',
+                      value: formatMoney(s.week, s.currency),
+                    ),
+                    StatTile(
+                      label: 'Month',
+                      value: formatMoney(s.month, s.currency),
+                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpace.s8),
-                Text('${s.deliveries} deliveries · lifetime ${formatMoney(s.lifetimeNetMinor, s.currency)}',
-                    style: context.text.bodySmall?.copyWith(color: c.textMed)),
+                Text(
+                  '${s.deliveries} deliveries · lifetime ${formatMoney(s.lifetimeNetMinor, s.currency)}',
+                  style: context.text.bodySmall?.copyWith(color: c.textMed),
+                ),
               ],
             ),
           ),
@@ -71,23 +95,39 @@ class CourierEarningsBody extends ConsumerWidget {
           Text('Recent activity', style: context.text.titleMedium),
           const SizedBox(height: AppSpace.s8),
           txns.when(
-            loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(),
+              ),
+            ),
             error: (e, _) => Text('$e'),
             data: (list) => list.isEmpty
-                ? Text('Nothing yet.', style: context.text.bodyMedium?.copyWith(color: c.textMed))
+                ? Text(
+                    'Nothing yet.',
+                    style: context.text.bodyMedium?.copyWith(color: c.textMed),
+                  )
                 : Column(
                     children: list
-                        .map((t) => ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: Icon(
-                                t.netMinor >= 0 ? AppIcons.arrow_downward : AppIcons.arrow_upward,
-                                color: t.netMinor >= 0 ? c.success : c.error,
-                              ),
-                              title: Text(t.memo ?? t.kind),
-                              subtitle: Text('${t.deliveryCode ?? t.kind} · ${t.at.toLocal().toString().substring(0, 16)}'),
-                              trailing: Text('${t.netMinor >= 0 ? '+' : ''}${formatMoney(t.netMinor, t.currency)}',
-                                  style: context.text.titleSmall),
-                            ))
+                        .map(
+                          (t) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              t.netMinor >= 0
+                                  ? AppIcons.arrow_downward
+                                  : AppIcons.arrow_upward,
+                              color: t.netMinor >= 0 ? c.success : c.error,
+                            ),
+                            title: Text(t.memo ?? t.kind),
+                            subtitle: Text(
+                              '${t.deliveryCode ?? t.kind} · ${t.at.toLocal().toString().substring(0, 16)}',
+                            ),
+                            trailing: Text(
+                              '${t.netMinor >= 0 ? '+' : ''}${formatMoney(t.netMinor, t.currency)}',
+                              style: context.text.titleSmall,
+                            ),
+                          ),
+                        )
                         .toList(),
                   ),
           ),
@@ -96,8 +136,14 @@ class CourierEarningsBody extends ConsumerWidget {
     );
   }
 
-  Future<void> _withdraw(BuildContext context, WidgetRef ref, int maxMinor) async {
-    final amount = TextEditingController(text: (maxMinor / 100).toStringAsFixed(2));
+  Future<void> _withdraw(
+    BuildContext context,
+    WidgetRef ref,
+    int maxMinor,
+  ) async {
+    final amount = TextEditingController(
+      text: (maxMinor / 100).toStringAsFixed(2),
+    );
     final pin = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
@@ -106,27 +152,52 @@ class CourierEarningsBody extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppField(label: 'Amount (GHS)', controller: amount, keyboardType: TextInputType.number),
+            AppField(
+              label: 'Amount (GHS)',
+              hintText: '0.00',
+              controller: amount,
+              keyboardType: TextInputType.number,
+            ),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Transaction PIN', controller: pin, keyboardType: TextInputType.number, obscureText: true),
+            AppField(
+              label: 'Transaction PIN',
+              hintText: '4–6 digits',
+              controller: pin,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Withdraw')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Withdraw'),
+          ),
         ],
       ),
     );
     if (ok != true) return;
     try {
       final minor = ((double.tryParse(amount.text.trim()) ?? 0) * 100).round();
-      await ref.read(stallApiProvider).courierRequestPayout(amountMinor: minor, pin: pin.text.trim());
+      await ref
+          .read(stallApiProvider)
+          .courierRequestPayout(amountMinor: minor, pin: pin.text.trim());
       ref.invalidate(courierEarningsProvider);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Withdrawal requested.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Withdrawal requested.')));
       }
     } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+      }
     }
   }
 }
@@ -135,7 +206,14 @@ class CourierEarningsScreen extends StatelessWidget {
   const CourierEarningsScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Earnings')),
-        body: const SafeArea(child: CourierEarningsBody()),
-      );
+    backgroundColor: context.colors.bg,
+    body: const SafeArea(
+      child: Column(
+        children: [
+          AppScreenHeader('Earnings'),
+          Expanded(child: CourierEarningsBody()),
+        ],
+      ),
+    ),
+  );
 }

@@ -24,6 +24,10 @@ final myTicketWalletsProvider = FutureProvider.autoDispose<List<TicketWalletDto>
   (ref) => ref.watch(stallApiProvider).myTicketWallets(),
 );
 
+final myTicketStatsProvider = FutureProvider.autoDispose<
+  ({int totalTickets, int activeEntries, int amountWonMinor, String currency})
+>((ref) => ref.watch(stallApiProvider).myTicketStats());
+
 final myWinProvider = FutureProvider.autoDispose.family<MyWinDto, String>(
   (ref, slug) => ref.watch(stallApiProvider).auctionMyWin(slug),
 );

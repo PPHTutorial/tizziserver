@@ -25,106 +25,149 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen> {
     final c = context.colors;
     final a = ref.watch(vendorAnalyticsProvider(_days));
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analytics'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(44),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Wrap(spacing: 8, children: [
-              for (final d in [7, 30, 90])
-                ChoiceChip(label: Text('${d}d'), selected: _days == d, onSelected: (_) => setState(() => _days = d)),
-            ]),
-          ),
-        ),
-      ),
+      backgroundColor: c.bg,
       body: SafeArea(
-        child: a.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('$e')),
-          data: (d) => ListView(
-            padding: const EdgeInsets.all(AppSpace.s16),
-            children: [
-              Text('Sales', style: context.text.titleMedium),
-              const SizedBox(height: AppSpace.s8),
-              Row(children: [
-                StatTile(label: 'Gross', value: formatMoney(d.grossMinor, 'GHS')),
-                StatTile(label: 'Net payout', value: formatMoney(d.netMinor, 'GHS')),
-                StatTile(label: 'Orders', value: '${d.orderCount}'),
-              ]),
-              const SizedBox(height: AppSpace.s8),
-              Row(children: [
-                StatTile(label: 'Units', value: '${d.units}'),
-                StatTile(label: 'AOV', value: formatMoney(d.aovMinor, 'GHS')),
-                StatTile(label: 'Rating', value: d.ratingAvg.toStringAsFixed(1)),
-              ]),
-              const SizedBox(height: AppSpace.s16),
-              _Spark(points: d.salesSeries, color: c.primary),
-              const SizedBox(height: AppSpace.s24),
-              Text('Customers', style: context.text.titleMedium),
-              const SizedBox(height: AppSpace.s8),
-              Row(children: [
-                StatTile(label: 'Unique', value: '${d.customersUnique}'),
-                StatTile(label: 'Returning', value: '${d.customersReturning}'),
-                StatTile(label: 'New', value: '${d.customersUnique - d.customersReturning}'),
-              ]),
-              const SizedBox(height: AppSpace.s24),
-              Text('Payouts', style: context.text.titleMedium),
-              const SizedBox(height: AppSpace.s8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpace.s16),
-                decoration: BoxDecoration(
-                  color: c.primary.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                ),
-                child: Column(
+        child: Column(
+          children: [
+            const AppScreenHeader('Analytics'),
+            SizedBox(
+              height: 48,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.s16),
+                itemCount: 3,
+                separatorBuilder: (_, __) => const SizedBox(width: AppSpace.s8),
+                itemBuilder: (_, i) {
+                  final d = [7, 30, 90][i];
+                  return AppChip('${d}d', selected: _days == d, onTap: () => setState(() => _days = d));
+                },
+              ),
+            ),
+            const SizedBox(height: AppSpace.s8),
+            Expanded(
+              child: a.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('$e')),
+                data: (d) => ListView(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.s16, 0, AppSpace.s16, AppSpace.s16),
                   children: [
-                    Text('Available to withdraw', style: context.text.bodySmall?.copyWith(color: c.textMed)),
-                    const SizedBox(height: 4),
-                    Text(formatMoney(d.balanceMinor, 'GHS'), style: context.text.headlineMedium),
-                    const SizedBox(height: AppSpace.s10),
-                    PrimaryButton(
-                      label: 'Withdraw',
-                      onPressed: d.balanceMinor <= 0 ? null : () => _withdraw(context, ref, d.balanceMinor),
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader('Sales'),
+                          Row(children: [
+                            StatTile(label: 'Gross', value: formatMoney(d.grossMinor, 'GHS')),
+                            StatTile(label: 'Net payout', value: formatMoney(d.netMinor, 'GHS')),
+                            StatTile(label: 'Orders', value: '${d.orderCount}'),
+                          ]),
+                          const SizedBox(height: AppSpace.s8),
+                          Row(children: [
+                            StatTile(label: 'Units', value: '${d.units}'),
+                            StatTile(label: 'AOV', value: formatMoney(d.aovMinor, 'GHS')),
+                            StatTile(label: 'Rating', value: d.ratingAvg.toStringAsFixed(1)),
+                          ]),
+                          const SizedBox(height: AppSpace.s16),
+                          _Spark(points: d.salesSeries, color: c.primary),
+                        ],
+                      ),
                     ),
+                    const SizedBox(height: AppSpace.s16),
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader('Customers'),
+                          Row(children: [
+                            StatTile(label: 'Unique', value: '${d.customersUnique}'),
+                            StatTile(label: 'Returning', value: '${d.customersReturning}'),
+                            StatTile(label: 'New', value: '${d.customersUnique - d.customersReturning}'),
+                          ]),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.s16),
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader('Payouts'),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(AppSpace.s16),
+                            decoration: BoxDecoration(
+                              color: c.primary.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('Available to withdraw', style: context.text.bodySmall?.copyWith(color: c.textMed)),
+                                const SizedBox(height: 4),
+                                Text(formatMoney(d.balanceMinor, 'GHS'), style: context.text.headlineMedium),
+                                const SizedBox(height: AppSpace.s10),
+                                PrimaryButton(
+                                  label: 'Withdraw',
+                                  onPressed: d.balanceMinor <= 0 ? null : () => _withdraw(context, ref, d.balanceMinor),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: AppSpace.s8),
+                          Row(children: [
+                            StatTile(label: 'Paid out', value: formatMoney(d.paidOutMinor, 'GHS')),
+                            StatTile(label: 'Pending', value: formatMoney(d.pendingPayoutMinor, 'GHS')),
+                            const StatTile(label: '', value: '', plain: true),
+                          ]),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.s16),
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader('Advertising ROI'),
+                          Row(children: [
+                            StatTile(label: 'Ad spend', value: formatMoney(d.adSpendMinor, 'GHS')),
+                            StatTile(label: 'Attributed', value: formatMoney(d.adRevenueMinor, 'GHS')),
+                            StatTile(label: 'ROAS', value: '${d.roas}×'),
+                          ]),
+                          const SizedBox(height: AppSpace.s8),
+                          Row(children: [
+                            StatTile(label: 'Impressions', value: '${d.adImpressions}'),
+                            StatTile(label: 'Clicks', value: '${d.adClicks}'),
+                            StatTile(label: 'CTR', value: '${d.adCtr}%'),
+                          ]),
+                        ],
+                      ),
+                    ),
+                    if (d.topProducts.isNotEmpty) ...[
+                      const SizedBox(height: AppSpace.s16),
+                      AppCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(AppSpace.s16, AppSpace.s16, AppSpace.s16, 0),
+                              child: SectionHeader('Top products'),
+                            ),
+                            ...d.topProducts.take(6).map((p) => ListTile(
+                                  dense: true,
+                                  title: Text('${p['title']}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  subtitle: Text('${p['units']} sold'),
+                                  trailing: Text(formatMoney((p['revenueMinor'] as num).toInt(), 'GHS')),
+                                )),
+                            const SizedBox(height: AppSpace.s8),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpace.s8),
-              Row(children: [
-                StatTile(label: 'Paid out', value: formatMoney(d.paidOutMinor, 'GHS')),
-                StatTile(label: 'Pending', value: formatMoney(d.pendingPayoutMinor, 'GHS')),
-                StatTile(label: '', value: ''),
-              ]),
-              const SizedBox(height: AppSpace.s24),
-              Text('Advertising ROI', style: context.text.titleMedium),
-              const SizedBox(height: AppSpace.s8),
-              Row(children: [
-                StatTile(label: 'Ad spend', value: formatMoney(d.adSpendMinor, 'GHS')),
-                StatTile(label: 'Attributed', value: formatMoney(d.adRevenueMinor, 'GHS')),
-                StatTile(label: 'ROAS', value: '${d.roas}×'),
-              ]),
-              const SizedBox(height: AppSpace.s8),
-              Row(children: [
-                StatTile(label: 'Impressions', value: '${d.adImpressions}'),
-                StatTile(label: 'Clicks', value: '${d.adClicks}'),
-                StatTile(label: 'CTR', value: '${d.adCtr}%'),
-              ]),
-              const SizedBox(height: AppSpace.s24),
-              if (d.topProducts.isNotEmpty) ...[
-                Text('Top products', style: context.text.titleMedium),
-                const SizedBox(height: AppSpace.s8),
-                ...d.topProducts.take(6).map((p) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      title: Text('${p['title']}', maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text('${p['units']} sold'),
-                      trailing: Text(formatMoney((p['revenueMinor'] as num).toInt(), 'GHS')),
-                    )),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -140,9 +183,9 @@ class _VendorAnalyticsScreenState extends ConsumerState<VendorAnalyticsScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            AppField(label: 'Amount (GHS)', controller: amount, keyboardType: TextInputType.number),
+            AppField(label: 'Amount (GHS)', hintText: '0.00', controller: amount, keyboardType: TextInputType.number),
             const SizedBox(height: AppSpace.s8),
-            AppField(label: 'Transaction PIN', controller: pin, keyboardType: TextInputType.number, obscureText: true),
+            AppField(label: 'Transaction PIN', hintText: '4–6 digits', controller: pin, keyboardType: TextInputType.number, obscureText: true),
           ],
         ),
         actions: [

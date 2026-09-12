@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/router.dart';
+import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
@@ -18,53 +19,117 @@ class SupportScreen extends ConsumerWidget {
     final help = ref.watch(helpCenterProvider);
     final tickets = ref.watch(supportTicketsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Help & support')),
+      backgroundColor: context.colors.bg,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showModalBottomSheet<void>(context: context, isScrollControlled: true, builder: (_) => const _NewTicketSheet()),
+        onPressed: () => showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.r2xl)),
+          ),
+          builder: (_) => const _NewTicketSheet(),
+        ),
         icon: const Icon(AppIcons.support_agent),
         label: const Text('Contact support'),
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpace.s16),
+        child: Column(
           children: [
-            tickets.maybeWhen(
-              data: (list) => list.isEmpty
-                  ? const SizedBox.shrink()
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Your tickets', style: context.text.titleMedium),
-                        const SizedBox(height: AppSpace.s8),
-                        ...list.map((t) => Card(
-                              child: ListTile(
-                                title: Text(t.subject),
-                                subtitle: Text('${t.number} · ${t.status.toLowerCase()}'),
-                                trailing: const Icon(AppIcons.chevron_right),
-                                onTap: t.conversationId == null
-                                    ? null
-                                    : () => context.push(RoutePaths.conversation(t.conversationId!), extra: 'Support · ${t.number}'),
+            const AppScreenHeader('Help & support'),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.s16,
+                  0,
+                  AppSpace.s16,
+                  AppSpace.s16,
+                ),
+                children: [
+                  tickets.maybeWhen(
+                    data: (list) => list.isEmpty
+                        ? const SizedBox.shrink()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your tickets',
+                                style: context.text.titleMedium,
                               ),
-                            )),
-                        const SizedBox(height: AppSpace.s16),
-                      ],
+                              const SizedBox(height: AppSpace.s8),
+                              ...list.map(
+                                (t) => Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppSpace.s8,
+                                  ),
+                                  child: AppCard(
+                                    padding: EdgeInsets.zero,
+                                    onTap: t.conversationId == null
+                                        ? null
+                                        : () => context.push(
+                                            RoutePaths.conversation(
+                                              t.conversationId!,
+                                            ),
+                                            extra: 'Support · ${t.number}',
+                                          ),
+                                    child: AppListRow(
+                                      icon: AppIcons.support_agent,
+                                      label: t.subject,
+                                      trailing: Text(
+                                        '${t.number} · ${t.status.toLowerCase()}',
+                                        style: context.text.labelSmall
+                                            ?.copyWith(
+                                              color: context.colors.textMed,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: AppSpace.s16),
+                            ],
+                          ),
+                    orElse: () => const SizedBox.shrink(),
+                  ),
+                  Text('FAQ', style: context.text.titleMedium),
+                  const SizedBox(height: AppSpace.s8),
+                  help.when(
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(),
+                      ),
                     ),
-              orElse: () => const SizedBox.shrink(),
-            ),
-            Text('FAQ', style: context.text.titleMedium),
-            const SizedBox(height: AppSpace.s8),
-            help.when(
-              loading: () => const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator())),
-              error: (e, _) => Text('$e'),
-              data: (h) => Column(
-                children: h.faq
-                    .map((f) => ExpansionTile(
-                          tilePadding: EdgeInsets.zero,
-                          title: Text(f.q, style: context.text.bodyLarge),
-                          subtitle: Text(f.category, style: context.text.labelSmall?.copyWith(color: context.colors.textMed)),
-                          children: [Padding(padding: const EdgeInsets.only(bottom: AppSpace.s12), child: Text(f.a, style: context.text.bodyMedium))],
-                        ))
-                    .toList(),
+                    error: (e, _) => Text('$e'),
+                    data: (h) => Column(
+                      children: h.faq
+                          .map(
+                            (f) => ExpansionTile(
+                              tilePadding: EdgeInsets.zero,
+                              title: Text(f.q, style: context.text.bodyLarge),
+                              subtitle: Text(
+                                f.category,
+                                style: context.text.labelSmall?.copyWith(
+                                  color: context.colors.textMed,
+                                ),
+                              ),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppSpace.s12,
+                                  ),
+                                  child: Text(
+                                    f.a,
+                                    style: context.text.bodyMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -97,15 +162,31 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
   Future<void> _submit() async {
     setState(() => _busy = true);
     try {
-      final r = await ref.read(stallApiProvider).createSupportTicket(category: _category, subject: _subject.text.trim(), body: _body.text.trim(), priority: _priority);
+      final r = await ref
+          .read(stallApiProvider)
+          .createSupportTicket(
+            category: _category,
+            subject: _subject.text.trim(),
+            body: _body.text.trim(),
+            priority: _priority,
+          );
       ref.invalidate(supportTicketsProvider);
       if (mounted) {
         Navigator.pop(context);
         final cid = r['conversationId'] as String?;
-        if (cid != null) context.push(RoutePaths.conversation(cid), extra: 'Support · ${r['number']}');
+        if (cid != null) {
+          context.push(
+            RoutePaths.conversation(cid),
+            extra: 'Support · ${r['number']}',
+          );
+        }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -114,7 +195,12 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(left: AppSpace.s16, right: AppSpace.s16, top: AppSpace.s16, bottom: MediaQuery.of(context).viewInsets.bottom + AppSpace.s24),
+      padding: EdgeInsets.only(
+        left: AppSpace.s16,
+        right: AppSpace.s16,
+        top: AppSpace.s16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpace.s24,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,24 +210,48 @@ class _NewTicketSheetState extends ConsumerState<_NewTicketSheet> {
           Wrap(
             spacing: AppSpace.s8,
             children: ['Orders', 'Payments', 'Wallet', 'Deliveries', 'Account']
-                .map((cat) => ChoiceChip(label: Text(cat), selected: _category == cat, onSelected: (_) => setState(() => _category = cat)))
+                .map(
+                  (cat) => ChoiceChip(
+                    label: Text(cat),
+                    selected: _category == cat,
+                    onSelected: (_) => setState(() => _category = cat),
+                  ),
+                )
                 .toList(),
           ),
           const SizedBox(height: AppSpace.s8),
-          AppField(label: 'Subject', controller: _subject),
+          AppField(
+            label: 'Subject',
+            hintText: 'A short summary of your issue',
+            controller: _subject,
+          ),
           const SizedBox(height: AppSpace.s8),
-          AppField(label: 'Describe the issue', controller: _body),
+          AppField(
+            label: 'Describe the issue',
+            hintText: 'Give us as much detail as you can',
+            controller: _body,
+          ),
           const SizedBox(height: AppSpace.s8),
           Row(
             children: ['LOW', 'NORMAL', 'HIGH', 'URGENT']
-                .map((p) => Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(label: Text(p[0] + p.substring(1).toLowerCase()), selected: _priority == p, onSelected: (_) => setState(() => _priority = p)),
-                    ))
+                .map(
+                  (p) => Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(p[0] + p.substring(1).toLowerCase()),
+                      selected: _priority == p,
+                      onSelected: (_) => setState(() => _priority = p),
+                    ),
+                  ),
+                )
                 .toList(),
           ),
           const SizedBox(height: AppSpace.s16),
-          PrimaryButton(label: 'Open ticket', loading: _busy, onPressed: _submit),
+          PrimaryButton(
+            label: 'Open ticket',
+            loading: _busy,
+            onPressed: _submit,
+          ),
         ],
       ),
     );

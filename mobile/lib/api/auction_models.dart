@@ -248,6 +248,9 @@ class MyWinDto {
     this.claimStatus,
     this.deliveryId,
     this.winPurchaseStatus,
+    this.myRank,
+    this.myScore,
+    this.myTicketCount,
   });
   final bool isWinner;
   final bool isBackup;
@@ -261,6 +264,12 @@ class MyWinDto {
   final String? claimStatus;
   final String? deliveryId;
   final String? winPurchaseStatus;
+
+  /// Runner-up standing (non-winners only, once the draw has run) — Figma's
+  /// "Your Position: #N" + score + ticket count on the results screen.
+  final int? myRank;
+  final double? myScore;
+  final int? myTicketCount;
 
   factory MyWinDto.fromJson(Map<String, dynamic> j) {
     final claim = (j['claim'] as Map?)?.cast<String, dynamic>();
@@ -278,8 +287,22 @@ class MyWinDto {
       claimStatus: claim?['status'] as String?,
       deliveryId: claim?['deliveryId'] as String?,
       winPurchaseStatus: wtp?['status'] as String?,
+      myRank: (j['myRank'] as num?)?.toInt(),
+      myScore: (j['myScore'] as num?)?.toDouble(),
+      myTicketCount: (j['myTicketCount'] as num?)?.toInt(),
     );
   }
+}
+
+/// A coarse demand label derived from [fillPct] — deliberately hides the raw
+/// seat count/percentage so an early-stage draw (e.g. 2 of 5,000 seats)
+/// doesn't read as discouraging.
+String auctionDemandLabel(int fillPct) {
+  if (fillPct >= 90) return 'Final seats';
+  if (fillPct >= 60) return 'Almost full';
+  if (fillPct >= 25) return 'Filling up';
+  if (fillPct > 0) return 'Open';
+  return 'Just opened';
 }
 
 String auctionStatusLabel(String s) {

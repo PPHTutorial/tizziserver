@@ -169,7 +169,14 @@ class CourierJobsScreen extends StatelessWidget {
   const CourierJobsScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Available jobs')),
-        body: const SafeArea(child: CourierJobsBody()),
+        backgroundColor: context.colors.bg,
+        body: const SafeArea(
+          child: Column(
+            children: [
+              AppScreenHeader('Available jobs'),
+              Expanded(child: CourierJobsBody()),
+            ],
+          ),
+        ),
       );
 }

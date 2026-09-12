@@ -51,3 +51,72 @@ export async function categoryTree(platformSlug: string): Promise<CategoryNode[]
 export async function categoryBySlug(slug: string) {
   return prisma.category.findUnique({ where: { slug } });
 }
+
+export type CategoryFilter = "trending" | "new" | "auction";
+
+const LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
+const LIVE_AUCTION_STATUSES = ["OPEN", "FILLING", "CLOSING"] as const;
+
+/**
+ * Top-level categories for the "Browse categories" grid, optionally ranked by
+ * a real signal instead of just `sortOrder`:
+ *  - `trending`: order-item volume (via the sub-order's `createdAt`) in the
+ *    subtree over the last 14 days.
+ *  - `new`: products published in the subtree over the last 14 days.
+ *  - `auction`: categories with a currently sellable (OPEN/FILLING/CLOSING)
+ *    Inverse Draw linked to one of their products.
+ * Unfiltered categories with a zero count are dropped; the rest are ranked
+ * by count descending.
+ */
+export async function rootCategories(platformSlug: string, filter?: CategoryFilter) {
+  const roots = await prisma.category.findMany({
+    where: {
+      parentId: null,
+      isActive: true,
+      OR: [{ platformSlugs: { isEmpty: true } }, { platformSlugs: { has: platformSlug } }],
+    },
+    orderBy: { sortOrder: "asc" },
+  });
+  if (!filter) return roots.map((r) => ({ ...r, count: null as number | null }));
+
+  const cutoff = new Date(Date.now() - LOOKBACK_MS);
+  const withCounts = await Promise.all(
+    roots.map(async (r) => {
+      const subtree = await prisma.category.findMany({
+        where: { OR: [{ id: r.id }, { path: { startsWith: `${r.path}/` } }] },
+        select: { id: true },
+      });
+      const subtreeIds = subtree.map((s) => s.id);
+
+      let count = 0;
+      if (filter === "new") {
+        count = await prisma.product.count({
+          where: { categoryId: { in: subtreeIds }, publishedAt: { gte: cutoff } },
+        });
+      } else {
+        const products = await prisma.product.findMany({
+          where: { categoryId: { in: subtreeIds } },
+          select: { id: true },
+        });
+        const productIds = products.map((p) => p.id);
+        if (productIds.length > 0) {
+          if (filter === "trending") {
+            count = await prisma.orderItem.count({
+              where: { productId: { in: productIds }, vendorOrder: { createdAt: { gte: cutoff } } },
+            });
+          } else if (filter === "auction") {
+            count = await prisma.auction.count({
+              where: {
+                platformSlug,
+                status: { in: [...LIVE_AUCTION_STATUSES] },
+                productId: { in: productIds },
+              },
+            });
+          }
+        }
+      }
+      return { ...r, count };
+    }),
+  );
+  return withCounts.filter((r) => r.count > 0).sort((a, b) => b.count - a.count);
+}

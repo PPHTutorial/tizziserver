@@ -121,6 +121,15 @@ export async function resolveProductId(slugOrId: string, platformSlug: string): 
   return p.id;
 }
 
+/** Barcode/SKU scan → product slug, scoped to the platform. Backs the mobile scan-to-find flow. */
+export async function findProductByCode(code: string, platformSlug: string): Promise<string | null> {
+  const variant = await prisma.productVariant.findFirst({
+    where: { OR: [{ sku: code }, { barcode: code }], product: platformFilter(platformSlug) },
+    select: { product: { select: { slug: true } } },
+  });
+  return variant?.product.slug ?? null;
+}
+
 /** Other published products in the same category (for "You might also like"). */
 export async function similarProducts(
   slugOrId: string,
@@ -171,6 +180,19 @@ export async function getProductDetail(slugOrId: string, platformSlug: string) {
     },
   });
   if (!product) throw new AppError("NOT_FOUND", "Product not found");
+
+  const activeAuction = await prisma.auction.findFirst({
+    where: { productId: product.id, status: { in: ["OPEN", "FILLING", "CLOSING"] } },
+    select: {
+      slug: true,
+      status: true,
+      ticketPriceMinor: true,
+      winTargetMinor: true,
+      seatsTotal: true,
+      seatsSold: true,
+      currency: true,
+    },
+  });
 
   const prices = product.offers.map((o) => o.priceMinor);
   return {
@@ -229,5 +251,6 @@ export async function getProductDetail(slugOrId: string, platformSlug: string) {
       at: q.createdAt.toISOString(),
       answers: q.answers.map((a) => ({ id: a.id, body: a.body, at: a.createdAt.toISOString() })),
     })),
+    activeAuction,
   };
 }

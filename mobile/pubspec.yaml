@@ -21,6 +21,10 @@ dependencies:
   path_provider: ^2.1.5
   share_plus: ^12.0.0
   socket_io_client: ^3.1.6
+  speech_to_text: ^7.4.0
+  mobile_scanner: ^7.4.1
+  flutter_staggered_grid_view: ^0.7.0
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -29,5 +33,22 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # TODO(phase-1): bundle Outfit + Inter .ttf into assets/fonts/ and declare here
-  # (design system mandates no runtime font fetch — see docs/03-DESIGN-SYSTEM.md §3).
+  fonts:
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/Outfit-400.ttf
+          weight: 400
+        - asset: assets/fonts/Outfit-600.ttf
+          weight: 600
+        - asset: assets/fonts/Outfit-700.ttf
+          weight: 700
+        - asset: assets/fonts/Outfit-800.ttf
+          weight: 800
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-400.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-600.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-700.ttf
+          weight: 700
