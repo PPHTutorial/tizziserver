@@ -460,7 +460,7 @@ class _InfoSection extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                   child: Image.network(
-                    p.brandLogo!,
+                    mediaUrl(p.brandLogo!),
                     width: 20,
                     height: 20,
                     fit: BoxFit.contain,

@@ -4,13 +4,14 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../api/catalog_models.dart';
 import '../../../app/providers.dart';
-import '../../../core/api_config.dart';
 import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
-import '../../../design/icons.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../catalog_providers.dart';
+import '../widgets/services_picker.dart';
+import '../widgets/shop_cover_picker.dart';
+import '../widgets/theme_color_picker.dart';
 
 /// The vendor's own "Edit shop profile" — name/bio/logo/banner. Deliberately
 /// separate from `_OnboardingForm` (vendor_hub_screen.dart): onboarding also
@@ -29,6 +30,8 @@ class _EditShopProfileScreenState
   final _bio = TextEditingController();
   String? _logoKey;
   String? _bannerKey;
+  List<String> _themeColors = const [];
+  List<String> _services = const [];
   bool _initialized = false;
   bool _uploadingLogo = false;
   bool _uploadingBanner = false;
@@ -42,6 +45,8 @@ class _EditShopProfileScreenState
     _bio.text = s.bio ?? '';
     _logoKey = s.logo;
     _bannerKey = s.banner;
+    _themeColors = s.themeColors;
+    _services = s.services;
   }
 
   @override
@@ -116,6 +121,10 @@ class _EditShopProfileScreenState
             bio: _bio.text.trim(),
             logo: _logoKey,
             banner: _bannerKey,
+            // The backend requires 3-7 colors when this field is present at
+            // all — omit it entirely rather than send an under-sized array.
+            themeColors: _themeColors.length >= 3 ? _themeColors : null,
+            services: _services,
           );
       ref.invalidate(vendorStatusProvider);
       if (mounted) Navigator.of(context).pop();
@@ -152,7 +161,7 @@ class _EditShopProfileScreenState
                   return ListView(
                     padding: const EdgeInsets.only(bottom: AppSpace.s24),
                     children: [
-                      _CoverPicker(
+                      ShopCoverPicker(
                         bannerKey: _bannerKey,
                         logoKey: _logoKey,
                         uploadingBanner: _uploadingBanner,
@@ -185,6 +194,20 @@ class _EditShopProfileScreenState
                               controller: _bio,
                               maxLines: 4,
                             ),
+                            const SizedBox(height: AppSpace.s24),
+                            Text('Theme', style: context.text.titleMedium),
+                            const SizedBox(height: AppSpace.s8),
+                            ThemeColorPicker(
+                              selected: _themeColors,
+                              onChanged: (v) => setState(() => _themeColors = v),
+                            ),
+                            const SizedBox(height: AppSpace.s24),
+                            Text('Services', style: context.text.titleMedium),
+                            const SizedBox(height: AppSpace.s8),
+                            ServicesPicker(
+                              selected: _services,
+                              onChanged: (v) => setState(() => _services = v),
+                            ),
                             if (_error != null) InlineError(_error!),
                             const SizedBox(height: AppSpace.s24),
                             PrimaryButton(
@@ -203,143 +226,6 @@ class _EditShopProfileScreenState
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CoverPicker extends StatelessWidget {
-  const _CoverPicker({
-    required this.bannerKey,
-    required this.logoKey,
-    required this.uploadingBanner,
-    required this.uploadingLogo,
-    required this.onTapBanner,
-    required this.onTapLogo,
-    required this.initial,
-  });
-
-  final String? bannerKey;
-  final String? logoKey;
-  final bool uploadingBanner;
-  final bool uploadingLogo;
-  final VoidCallback onTapBanner;
-  final VoidCallback onTapLogo;
-  final String initial;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        GestureDetector(
-          onTap: uploadingBanner ? null : onTapBanner,
-          child: AspectRatio(
-            aspectRatio: 3,
-            child: Container(
-              color: c.surfaceSunken,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (bannerKey != null && bannerKey!.isNotEmpty)
-                    Image.network(
-                      mediaUrl(bannerKey!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    )
-                  else
-                    Center(
-                      child: Icon(
-                        AppIcons.camera,
-                        size: 28,
-                        color: c.textLow,
-                      ),
-                    ),
-                  if (uploadingBanner)
-                    ColoredBox(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          left: AppSpace.s16,
-          bottom: -32,
-          child: GestureDetector(
-            onTap: uploadingLogo ? null : onTapLogo,
-            child: Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: c.bg,
-              ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundColor: c.primaryContainer,
-                    backgroundImage: (logoKey == null || logoKey!.isEmpty)
-                        ? null
-                        : NetworkImage(mediaUrl(logoKey!)),
-                    child: (logoKey == null || logoKey!.isEmpty)
-                        ? Text(
-                            initial,
-                            style: context.text.headlineSmall?.copyWith(
-                              color: c.onPrimaryContainer,
-                            ),
-                          )
-                        : null,
-                  ),
-                  if (uploadingLogo)
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.black.withValues(alpha: 0.35),
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Material(
-                      color: c.primary,
-                      shape: const CircleBorder(),
-                      child: const Padding(
-                        padding: EdgeInsets.all(5),
-                        child: Icon(
-                          AppIcons.camera,
-                          size: 12,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

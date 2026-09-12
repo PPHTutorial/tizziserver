@@ -241,6 +241,7 @@ class StallApi {
     String? firstName,
     String? lastName,
     String? avatar,
+    String? username,
   }) async {
     final d = await _send(
       'PATCH',
@@ -249,8 +250,33 @@ class StallApi {
         if (firstName != null) 'firstName': firstName,
         if (lastName != null) 'lastName': lastName,
         if (avatar != null) 'avatar': avatar,
+        if (username != null) 'username': username,
       },
     );
+    return PublicUser.fromJson(d);
+  }
+
+  /// Issue a code to add/change the caller's email — returns its expiry.
+  Future<DateTime> requestEmailChange(String email) async {
+    final d = await _send('POST', '/api/v1/me/email', body: {'email': email});
+    return DateTime.parse(d['expiresAt'] as String);
+  }
+
+  /// Confirm the code and mark the caller's email as verified.
+  Future<PublicUser> verifyEmailChange({required String email, required String code}) async {
+    final d = await _send('POST', '/api/v1/me/email/verify', body: {'email': email, 'code': code});
+    return PublicUser.fromJson(d);
+  }
+
+  /// Issue a code to add/change the caller's phone — returns its expiry.
+  Future<DateTime> requestPhoneChange(String phone) async {
+    final d = await _send('POST', '/api/v1/me/phone', body: {'phone': phone});
+    return DateTime.parse(d['expiresAt'] as String);
+  }
+
+  /// Confirm the code and mark the caller's phone as verified.
+  Future<PublicUser> verifyPhoneChange({required String phone, required String code}) async {
+    final d = await _send('POST', '/api/v1/me/phone/verify', body: {'phone': phone, 'code': code});
     return PublicUser.fromJson(d);
   }
 
@@ -280,6 +306,8 @@ class StallApi {
     String? bio,
     String? logo,
     String? banner,
+    List<String>? themeColors,
+    List<String>? services,
   }) =>
       _send(
         'PATCH',
@@ -289,6 +317,8 @@ class StallApi {
           if (bio != null) 'bio': bio,
           if (logo != null) 'logo': logo,
           if (banner != null) 'banner': banner,
+          if (themeColors != null) 'themeColors': themeColors,
+          if (services != null) 'services': services,
         },
       );
 
@@ -595,6 +625,10 @@ class StallApi {
   Future<VendorStatus> vendorOnboard({
     required String displayName,
     String? bio,
+    String? logo,
+    String? banner,
+    List<String>? themeColors,
+    List<String>? services,
     required Map<String, dynamic> business,
   }) async {
     final d = await _send(
@@ -603,6 +637,10 @@ class StallApi {
       body: {
         'displayName': displayName,
         if (bio != null) 'bio': bio,
+        if (logo != null) 'logo': logo,
+        if (banner != null) 'banner': banner,
+        if (themeColors != null) 'themeColors': themeColors,
+        if (services != null) 'services': services,
         'business': business,
       },
     );
@@ -690,18 +728,16 @@ class StallApi {
     return VendorStats.fromJson(d);
   }
 
-  Future<List<BusinessDocumentDto>> businessDocuments() async {
-    final d = await _send('GET', '/api/v1/vendors/business/documents');
-    return _items(d, BusinessDocumentDto.fromJson);
-  }
-
-  Future<void> addBusinessDocument({
-    required String type,
-    required String fileKey,
+  Future<void> vendorSubmitKyc({
+    required List<Map<String, String>> documents,
+    String? selfieKey,
   }) => _send(
     'POST',
-    '/api/v1/vendors/business/documents',
-    body: {'type': type, 'fileKey': fileKey},
+    '/api/v1/vendors/kyc',
+    body: {
+      'documents': documents,
+      if (selfieKey != null) 'selfieKey': selfieKey,
+    },
   );
 
   // --- Phase 3: addresses -------------------------------------------

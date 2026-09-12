@@ -1,4 +1,4 @@
-import { prisma, Prisma } from "@stall/db";
+import { prisma, Prisma, type KycDocKind } from "@stall/db";
 import { AppError } from "../errors.ts";
 import { uniqueSlug } from "./util.ts";
 
@@ -69,6 +69,10 @@ export interface OnboardingInput {
   platformSlug: string;
   displayName: string;
   bio?: string;
+  logo?: string;
+  banner?: string;
+  themeColors?: string[];
+  services?: string[];
   business: {
     legalName: string;
     regNumber?: string;
@@ -76,7 +80,10 @@ export interface OnboardingInput {
     email?: string;
     addressLine?: string;
     city?: string;
+    region?: string;
     country?: string;
+    lat?: number;
+    lng?: number;
   };
 }
 
@@ -90,6 +97,10 @@ export async function startVendorOnboarding(input: OnboardingInput) {
         data: {
           displayName: input.displayName,
           bio: input.bio,
+          ...(input.logo !== undefined ? { logo: input.logo } : {}),
+          ...(input.banner !== undefined ? { banner: input.banner } : {}),
+          ...(input.themeColors !== undefined ? { themeColors: input.themeColors } : {}),
+          ...(input.services !== undefined ? { services: input.services } : {}),
           platformIds: Array.from(new Set([...existing.platformIds, input.platformSlug])),
         },
       })
@@ -98,6 +109,10 @@ export async function startVendorOnboarding(input: OnboardingInput) {
           userId: input.userId,
           displayName: input.displayName,
           bio: input.bio,
+          logo: input.logo,
+          banner: input.banner,
+          themeColors: input.themeColors ?? [],
+          services: input.services ?? [],
           status: "PENDING",
           platformIds: [input.platformSlug],
         },
@@ -113,6 +128,7 @@ export async function startVendorOnboarding(input: OnboardingInput) {
       email: input.business.email,
       addressLine: input.business.addressLine,
       city: input.business.city,
+      region: input.business.region,
       country: input.business.country,
     },
     update: {
@@ -121,9 +137,22 @@ export async function startVendorOnboarding(input: OnboardingInput) {
       email: input.business.email,
       addressLine: input.business.addressLine,
       city: input.business.city,
+      region: input.business.region,
       country: input.business.country,
     },
   });
+
+  // `Business.location` is an `Unsupported("geography(Point,4326)")` column —
+  // the Prisma Client can't write it, so it goes through raw SQL (same
+  // pattern as `delivery/presence.ts`'s courier live-location writes).
+  if (input.business.lat != null && input.business.lng != null) {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "businesses" SET "location" = ST_SetSRID(ST_MakePoint($1,$2),4326)::geography WHERE "vendorId" = $3`,
+      input.business.lng,
+      input.business.lat,
+      vendor.id,
+    );
+  }
 
   // Ensure the user actually holds the VENDOR role (PENDING until KYC clears).
   await prisma.userRole.upsert({
@@ -148,11 +177,17 @@ export async function startVendorOnboarding(input: OnboardingInput) {
 }
 
 export async function vendorKycStatus(userId: string) {
-  const vendor = await prisma.vendorProfile.findUnique({ where: { userId } });
+  const vendor = await prisma.vendorProfile.findUnique({ where: { userId }, include: { business: true } });
   if (!vendor) return { onboarded: false as const };
   const kyc = await prisma.kycCase.findUnique({
     where: { subjectType_subjectId: { subjectType: "VENDOR", subjectId: vendor.id } },
   });
+  const geo = vendor.business
+    ? await prisma.$queryRawUnsafe<{ lat: number | null; lng: number | null }[]>(
+        `SELECT ST_Y(location::geometry) AS lat, ST_X(location::geometry) AS lng FROM "businesses" WHERE "vendorId" = $1 AND location IS NOT NULL`,
+        vendor.id,
+      )
+    : [];
   return {
     onboarded: true as const,
     vendorId: vendor.id,
@@ -163,18 +198,31 @@ export async function vendorKycStatus(userId: string) {
     bio: vendor.bio,
     logo: vendor.logo,
     banner: vendor.banner,
+    themeColors: vendor.themeColors,
+    services: vendor.services,
+    business: vendor.business
+      ? {
+          addressLine: vendor.business.addressLine,
+          city: vendor.business.city,
+          region: vendor.business.region,
+          country: vendor.business.country,
+          lat: geo[0]?.lat ?? null,
+          lng: geo[0]?.lng ?? null,
+        }
+      : null,
   };
 }
 
 /**
- * Edit the caller's own shop profile (name/bio/logo/banner) — distinct from
- * `startVendorOnboarding`, which also touches Business + re-opens a KYC case.
- * Available regardless of KYC status: a vendor should be able to tidy up
- * their shop profile while a review is pending, not just once ACTIVE.
+ * Edit the caller's own shop profile (name/bio/logo/banner/theme/services) —
+ * distinct from `startVendorOnboarding`, which also touches Business + re-
+ * opens a KYC case. Available regardless of KYC status: a vendor should be
+ * able to tidy up their shop profile while a review is pending, not just
+ * once ACTIVE.
  */
 export async function updateMyVendorProfile(
   userId: string,
-  input: { displayName?: string; bio?: string; logo?: string; banner?: string },
+  input: { displayName?: string; bio?: string; logo?: string; banner?: string; themeColors?: string[]; services?: string[] },
 ) {
   const vendor = await prisma.vendorProfile.findUnique({ where: { userId } });
   if (!vendor) throw new AppError("FORBIDDEN", "Complete vendor onboarding first");
@@ -185,8 +233,10 @@ export async function updateMyVendorProfile(
       ...(input.bio !== undefined ? { bio: input.bio.trim() || null } : {}),
       ...(input.logo !== undefined ? { logo: input.logo.trim() || null } : {}),
       ...(input.banner !== undefined ? { banner: input.banner.trim() || null } : {}),
+      ...(input.themeColors !== undefined ? { themeColors: input.themeColors } : {}),
+      ...(input.services !== undefined ? { services: input.services } : {}),
     },
-    select: { id: true, displayName: true, bio: true, logo: true, banner: true },
+    select: { id: true, displayName: true, bio: true, logo: true, banner: true, themeColors: true, services: true },
   });
   return updated;
 }
@@ -409,33 +459,46 @@ export async function archiveProduct(userId: string, productId: string) {
   return { id: product.id, status: "ARCHIVED" as const };
 }
 
-// --- business documents (KYC evidence) ----------------------------
+// --- vendor KYC (documents + selfie) -------------------------------
 
-export async function addBusinessDocument(userId: string, type: string, fileKey: string) {
-  const vendor = await prisma.vendorProfile.findUnique({
-    where: { userId },
-    include: { business: true },
-  });
-  if (!vendor?.business) throw new AppError("FORBIDDEN", "Complete vendor onboarding first");
-  const doc = await prisma.businessDocument.create({
-    data: { businessId: vendor.business.id, type, fileKey, status: "PENDING" },
-  });
-  return { id: doc.id, status: doc.status };
+export interface VendorKycDocInput {
+  type: KycDocKind;
+  fileKey: string;
 }
 
-export async function listBusinessDocuments(userId: string) {
-  const vendor = await prisma.vendorProfile.findUnique({
-    where: { userId },
-    include: { business: { include: { documents: { orderBy: { createdAt: "desc" } } } } },
+/**
+ * Batch-submit vendor verification evidence — mirrors
+ * `couriers/profile.ts`'s `submitCourierKyc` almost exactly, onto the same
+ * `KycCase`/`KycDocument`/`LivenessCheck` models the admin KYC queue already
+ * reads generically. A selfie auto-passes a mock liveness check, same as
+ * courier — this product deliberately isn't doing real liveness detection.
+ */
+export async function submitVendorKyc(userId: string, input: { documents: VendorKycDocInput[]; selfieKey?: string }) {
+  const vendor = await prisma.vendorProfile.findUnique({ where: { userId } });
+  if (!vendor) throw new AppError("FORBIDDEN", "Complete vendor onboarding first");
+
+  const kyc = await prisma.kycCase.upsert({
+    where: { subjectType_subjectId: { subjectType: "VENDOR", subjectId: vendor.id } },
+    create: { subjectType: "VENDOR", subjectId: vendor.id, status: "IN_REVIEW" },
+    update: { status: "IN_REVIEW" },
   });
-  return (vendor?.business?.documents ?? []).map((d) => ({
-    id: d.id,
-    type: d.type,
-    fileKey: d.fileKey,
-    status: d.status,
-    note: d.note,
-    at: d.createdAt.toISOString(),
-  }));
+
+  await prisma.$transaction([
+    ...input.documents.map((d) =>
+      prisma.kycDocument.create({ data: { kycCaseId: kyc.id, type: d.type, fileKey: d.fileKey } }),
+    ),
+    ...(input.selfieKey
+      ? [
+          prisma.kycDocument.create({ data: { kycCaseId: kyc.id, type: "SELFIE" as KycDocKind, fileKey: input.selfieKey } }),
+          prisma.livenessCheck.create({
+            data: { kycCaseId: kyc.id, provider: "mock", score: 0.97, passed: true, ref: { auto: true } as Prisma.InputJsonValue },
+          }),
+        ]
+      : []),
+    prisma.userRole.update({ where: { userId_role: { userId, role: "VENDOR" } }, data: { kycStatus: "IN_REVIEW" } }),
+  ]);
+
+  return { kycCaseId: kyc.id, status: "IN_REVIEW" as const };
 }
 
 // --- vendor analytics stub (MD §25 "product performance") -----------

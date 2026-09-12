@@ -23,7 +23,7 @@ import '../features/ads/screens/campaign_detail_screen.dart';
 import '../features/analytics/screens/courier_performance_history_screen.dart';
 import '../features/analytics/screens/vendor_analytics_screen.dart';
 import '../features/referrals/screens/referral_screen.dart';
-import '../features/catalog/screens/business_docs_screen.dart';
+import '../features/catalog/screens/vendor_kyc_screen.dart';
 import '../features/catalog/screens/edit_shop_profile_screen.dart';
 import '../features/catalog/screens/categories_screen.dart';
 import '../features/catalog/screens/category_products_screen.dart';
@@ -361,7 +361,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: RoutePaths.sellDocuments,
-        builder: (_, __) => const BusinessDocsScreen(),
+        builder: (_, __) => const VendorKycScreen(),
       ),
       GoRoute(
         path: RoutePaths.sellProfile,

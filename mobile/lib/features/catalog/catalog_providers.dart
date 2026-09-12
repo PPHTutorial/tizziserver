@@ -87,10 +87,6 @@ final vendorStatsProvider = FutureProvider.autoDispose<VendorStats>(
   (ref) => ref.watch(stallApiProvider).vendorStats(),
 );
 
-final businessDocsProvider = FutureProvider.autoDispose<List<BusinessDocumentDto>>(
-  (ref) => ref.watch(stallApiProvider).businessDocuments(),
-);
-
 /// Accra fallback centre; a geolocator dep can replace this later.
 const kDefaultLatLng = (lat: 5.6037, lng: -0.187);
 

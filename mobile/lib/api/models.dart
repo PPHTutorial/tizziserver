@@ -20,6 +20,9 @@ class PublicUser {
     this.avatar,
     required this.status,
     this.locale,
+    this.username,
+    this.emailVerifiedAt,
+    this.phoneVerifiedAt,
   });
 
   final String id;
@@ -30,6 +33,9 @@ class PublicUser {
   final String? avatar;
   final String status;
   final String? locale;
+  final String? username;
+  final String? emailVerifiedAt;
+  final String? phoneVerifiedAt;
 
   String get displayName {
     final n = [firstName, lastName].where((s) => s != null && s.isNotEmpty).join(' ');
@@ -46,6 +52,9 @@ class PublicUser {
         avatar: j['avatar'] as String?,
         status: (j['status'] as String?) ?? 'ACTIVE',
         locale: j['locale'] as String?,
+        username: j['username'] as String?,
+        emailVerifiedAt: j['emailVerifiedAt'] as String?,
+        phoneVerifiedAt: j['phoneVerifiedAt'] as String?,
       );
 }
 

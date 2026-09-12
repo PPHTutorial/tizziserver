@@ -201,6 +201,15 @@ export const VendorPageResponse = ok(
   }),
 );
 
+export const VendorBusinessLocation = z.object({
+  addressLine: z.string().nullable(),
+  city: z.string().nullable(),
+  region: z.string().nullable(),
+  country: z.string().nullable(),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+});
+
 export const VendorMeResponse = ok(
   z.union([
     z.object({ onboarded: z.literal(false) }),
@@ -210,14 +219,27 @@ export const VendorMeResponse = ok(
       profileStatus: z.string(),
       kycStatus: z.string(),
       note: z.string().nullable(),
+      displayName: z.string(),
+      bio: z.string().nullable(),
+      logo: z.string().nullable(),
+      banner: z.string().nullable(),
+      themeColors: z.array(z.string()),
+      services: z.array(z.string()),
+      business: VendorBusinessLocation.nullable(),
     }),
   ]),
 );
 
 // --- requests -------------------------------------------------------
+const HexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
+
 export const OnboardingRequest = z.object({
   displayName: z.string().min(2).max(80),
   bio: z.string().max(500).optional(),
+  logo: z.string().max(500).optional(),
+  banner: z.string().max(500).optional(),
+  themeColors: z.array(HexColor).min(3).max(7).optional(),
+  services: z.array(z.string().min(1).max(40)).max(20).optional(),
   business: z.object({
     legalName: z.string().min(2).max(120),
     regNumber: z.string().max(60).optional(),
@@ -225,12 +247,24 @@ export const OnboardingRequest = z.object({
     email: z.string().email().optional(),
     addressLine: z.string().max(160).optional(),
     city: z.string().max(80).optional(),
+    region: z.string().max(80).optional(),
     country: z.string().max(2).optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
   }),
 });
 export const OnboardingResponse = ok(
   z.object({ vendorId: z.string(), status: z.string(), kycStatus: z.string() }),
 );
+
+export const UpdateVendorProfileRequest = z.object({
+  displayName: z.string().min(2).max(80).optional(),
+  bio: z.string().max(500).optional(),
+  logo: z.string().max(500).optional(),
+  banner: z.string().max(500).optional(),
+  themeColors: z.array(HexColor).min(3).max(7).optional(),
+  services: z.array(z.string().min(1).max(40)).max(20).optional(),
+});
 
 export const CreateProductRequest = z.object({
   title: z.string().min(3).max(140),
@@ -389,21 +423,16 @@ export const HomeRailsResponse = ok(
 
 export const SimilarResponse = ok(z.object({ items: z.array(ProductCard) }));
 
-// --- vendor: KYC documents + stats -------------------------------
-export const BusinessDocument = z.object({
-  id: z.string(),
-  type: z.string(),
-  fileKey: z.string(),
-  status: z.string(),
-  note: z.string().nullable(),
-  at: z.string(),
+// --- vendor: KYC verification + stats -------------------------------
+export const VendorKycDocKind = z.enum(["ID_FRONT", "ID_BACK", "SELFIE", "PROOF_ADDRESS", "BUSINESS_REG", "OTHER"]);
+export const VendorKycSubmitRequest = z.object({
+  documents: z
+    .array(z.object({ type: VendorKycDocKind, fileKey: z.string().min(1).max(300) }))
+    .min(1)
+    .max(10),
+  selfieKey: z.string().min(1).max(300).optional(),
 });
-export const BusinessDocumentsResponse = ok(z.object({ items: z.array(BusinessDocument) }));
-export const AddBusinessDocumentRequest = z.object({
-  type: z.string().min(2).max(60),
-  fileKey: z.string().min(3).max(300),
-});
-export const AddBusinessDocumentResponse = ok(z.object({ id: z.string(), status: z.string() }));
+export const VendorKycSubmitResponse = ok(z.object({ kycCaseId: z.string(), status: z.string() }));
 
 export const VendorStatsResponse = ok(
   z.object({

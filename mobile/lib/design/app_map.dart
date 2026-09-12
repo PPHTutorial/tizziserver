@@ -55,6 +55,7 @@ class AppMap extends StatelessWidget {
     this.markers = const [],
     this.polylines = const [],
     this.interactive = true,
+    this.onTap,
   });
 
   final ({double lat, double lng}) center;
@@ -62,6 +63,11 @@ class AppMap extends StatelessWidget {
   final List<AppMapMarker> markers;
   final List<AppMapPolyline> polylines;
   final bool interactive;
+
+  /// Fires with the tapped point's coordinates — pass this to turn the map
+  /// into a "drop a pin" picker (see `LocationPickerField`). Display-only
+  /// call sites (e.g. courier tracking) simply omit it.
+  final void Function(double lat, double lng)? onTap;
 
   static const String _tileUrlTemplate = String.fromEnvironment(
     'MAP_TILE_URL_TEMPLATE',
@@ -77,6 +83,7 @@ class AppMap extends StatelessWidget {
         interactionOptions: InteractionOptions(
           flags: interactive ? InteractiveFlag.all : InteractiveFlag.none,
         ),
+        onTap: onTap == null ? null : (_, point) => onTap!(point.latitude, point.longitude),
       ),
       children: [
         TileLayer(

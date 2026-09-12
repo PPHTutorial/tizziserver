@@ -38,6 +38,9 @@ export const PublicUser = z.object({
   avatar: z.string().nullable(),
   status: z.string(),
   locale: z.string().nullable(),
+  username: z.string().nullable(),
+  emailVerifiedAt: z.string().nullable(),
+  phoneVerifiedAt: z.string().nullable(),
 });
 
 export const TokenPair = z.object({
@@ -170,6 +173,23 @@ export const BootstrapResponse = ok(
     minAppVersion: z.object({ ios: z.string(), android: z.string() }),
   }),
 );
+
+// --- PATCH /me/profile -----------------------------------
+export const UpdateProfileRequest = z.object({
+  firstName: z.string().max(80).optional(),
+  lastName: z.string().max(80).optional(),
+  avatar: z.string().max(500).optional(),
+  username: z.string().min(3).max(24).regex(/^[a-zA-Z0-9_.]+$/).optional(),
+});
+export const UpdateProfileResponse = ok(PublicUser);
+
+// --- POST /me/email, /me/email/verify, /me/phone, /me/phone/verify ---
+export const RequestContactChangeResponse = ok(z.object({ sent: z.boolean(), expiresAt: z.string() }));
+export const RequestEmailChangeRequest = z.object({ email: z.string().email() });
+export const VerifyEmailChangeRequest = z.object({ email: z.string().email(), code: z.string().min(4).max(8) });
+export const VerifyContactChangeResponse = ok(PublicUser);
+export const RequestPhoneChangeRequest = z.object({ phone: z.string().min(8) });
+export const VerifyPhoneChangeRequest = z.object({ phone: z.string().min(8), code: z.string().min(4).max(8) });
 
 // --- GET /auctions/ping (capability probe) --------------
 export const AuctionPingResponse = ok(

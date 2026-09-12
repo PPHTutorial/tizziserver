@@ -1,6 +1,11 @@
 import type { User } from "@stall/db";
 
-export const publicUser = (u: Pick<User, "id" | "phone" | "email" | "firstName" | "lastName" | "avatar" | "status" | "locale">) => ({
+export const publicUser = (
+  u: Pick<
+    User,
+    "id" | "phone" | "email" | "firstName" | "lastName" | "avatar" | "status" | "locale" | "username" | "emailVerifiedAt" | "phoneVerifiedAt"
+  >,
+) => ({
   id: u.id,
   phone: u.phone,
   email: u.email,
@@ -9,6 +14,9 @@ export const publicUser = (u: Pick<User, "id" | "phone" | "email" | "firstName" 
   avatar: u.avatar,
   status: u.status,
   locale: u.locale,
+  username: u.username,
+  emailVerifiedAt: u.emailVerifiedAt?.toISOString() ?? null,
+  phoneVerifiedAt: u.phoneVerifiedAt?.toISOString() ?? null,
 });
 
 export const tokenResponse = (pair: {

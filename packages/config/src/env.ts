@@ -159,11 +159,10 @@ const schema = z.object({
   // --- Brand logos (product/vendor "brand" field auto-illustration) ---
   // Unset ⇒ only the curated map in `catalog/brands.ts` resolves; unknown
   // brands fall back to the client's initials tile, no external call made.
+  // Every resolved logo is downloaded once and re-hosted in our own object
+  // storage (`STORAGE_PROVIDER`) — Brandfetch is never hit twice for the
+  // same brand, and the key is a secret that never leaves the backend.
   BRANDFETCH_API_KEY: z.string().optional(),
-  // Public CDN "Logo Link" client id — safe to ship to the mobile client
-  // (it's a hotlink parameter, not a secret), but resolution always happens
-  // server-side so the API key above never leaves the backend.
-  BRANDFETCH_CLIENT_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

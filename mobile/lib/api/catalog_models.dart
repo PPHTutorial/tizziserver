@@ -594,6 +594,32 @@ class FeaturedVendorDto {
       );
 }
 
+class VendorBusinessLocation {
+  const VendorBusinessLocation({
+    this.addressLine,
+    this.city,
+    this.region,
+    this.country,
+    this.lat,
+    this.lng,
+  });
+  final String? addressLine;
+  final String? city;
+  final String? region;
+  final String? country;
+  final double? lat;
+  final double? lng;
+
+  factory VendorBusinessLocation.fromJson(Map<String, dynamic> j) => VendorBusinessLocation(
+        addressLine: j['addressLine'] as String?,
+        city: j['city'] as String?,
+        region: j['region'] as String?,
+        country: j['country'] as String?,
+        lat: (j['lat'] as num?)?.toDouble(),
+        lng: (j['lng'] as num?)?.toDouble(),
+      );
+}
+
 class VendorStatus {
   const VendorStatus({
     required this.onboarded,
@@ -605,6 +631,9 @@ class VendorStatus {
     this.bio,
     this.logo,
     this.banner,
+    this.themeColors = const [],
+    this.services = const [],
+    this.business,
   });
   final bool onboarded;
   final String? kycStatus; // NONE | PENDING | APPROVED | REJECTED
@@ -615,6 +644,9 @@ class VendorStatus {
   final String? bio;
   final String? logo;
   final String? banner;
+  final List<String> themeColors;
+  final List<String> services;
+  final VendorBusinessLocation? business;
 
   bool get isApproved => kycStatus == 'APPROVED';
   bool get isPending => kycStatus == 'PENDING' || kycStatus == 'IN_REVIEW';
@@ -629,6 +661,11 @@ class VendorStatus {
         bio: j['bio'] as String?,
         logo: j['logo'] as String?,
         banner: j['banner'] as String?,
+        themeColors: (j['themeColors'] as List?)?.map((e) => e as String).toList() ?? const [],
+        services: (j['services'] as List?)?.map((e) => e as String).toList() ?? const [],
+        business: j['business'] == null
+            ? null
+            : VendorBusinessLocation.fromJson(j['business'] as Map<String, dynamic>),
       );
 }
 
@@ -858,33 +895,6 @@ class HomeRails {
 }
 
 // --- vendor extras ----------------------------------------------
-
-class BusinessDocumentDto {
-  const BusinessDocumentDto({
-    required this.id,
-    required this.type,
-    required this.fileKey,
-    required this.status,
-    this.note,
-    this.at,
-  });
-
-  final String id;
-  final String type;
-  final String fileKey;
-  final String status;
-  final String? note;
-  final String? at;
-
-  factory BusinessDocumentDto.fromJson(Map<String, dynamic> j) => BusinessDocumentDto(
-        id: j['id'] as String,
-        type: j['type'] as String? ?? '',
-        fileKey: j['fileKey'] as String? ?? '',
-        status: j['status'] as String? ?? 'PENDING',
-        note: j['note'] as String?,
-        at: j['at'] as String?,
-      );
-}
 
 class VendorStats {
   const VendorStats({

@@ -765,6 +765,18 @@
                                 "locale": {
                                   "nullable": true,
                                   "type": "string"
+                                },
+                                "username": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "emailVerifiedAt": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "phoneVerifiedAt": {
+                                  "nullable": true,
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -775,7 +787,10 @@
                                 "lastName",
                                 "avatar",
                                 "status",
-                                "locale"
+                                "locale",
+                                "username",
+                                "emailVerifiedAt",
+                                "phoneVerifiedAt"
                               ],
                               "additionalProperties": false
                             },
@@ -2297,6 +2312,18 @@
                             "locale": {
                               "nullable": true,
                               "type": "string"
+                            },
+                            "username": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "emailVerifiedAt": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "phoneVerifiedAt": {
+                              "nullable": true,
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -2307,7 +2334,10 @@
                             "lastName",
                             "avatar",
                             "status",
-                            "locale"
+                            "locale",
+                            "username",
+                            "emailVerifiedAt",
+                            "phoneVerifiedAt"
                           ],
                           "additionalProperties": false
                         },
@@ -4123,6 +4153,10 @@
                                 "nullable": true,
                                 "type": "string"
                               },
+                              "description": {
+                                "nullable": true,
+                                "type": "string"
+                              },
                               "image": {
                                 "nullable": true,
                                 "type": "string"
@@ -4153,6 +4187,51 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "activeAuction": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "slug": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "ticketPriceMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "winTargetMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsTotal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsSold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "slug",
+                                  "status",
+                                  "ticketPriceMinor",
+                                  "winTargetMinor",
+                                  "seatsTotal",
+                                  "seatsSold",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -4160,13 +4239,15 @@
                               "slug",
                               "title",
                               "brand",
+                              "description",
                               "image",
                               "ratingAvg",
                               "ratingCount",
                               "fromPriceMinor",
                               "currency",
                               "offerCount",
-                              "vendorCount"
+                              "vendorCount",
+                              "activeAuction"
                             ],
                             "additionalProperties": false
                           }
@@ -4363,6 +4444,10 @@
                           "type": "string"
                         },
                         "brand": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "brandLogo": {
                           "nullable": true,
                           "type": "string"
                         },
@@ -4742,6 +4827,7 @@
                         "title",
                         "description",
                         "brand",
+                        "brandLogo",
                         "condition",
                         "attributes",
                         "ratingAvg",
@@ -5838,6 +5924,10 @@
                                 "nullable": true,
                                 "type": "string"
                               },
+                              "description": {
+                                "nullable": true,
+                                "type": "string"
+                              },
                               "image": {
                                 "nullable": true,
                                 "type": "string"
@@ -5868,6 +5958,51 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "activeAuction": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "slug": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "ticketPriceMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "winTargetMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsTotal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsSold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "slug",
+                                  "status",
+                                  "ticketPriceMinor",
+                                  "winTargetMinor",
+                                  "seatsTotal",
+                                  "seatsSold",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -5875,13 +6010,15 @@
                               "slug",
                               "title",
                               "brand",
+                              "description",
                               "image",
                               "ratingAvg",
                               "ratingCount",
                               "fromPriceMinor",
                               "currency",
                               "offerCount",
-                              "vendorCount"
+                              "vendorCount",
+                              "activeAuction"
                             ],
                             "additionalProperties": false
                           }
@@ -6558,6 +6695,10 @@
                                 "nullable": true,
                                 "type": "string"
                               },
+                              "description": {
+                                "nullable": true,
+                                "type": "string"
+                              },
                               "image": {
                                 "nullable": true,
                                 "type": "string"
@@ -6588,6 +6729,51 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "activeAuction": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "slug": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "ticketPriceMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "winTargetMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsTotal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsSold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "slug",
+                                  "status",
+                                  "ticketPriceMinor",
+                                  "winTargetMinor",
+                                  "seatsTotal",
+                                  "seatsSold",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -6595,13 +6781,15 @@
                               "slug",
                               "title",
                               "brand",
+                              "description",
                               "image",
                               "ratingAvg",
                               "ratingCount",
                               "fromPriceMinor",
                               "currency",
                               "offerCount",
-                              "vendorCount"
+                              "vendorCount",
+                              "activeAuction"
                             ],
                             "additionalProperties": false
                           }
@@ -6816,6 +7004,72 @@
                             "note": {
                               "nullable": true,
                               "type": "string"
+                            },
+                            "displayName": {
+                              "type": "string"
+                            },
+                            "bio": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "logo": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "banner": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "themeColors": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "services": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "business": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "addressLine": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "country": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "lat": {
+                                  "nullable": true,
+                                  "type": "number"
+                                },
+                                "lng": {
+                                  "nullable": true,
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "addressLine",
+                                "city",
+                                "region",
+                                "country",
+                                "lat",
+                                "lng"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -6823,7 +7077,14 @@
                             "vendorId",
                             "profileStatus",
                             "kycStatus",
-                            "note"
+                            "note",
+                            "displayName",
+                            "bio",
+                            "logo",
+                            "banner",
+                            "themeColors",
+                            "services",
+                            "business"
                           ],
                           "additionalProperties": false
                         }
@@ -7206,6 +7467,32 @@
                     "type": "string",
                     "maxLength": 500
                   },
+                  "logo": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "banner": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "themeColors": {
+                    "minItems": 3,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    }
+                  },
+                  "services": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    }
+                  },
                   "business": {
                     "type": "object",
                     "properties": {
@@ -7235,9 +7522,23 @@
                         "type": "string",
                         "maxLength": 80
                       },
+                      "region": {
+                        "type": "string",
+                        "maxLength": 80
+                      },
                       "country": {
                         "type": "string",
                         "maxLength": 2
+                      },
+                      "lat": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "lng": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
                       }
                     },
                     "required": [
@@ -10995,6 +11296,10 @@
                                       "nullable": true,
                                       "type": "string"
                                     },
+                                    "description": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
                                     "image": {
                                       "nullable": true,
                                       "type": "string"
@@ -11019,6 +11324,51 @@
                                       "type": "integer",
                                       "minimum": -9007199254740991,
                                       "maximum": 9007199254740991
+                                    },
+                                    "activeAuction": {
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "slug": {
+                                          "type": "string"
+                                        },
+                                        "status": {
+                                          "type": "string"
+                                        },
+                                        "ticketPriceMinor": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "winTargetMinor": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "seatsTotal": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "seatsSold": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "currency": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "slug",
+                                        "status",
+                                        "ticketPriceMinor",
+                                        "winTargetMinor",
+                                        "seatsTotal",
+                                        "seatsSold",
+                                        "currency"
+                                      ],
+                                      "additionalProperties": false
                                     }
                                   },
                                   "required": [
@@ -11026,11 +11376,13 @@
                                     "slug",
                                     "title",
                                     "brand",
+                                    "description",
                                     "image",
                                     "currency",
                                     "priceMinor",
                                     "dealPriceMinor",
-                                    "discountBps"
+                                    "discountBps",
+                                    "activeAuction"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -11102,6 +11454,10 @@
                                       "nullable": true,
                                       "type": "string"
                                     },
+                                    "description": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
                                     "image": {
                                       "nullable": true,
                                       "type": "string"
@@ -11126,6 +11482,51 @@
                                       "type": "integer",
                                       "minimum": -9007199254740991,
                                       "maximum": 9007199254740991
+                                    },
+                                    "activeAuction": {
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "slug": {
+                                          "type": "string"
+                                        },
+                                        "status": {
+                                          "type": "string"
+                                        },
+                                        "ticketPriceMinor": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "winTargetMinor": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "seatsTotal": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "seatsSold": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "currency": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "slug",
+                                        "status",
+                                        "ticketPriceMinor",
+                                        "winTargetMinor",
+                                        "seatsTotal",
+                                        "seatsSold",
+                                        "currency"
+                                      ],
+                                      "additionalProperties": false
                                     }
                                   },
                                   "required": [
@@ -11133,11 +11534,13 @@
                                     "slug",
                                     "title",
                                     "brand",
+                                    "description",
                                     "image",
                                     "currency",
                                     "priceMinor",
                                     "dealPriceMinor",
-                                    "discountBps"
+                                    "discountBps",
+                                    "activeAuction"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -11209,6 +11612,10 @@
                                       "nullable": true,
                                       "type": "string"
                                     },
+                                    "description": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
                                     "image": {
                                       "nullable": true,
                                       "type": "string"
@@ -11233,6 +11640,51 @@
                                       "type": "integer",
                                       "minimum": -9007199254740991,
                                       "maximum": 9007199254740991
+                                    },
+                                    "activeAuction": {
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "slug": {
+                                          "type": "string"
+                                        },
+                                        "status": {
+                                          "type": "string"
+                                        },
+                                        "ticketPriceMinor": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "winTargetMinor": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "seatsTotal": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "seatsSold": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "currency": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "slug",
+                                        "status",
+                                        "ticketPriceMinor",
+                                        "winTargetMinor",
+                                        "seatsTotal",
+                                        "seatsSold",
+                                        "currency"
+                                      ],
+                                      "additionalProperties": false
                                     }
                                   },
                                   "required": [
@@ -11240,11 +11692,13 @@
                                     "slug",
                                     "title",
                                     "brand",
+                                    "description",
                                     "image",
                                     "currency",
                                     "priceMinor",
                                     "dealPriceMinor",
-                                    "discountBps"
+                                    "discountBps",
+                                    "activeAuction"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -11281,6 +11735,10 @@
                                 "nullable": true,
                                 "type": "string"
                               },
+                              "description": {
+                                "nullable": true,
+                                "type": "string"
+                              },
                               "image": {
                                 "nullable": true,
                                 "type": "string"
@@ -11311,6 +11769,51 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "activeAuction": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "slug": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "ticketPriceMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "winTargetMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsTotal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsSold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "slug",
+                                  "status",
+                                  "ticketPriceMinor",
+                                  "winTargetMinor",
+                                  "seatsTotal",
+                                  "seatsSold",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -11318,13 +11821,15 @@
                               "slug",
                               "title",
                               "brand",
+                              "description",
                               "image",
                               "ratingAvg",
                               "ratingCount",
                               "fromPriceMinor",
                               "currency",
                               "offerCount",
-                              "vendorCount"
+                              "vendorCount",
+                              "activeAuction"
                             ],
                             "additionalProperties": false
                           }
@@ -11347,6 +11852,10 @@
                                 "nullable": true,
                                 "type": "string"
                               },
+                              "description": {
+                                "nullable": true,
+                                "type": "string"
+                              },
                               "image": {
                                 "nullable": true,
                                 "type": "string"
@@ -11377,6 +11886,51 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "activeAuction": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "slug": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "ticketPriceMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "winTargetMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsTotal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsSold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "slug",
+                                  "status",
+                                  "ticketPriceMinor",
+                                  "winTargetMinor",
+                                  "seatsTotal",
+                                  "seatsSold",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -11384,13 +11938,60 @@
                               "slug",
                               "title",
                               "brand",
+                              "description",
                               "image",
                               "ratingAvg",
                               "ratingCount",
                               "fromPriceMinor",
                               "currency",
                               "offerCount",
-                              "vendorCount"
+                              "vendorCount",
+                              "activeAuction"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "featuredVendors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": "string"
+                              },
+                              "logo": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "banner": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "ratingAvg": {
+                                "type": "number"
+                              },
+                              "ratingCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "productCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "displayName",
+                              "logo",
+                              "banner",
+                              "ratingAvg",
+                              "ratingCount",
+                              "productCount"
                             ],
                             "additionalProperties": false
                           }
@@ -11441,6 +12042,7 @@
                         "banners",
                         "newArrivals",
                         "topRated",
+                        "featuredVendors",
                         "recentlyViewed"
                       ],
                       "additionalProperties": false
@@ -11614,6 +12216,10 @@
                                       "nullable": true,
                                       "type": "string"
                                     },
+                                    "description": {
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
                                     "image": {
                                       "nullable": true,
                                       "type": "string"
@@ -11638,6 +12244,51 @@
                                       "type": "integer",
                                       "minimum": -9007199254740991,
                                       "maximum": 9007199254740991
+                                    },
+                                    "activeAuction": {
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "slug": {
+                                          "type": "string"
+                                        },
+                                        "status": {
+                                          "type": "string"
+                                        },
+                                        "ticketPriceMinor": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "winTargetMinor": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "seatsTotal": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "seatsSold": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "currency": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "slug",
+                                        "status",
+                                        "ticketPriceMinor",
+                                        "winTargetMinor",
+                                        "seatsTotal",
+                                        "seatsSold",
+                                        "currency"
+                                      ],
+                                      "additionalProperties": false
                                     }
                                   },
                                   "required": [
@@ -11645,11 +12296,13 @@
                                     "slug",
                                     "title",
                                     "brand",
+                                    "description",
                                     "image",
                                     "currency",
                                     "priceMinor",
                                     "dealPriceMinor",
-                                    "discountBps"
+                                    "discountBps",
+                                    "activeAuction"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -11853,6 +12506,10 @@
                                 "nullable": true,
                                 "type": "string"
                               },
+                              "description": {
+                                "nullable": true,
+                                "type": "string"
+                              },
                               "image": {
                                 "nullable": true,
                                 "type": "string"
@@ -11877,6 +12534,51 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "activeAuction": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "slug": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "ticketPriceMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "winTargetMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsTotal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsSold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "slug",
+                                  "status",
+                                  "ticketPriceMinor",
+                                  "winTargetMinor",
+                                  "seatsTotal",
+                                  "seatsSold",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -11884,11 +12586,13 @@
                               "slug",
                               "title",
                               "brand",
+                              "description",
                               "image",
                               "currency",
                               "priceMinor",
                               "dealPriceMinor",
-                              "discountBps"
+                              "discountBps",
+                              "activeAuction"
                             ],
                             "additionalProperties": false
                           }
@@ -12095,6 +12799,10 @@
                                 "nullable": true,
                                 "type": "string"
                               },
+                              "description": {
+                                "nullable": true,
+                                "type": "string"
+                              },
                               "image": {
                                 "nullable": true,
                                 "type": "string"
@@ -12125,6 +12833,51 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "activeAuction": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "slug": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "ticketPriceMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "winTargetMinor": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsTotal": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "seatsSold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "slug",
+                                  "status",
+                                  "ticketPriceMinor",
+                                  "winTargetMinor",
+                                  "seatsTotal",
+                                  "seatsSold",
+                                  "currency"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -12132,13 +12885,15 @@
                               "slug",
                               "title",
                               "brand",
+                              "description",
                               "image",
                               "ratingAvg",
                               "ratingCount",
                               "fromPriceMinor",
                               "currency",
                               "offerCount",
-                              "vendorCount"
+                              "vendorCount",
+                              "activeAuction"
                             ],
                             "additionalProperties": false
                           }
@@ -12261,215 +13016,10 @@
         ]
       }
     },
-    "/api/v1/vendors/business/documents": {
-      "get": {
-        "operationId": "vendorDocumentsList",
-        "summary": "KYC evidence documents on the caller's business",
-        "tags": [
-          "vendors"
-        ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "enum": [
-                        true
-                      ]
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "items": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string"
-                              },
-                              "type": {
-                                "type": "string"
-                              },
-                              "fileKey": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "type": "string"
-                              },
-                              "note": {
-                                "nullable": true,
-                                "type": "string"
-                              },
-                              "at": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "type",
-                              "fileKey",
-                              "status",
-                              "note",
-                              "at"
-                            ],
-                            "additionalProperties": false
-                          }
-                        }
-                      },
-                      "required": [
-                        "items"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "error": {
-                      "type": "string",
-                      "nullable": true,
-                      "enum": [
-                        null
-                      ]
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "traceId": {
-                          "type": "string"
-                        },
-                        "page": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "exclusiveMinimum": true,
-                          "maximum": 9007199254740991
-                        },
-                        "limit": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "exclusiveMinimum": true,
-                          "maximum": 9007199254740991
-                        },
-                        "total": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "maximum": 9007199254740991
-                        }
-                      },
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": [
-                    "ok",
-                    "data"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "enum": [
-                        false
-                      ]
-                    },
-                    "data": {
-                      "type": "object",
-                      "nullable": true,
-                      "enum": [
-                        null
-                      ]
-                    },
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "ok",
-                    "error"
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated / token rejected",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "enum": [
-                        false
-                      ]
-                    },
-                    "data": {
-                      "type": "object",
-                      "nullable": true,
-                      "enum": [
-                        null
-                      ]
-                    },
-                    "error": {
-                      "type": "object",
-                      "properties": {
-                        "code": {
-                          "type": "string"
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "details": {}
-                      },
-                      "required": [
-                        "code",
-                        "message"
-                      ]
-                    }
-                  },
-                  "required": [
-                    "ok",
-                    "error"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
+    "/api/v1/vendors/kyc": {
       "post": {
-        "operationId": "vendorDocumentAdd",
-        "summary": "Attach a KYC document",
+        "operationId": "vendorKycSubmit",
+        "summary": "Submit vendor KYC documents + selfie",
         "tags": [
           "vendors"
         ],
@@ -12495,7 +13045,7 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "id": {
+                        "kycCaseId": {
                           "type": "string"
                         },
                         "status": {
@@ -12503,7 +13053,7 @@
                         }
                       },
                       "required": [
-                        "id",
+                        "kycCaseId",
                         "status"
                       ],
                       "additionalProperties": false
@@ -12739,20 +13289,45 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "type": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 60
+                  "documents": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "ID_FRONT",
+                            "ID_BACK",
+                            "SELFIE",
+                            "PROOF_ADDRESS",
+                            "BUSINESS_REG",
+                            "OTHER"
+                          ]
+                        },
+                        "fileKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "fileKey"
+                      ],
+                      "additionalProperties": false
+                    }
                   },
-                  "fileKey": {
+                  "selfieKey": {
                     "type": "string",
-                    "minLength": 3,
+                    "minLength": 1,
                     "maxLength": 300
                   }
                 },
                 "required": [
-                  "type",
-                  "fileKey"
+                  "documents"
                 ],
                 "additionalProperties": false
               }
@@ -55986,6 +56561,1172 @@
                     "error"
                   ]
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/email": {
+      "post": {
+        "operationId": "meEmailRequest",
+        "summary": "Issue a code to add/change the caller's email",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sent": {
+                          "type": "boolean"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "sent",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "traceId": {
+                          "type": "string"
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated / token rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (idempotency / reuse)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/email/verify": {
+      "post": {
+        "operationId": "meEmailVerify",
+        "summary": "Confirm the code and verify the caller's email",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "firstName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "avatar": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "locale": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "username": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "emailVerifiedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phoneVerifiedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "phone",
+                        "email",
+                        "firstName",
+                        "lastName",
+                        "avatar",
+                        "status",
+                        "locale",
+                        "username",
+                        "emailVerifiedAt",
+                        "phoneVerifiedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "traceId": {
+                          "type": "string"
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated / token rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (idempotency / reuse)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 8
+                  }
+                },
+                "required": [
+                  "email",
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/phone": {
+      "post": {
+        "operationId": "mePhoneRequest",
+        "summary": "Issue a code to add/change the caller's phone",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sent": {
+                          "type": "boolean"
+                        },
+                        "expiresAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "sent",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "traceId": {
+                          "type": "string"
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated / token rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (idempotency / reuse)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "phone"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/phone/verify": {
+      "post": {
+        "operationId": "mePhoneVerify",
+        "summary": "Confirm the code and verify the caller's phone",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "phone": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "firstName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "lastName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "avatar": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "locale": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "username": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "emailVerifiedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "phoneVerifiedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "phone",
+                        "email",
+                        "firstName",
+                        "lastName",
+                        "avatar",
+                        "status",
+                        "locale",
+                        "username",
+                        "emailVerifiedAt",
+                        "phoneVerifiedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "traceId": {
+                          "type": "string"
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated / token rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (idempotency / reuse)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "nullable": true,
+                      "enum": [
+                        null
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "error"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 8
+                  }
+                },
+                "required": [
+                  "phone",
+                  "code"
+                ],
+                "additionalProperties": false
               }
             }
           }

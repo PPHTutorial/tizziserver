@@ -6,6 +6,7 @@ const ProfileBody = z.object({
   firstName: z.string().max(80).optional(),
   lastName: z.string().max(80).optional(),
   avatar: z.string().max(500).optional(),
+  username: z.string().max(24).optional(),
 });
 
 export const PATCH = withApi(

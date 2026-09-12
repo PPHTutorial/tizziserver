@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../app/providers.dart';
+import '../../../app/router.dart';
 import '../../../core/api_config.dart';
 import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/icons.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
+import '../auth_util.dart';
+import '../otp_flow.dart';
 
-/// Settings > Edit Profile — display name + avatar.
+/// Settings > Edit Profile — display name, username, avatar, and add/verify
+/// email or phone.
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -25,6 +30,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late final _last = TextEditingController(
     text: ref.read(authControllerProvider).user?.lastName,
   );
+  late final _username = TextEditingController(
+    text: ref.read(authControllerProvider).user?.username,
+  );
   late String? _avatarKey = ref.read(authControllerProvider).user?.avatar;
   bool _busy = false;
   bool _uploadingAvatar = false;
@@ -34,6 +42,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void dispose() {
     _first.dispose();
     _last.dispose();
+    _username.dispose();
     super.dispose();
   }
 
@@ -73,6 +82,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             firstName: _first.text.trim(),
             lastName: _last.text.trim(),
             avatar: _avatarKey,
+            username: _username.text.trim(),
           );
       ref.read(authControllerProvider.notifier).setUser(updated);
       if (mounted) Navigator.of(context).pop();
@@ -80,6 +90,93 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       setState(() => _error = '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<String?> _promptContact({required String title, required String hint, required TextInputType keyboardType}) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: keyboardType,
+          decoration: InputDecoration(hintText: hint),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Send code'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addEmail() async {
+    final email = await _promptContact(
+      title: 'Add email',
+      hint: 'you@example.com',
+      keyboardType: TextInputType.emailAddress,
+    );
+    if (email == null || email.isEmpty) return;
+    setState(() => _error = null);
+    final err = await runCatching(() async {
+      final expiresAt = await ref.read(stallApiProvider).requestEmailChange(email);
+      ref.read(otpFlowProvider.notifier).start(
+            OtpChallenge(
+              email: email,
+              purpose: 'VERIFY_EMAIL',
+              expiresAt: expiresAt,
+              onVerified: (code) async {
+                final updated = await ref
+                    .read(stallApiProvider)
+                    .verifyEmailChange(email: email, code: code);
+                ref.read(authControllerProvider.notifier).setUser(updated);
+              },
+            ),
+          );
+    });
+    if (!mounted) return;
+    if (err != null) {
+      setState(() => _error = err);
+    } else {
+      context.push(RoutePaths.otp);
+    }
+  }
+
+  Future<void> _addPhone() async {
+    final phone = await _promptContact(
+      title: 'Add phone number',
+      hint: '+233…',
+      keyboardType: TextInputType.phone,
+    );
+    if (phone == null || phone.isEmpty) return;
+    setState(() => _error = null);
+    final err = await runCatching(() async {
+      final expiresAt = await ref.read(stallApiProvider).requestPhoneChange(phone);
+      ref.read(otpFlowProvider.notifier).start(
+            OtpChallenge(
+              phone: phone,
+              purpose: 'VERIFY_PHONE',
+              expiresAt: expiresAt,
+              onVerified: (code) async {
+                final updated = await ref
+                    .read(stallApiProvider)
+                    .verifyPhoneChange(phone: phone, code: code);
+                ref.read(authControllerProvider.notifier).setUser(updated);
+              },
+            ),
+          );
+    });
+    if (!mounted) return;
+    if (err != null) {
+      setState(() => _error = err);
+    } else {
+      context.push(RoutePaths.otp);
     }
   }
 
@@ -173,6 +270,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     controller: _last,
                   ),
                   const SizedBox(height: AppSpace.s16),
+                  AppField(
+                    label: 'Username',
+                    hintText: 'e.g. kwame_mensah',
+                    controller: _username,
+                  ),
+                  const SizedBox(height: AppSpace.s16),
                   AppCard(
                     child: Row(
                       children: [
@@ -191,6 +294,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: AppSpace.s8),
+                  _ContactRow(
+                    label: 'Email',
+                    value: user?.email,
+                    verified: user?.emailVerifiedAt != null,
+                    onAdd: _addEmail,
+                  ),
+                  _ContactRow(
+                    label: 'Phone',
+                    value: user?.phone,
+                    verified: user?.phoneVerifiedAt != null,
+                    onAdd: _addPhone,
+                  ),
                   if (_error != null) ...[
                     const SizedBox(height: AppSpace.s12),
                     InlineError(_error!),
@@ -206,6 +322,49 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ContactRow extends StatelessWidget {
+  const _ContactRow({
+    required this.label,
+    required this.value,
+    required this.verified,
+    required this.onAdd,
+  });
+
+  final String label;
+  final String? value;
+  final bool verified;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    if (value != null && value!.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: AppSpace.s8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text('$label: $value', style: context.text.bodySmall?.copyWith(color: c.textMed)),
+            ),
+            StatusBadge(
+              verified ? 'Verified' : 'Unverified',
+              tone: verified ? BadgeTone.success : BadgeTone.neutral,
+            ),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpace.s8),
+      child: TextButton.icon(
+        onPressed: onAdd,
+        icon: const Icon(AppIcons.add, size: 16),
+        label: Text('Add & verify $label'.toLowerCase()),
       ),
     );
   }

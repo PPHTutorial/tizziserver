@@ -468,19 +468,22 @@ model AuditLog {
 // =====================================================================
 
 model User {
-  id          String     @id @default(cuid(2))
-  phone       String     @unique
-  email       String?    @unique
-  firstName   String?
-  lastName    String?
-  avatar      String?
-  status      UserStatus @default(PENDING_VERIFICATION)
-  locale      String     @default("en")
-  timezone    String?
-  lastLoginAt DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  deletedAt   DateTime?
+  id              String     @id @default(cuid(2))
+  phone           String     @unique
+  email           String?    @unique
+  username        String?    @unique
+  firstName       String?
+  lastName        String?
+  avatar          String?
+  status          UserStatus @default(PENDING_VERIFICATION)
+  locale          String     @default("en")
+  timezone        String?
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
 
   roles            UserRole[]
   credentials      Credential[]
@@ -750,6 +753,8 @@ model VendorProfile {
   bio         String?
   logo        String?
   banner      String?
+  themeColors String[]      @default([])
+  services    String[]      @default([])
   status      ProfileStatus @default(PENDING)
   verifiedAt  DateTime?
   ratingAvg   Float         @default(0)
@@ -787,27 +792,9 @@ model Business {
   createdAt   DateTime                               @default(now())
   updatedAt   DateTime                               @updatedAt
 
-  vendor    VendorProfile      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  documents BusinessDocument[]
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@map("businesses")
-}
-
-model BusinessDocument {
-  id           String    @id @default(cuid(2))
-  businessId   String
-  type         String
-  fileKey      String
-  status       DocStatus @default(PENDING)
-  reviewedById String?
-  note         String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-
-  @@index([businessId])
-  @@map("business_documents")
 }
 
 model PayoutAccount {

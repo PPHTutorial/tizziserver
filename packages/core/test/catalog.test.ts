@@ -9,6 +9,7 @@ import {
   reviewVendorKyc,
   searchProducts,
   startVendorOnboarding,
+  submitVendorKyc,
   updateProductDraft,
   vendorKycStatus,
 } from "../src/catalog/index.ts";
@@ -139,5 +140,72 @@ describe("vendor onboarding → KYC → publish", () => {
     // And it now shows in the public tenant listing.
     const pub = await listProducts({ platformSlug: "grandprice", categorySlug: "phones" });
     expect(pub.items.map((p) => p.id)).toContain(draft.id);
+  });
+});
+
+describe("vendor registration v2 — location, theme, and KYC documents", () => {
+  it("round-trips a pinned Business.location through raw SQL", async () => {
+    const user = await makeUser();
+    trashUsers.push(user.id);
+
+    const onboard = await startVendorOnboarding({
+      userId: user.id,
+      platformSlug: "grandprice",
+      displayName: "Pinned Store",
+      themeColors: ["#FF6B35", "#004E89", "#1A659E"],
+      services: ["Home delivery", "Installation"],
+      business: {
+        legalName: "Pinned Store Ltd",
+        country: "GH",
+        city: "Accra",
+        region: "Greater Accra",
+        lat: 5.6037,
+        lng: -0.187,
+      },
+    });
+    trashVendors.push(onboard.vendorId);
+
+    const status = await vendorKycStatus(user.id);
+    if (!status.onboarded) throw new Error("expected onboarded vendor");
+    expect(status.themeColors).toEqual(["#FF6B35", "#004E89", "#1A659E"]);
+    expect(status.services).toEqual(["Home delivery", "Installation"]);
+    expect(status.business?.region).toBe("Greater Accra");
+    expect(status.business?.lat).toBeCloseTo(5.6037, 3);
+    expect(status.business?.lng).toBeCloseTo(-0.187, 3);
+  });
+
+  it("submitVendorKyc creates documents + an auto-pass liveness check on a selfie", async () => {
+    const user = await makeUser();
+    trashUsers.push(user.id);
+
+    const onboard = await startVendorOnboarding({
+      userId: user.id,
+      platformSlug: "grandprice",
+      displayName: "KYC Test Store",
+      business: { legalName: "KYC Test Store Ltd", country: "GH", city: "Accra" },
+    });
+    trashVendors.push(onboard.vendorId);
+
+    const result = await submitVendorKyc(user.id, {
+      documents: [
+        { type: "PROOF_ADDRESS", fileKey: "vendors/kyc/proof.jpg" },
+        { type: "ID_FRONT", fileKey: "vendors/kyc/id-front.jpg" },
+      ],
+      selfieKey: "vendors/kyc/selfie.jpg",
+    });
+    expect(result.status).toBe("IN_REVIEW");
+
+    const kyc = await prisma.kycCase.findUniqueOrThrow({
+      where: { subjectType_subjectId: { subjectType: "VENDOR", subjectId: onboard.vendorId } },
+      include: { documents: true, liveness: true },
+    });
+    expect(kyc.status).toBe("IN_REVIEW");
+    expect(kyc.documents.map((d) => d.type).sort()).toEqual(["ID_FRONT", "PROOF_ADDRESS", "SELFIE"].sort());
+    expect(kyc.liveness).toHaveLength(1);
+    expect(kyc.liveness[0]!.passed).toBe(true);
+    expect(kyc.liveness[0]!.provider).toBe("mock");
+
+    const role = await prisma.userRole.findUniqueOrThrow({ where: { userId_role: { userId: user.id, role: "VENDOR" } } });
+    expect(role.kycStatus).toBe("IN_REVIEW");
   });
 });

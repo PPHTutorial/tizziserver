@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../api/catalog_models.dart';
 import '../../../app/providers.dart';
+import '../../../core/api_config.dart';
 import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
@@ -582,7 +583,7 @@ class _BrandLogoPreview extends ConsumerWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadius.sm),
         child: Image.network(
-          logoUrl,
+          mediaUrl(logoUrl),
           width: 22,
           height: 22,
           fit: BoxFit.contain,

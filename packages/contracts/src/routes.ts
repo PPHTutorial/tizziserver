@@ -489,22 +489,14 @@ export const routes = {
     query: z.object({ limit: z.coerce.number().int().positive().max(20).optional() }),
     response: c.SimilarResponse,
   },
-  vendorDocumentsList: {
-    method: "GET",
-    path: "/api/v1/vendors/business/documents",
-    summary: "KYC evidence documents on the caller's business",
-    tags: ["vendors"],
-    auth: true,
-    response: c.BusinessDocumentsResponse,
-  },
-  vendorDocumentAdd: {
+  vendorKycSubmit: {
     method: "POST",
-    path: "/api/v1/vendors/business/documents",
-    summary: "Attach a KYC document",
+    path: "/api/v1/vendors/kyc",
+    summary: "Submit vendor KYC documents + selfie",
     tags: ["vendors"],
     auth: true,
-    body: c.AddBusinessDocumentRequest,
-    response: c.AddBusinessDocumentResponse,
+    body: c.VendorKycSubmitRequest,
+    response: c.VendorKycSubmitResponse,
     errors: [403, 429],
   },
   vendorStats: {
@@ -668,6 +660,12 @@ export const routes = {
   reportSubmit: { method: "POST", path: "/api/v1/reports", summary: "Report a user / product / vendor / courier / order / delivery", tags: ["trust"], auth: true, body: k.ReportRequest, response: k.IdStatusResponse },
   myReports: { method: "GET", path: "/api/v1/me/reports", summary: "Reports I've filed", tags: ["trust"], auth: true, response: k.MyReportsResponse },
   securityCentre: { method: "GET", path: "/api/v1/me/security", summary: "Security centre summary", tags: ["trust"], auth: true, response: k.SecurityCentreResponse },
+
+  // --- profile contact verification (add/change email or phone) -----
+  meEmailRequest: { method: "POST", path: "/api/v1/me/email", summary: "Issue a code to add/change the caller's email", tags: ["auth"], auth: true, body: a.RequestEmailChangeRequest, response: a.RequestContactChangeResponse, errors: [409, 429] },
+  meEmailVerify: { method: "POST", path: "/api/v1/me/email/verify", summary: "Confirm the code and verify the caller's email", tags: ["auth"], auth: true, body: a.VerifyEmailChangeRequest, response: a.VerifyContactChangeResponse, errors: [409] },
+  mePhoneRequest: { method: "POST", path: "/api/v1/me/phone", summary: "Issue a code to add/change the caller's phone", tags: ["auth"], auth: true, body: a.RequestPhoneChangeRequest, response: a.RequestContactChangeResponse, errors: [409, 429] },
+  mePhoneVerify: { method: "POST", path: "/api/v1/me/phone/verify", summary: "Confirm the code and verify the caller's phone", tags: ["auth"], auth: true, body: a.VerifyPhoneChangeRequest, response: a.VerifyContactChangeResponse, errors: [409] },
 
   // --- Phase 6: disputes -----------------------------------
   disputesList: { method: "GET", path: "/api/v1/disputes", summary: "My disputes", tags: ["trust"], auth: true, response: k.DisputesResponse },

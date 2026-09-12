@@ -7,6 +7,8 @@ const KIND_PREFIX: Record<string, string> = {
   avatar: "avatars",
   vendorLogo: "vendors",
   vendorBanner: "vendors",
+  vendorKycDoc: "vendors/kyc",
+  vendorKycSelfie: "vendors/kyc",
 };
 
 const CONTENT_TYPE_EXT: Record<string, string> = {

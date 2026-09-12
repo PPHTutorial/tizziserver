@@ -64,6 +64,25 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       _error = null;
     });
 
+    if (challenge.onVerified != null) {
+      String? error;
+      try {
+        await challenge.onVerified!(_code);
+        ref.read(otpFlowProvider.notifier).clear();
+      } on StallApiException catch (e) {
+        error = friendlyAuthError(e.code, e.message);
+      } catch (_) {
+        error = 'Something went wrong. Please try again.';
+      }
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = error;
+      });
+      if (error == null) Navigator.of(context).pop();
+      return;
+    }
+
     String? error;
     var completed = false;
     try {
