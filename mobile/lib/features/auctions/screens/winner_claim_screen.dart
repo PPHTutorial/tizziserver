@@ -7,6 +7,7 @@ import '../../../api/catalog_models.dart' show formatMoney;
 import '../../../app/providers.dart';
 import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
+import '../../../design/selectors.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../auction_providers.dart';
@@ -387,15 +388,12 @@ class _KycDocsSheetState extends State<_KycDocsSheet> {
             ),
           ),
           const SizedBox(height: AppSpace.s16),
-          DropdownButtonFormField<String>(
+          AppSelect<String>(
+            label: 'Document type',
             value: _type,
-            decoration: const InputDecoration(
-              labelText: 'Document type',
-              border: OutlineInputBorder(),
-            ),
             items: [
               for (final t in _docTypes)
-                DropdownMenuItem(value: t, child: Text(t.replaceAll('_', ' '))),
+                AppSelectItem(value: t, label: t.replaceAll('_', ' ')),
             ],
             onChanged: (v) => setState(() => _type = v ?? _type),
           ),

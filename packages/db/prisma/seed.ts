@@ -115,12 +115,12 @@ const catalogVendors: CatVendor[] = [
  */
 const attributeSchemaBySlug: Record<
   string,
-  { key: string; label: string; type: "text" | "number" | "boolean" | "select"; required?: boolean; options?: string[] }[]
+  { key: string; label: string; type: "text" | "number" | "boolean" | "select" | "color"; required?: boolean; options?: string[] }[]
 > = {
   phones: [
     { key: "storage", label: "Storage", type: "select", required: true, options: ["32GB", "64GB", "128GB", "256GB", "512GB", "1TB"] },
     { key: "ram", label: "RAM", type: "select", options: ["3GB", "4GB", "6GB", "8GB", "12GB", "16GB"] },
-    { key: "color", label: "Color", type: "text" },
+    { key: "color", label: "Color", type: "color" },
     { key: "networkUnlocked", label: "Network unlocked", type: "boolean" },
   ],
   laptops: [
@@ -128,10 +128,11 @@ const attributeSchemaBySlug: Record<
     { key: "ram", label: "RAM", type: "select", options: ["4GB", "8GB", "16GB", "32GB", "64GB"] },
     { key: "storage", label: "Storage", type: "select", options: ["128GB SSD", "256GB SSD", "512GB SSD", "1TB SSD", "1TB HDD"] },
     { key: "screenSizeIn", label: "Screen size (inches)", type: "number" },
+    { key: "color", label: "Color", type: "color" },
   ],
   fashion: [
     { key: "size", label: "Size", type: "select", options: ["XS", "S", "M", "L", "XL", "XXL"] },
-    { key: "color", label: "Color", type: "text" },
+    { key: "color", label: "Color", type: "color" },
     { key: "material", label: "Material", type: "text" },
   ],
 };

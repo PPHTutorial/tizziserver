@@ -2,6 +2,13 @@ import { z } from "zod";
 import { catalog } from "@stall/core";
 import { withApi } from "@/src/http/route";
 
+const VariantInput = z.object({
+  sku: z.string().min(1).max(80).optional(),
+  name: z.string().min(1).max(80),
+  options: z.record(z.string(), z.unknown()).optional(),
+  priceMinor: z.number().int().positive(),
+});
+
 const Body = z.object({
   title: z.string().min(3).max(140).optional(),
   description: z.string().min(10).max(4000).optional(),
@@ -10,6 +17,8 @@ const Body = z.object({
   categoryId: z.string().min(6).optional(),
   priceMinor: z.number().int().positive().optional(),
   images: z.array(z.string()).max(8).optional(),
+  video: z.string().optional(),
+  variants: z.array(VariantInput).max(20).optional(),
   quantity: z.number().int().nonnegative().optional(),
   attributes: z.record(z.string(), z.unknown()).optional(),
 });

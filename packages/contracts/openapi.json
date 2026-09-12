@@ -3722,7 +3722,8 @@
                                         "text",
                                         "number",
                                         "boolean",
-                                        "select"
+                                        "select",
+                                        "color"
                                       ]
                                     },
                                     "required": {
@@ -3809,7 +3810,8 @@
                                         "text",
                                         "number",
                                         "boolean",
-                                        "select"
+                                        "select",
+                                        "color"
                                       ]
                                     },
                                     "required": {

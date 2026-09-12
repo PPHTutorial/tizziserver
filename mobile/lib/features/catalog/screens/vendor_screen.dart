@@ -26,6 +26,11 @@ class VendorScreen extends ConsumerWidget {
     final c = context.colors;
     final vendor = ref.watch(vendorPageProvider(vendorId));
     final products = ref.watch(vendorProductsProvider(vendorId));
+    // The viewer is this shop's own vendor when their (approved) vendor
+    // profile id matches the route's :id — same status source
+    // `VendorHubBody` uses to gate onboarding/KYC/dashboard.
+    final isOwner =
+        ref.watch(vendorStatusProvider).valueOrNull?.vendorId == vendorId;
 
     return Scaffold(
       backgroundColor: c.bg,
@@ -219,13 +224,8 @@ class VendorScreen extends ConsumerWidget {
                         ),
                       ),
                       data: (page) => page.items.isEmpty
-                          ? const SliverToBoxAdapter(
-                              child: Padding(
-                                padding: EdgeInsets.all(AppSpace.s24),
-                                child: Center(
-                                  child: Text('No published products yet.'),
-                                ),
-                              ),
+                          ? SliverToBoxAdapter(
+                              child: _EmptyShop(isOwner: isOwner),
                             )
                           : SliverPadding(
                               padding: const EdgeInsets.all(AppSpace.s16),
@@ -246,6 +246,55 @@ class VendorScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A shop with zero published products. The owner gets a real CTA into their
+/// product inventory; any other viewer (customer, or anonymous) gets a
+/// friendlier line than a bare "no products" label but no CTA of their own.
+class _EmptyShop extends StatelessWidget {
+  const _EmptyShop({required this.isOwner});
+  final bool isOwner;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    if (!isOwner) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpace.s32),
+        child: Center(
+          child: Text(
+            'This shop hasn\'t listed anything yet — check back soon.',
+            textAlign: TextAlign.center,
+            style: context.text.bodyMedium?.copyWith(color: c.textMed),
+          ),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.all(AppSpace.s16),
+      child: AppCard(
+        child: Column(
+          children: [
+            Icon(AppIcons.inventory_2_outlined, size: 40, color: c.textLow),
+            const SizedBox(height: AppSpace.s12),
+            Text('Your shop is empty', style: context.text.titleMedium),
+            const SizedBox(height: AppSpace.s4),
+            Text(
+              'Shoppers won\'t find you until you list something. Add your '
+              'first product to get started.',
+              textAlign: TextAlign.center,
+              style: context.text.bodyMedium?.copyWith(color: c.textMed),
+            ),
+            const SizedBox(height: AppSpace.s16),
+            PrimaryButton(
+              label: 'Add your first product',
+              onPressed: () => context.push(RoutePaths.sellProducts),
             ),
           ],
         ),

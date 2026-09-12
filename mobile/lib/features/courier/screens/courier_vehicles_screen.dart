@@ -6,6 +6,7 @@ import '../../../app/providers.dart';
 import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/icons.dart';
+import '../../../design/selectors.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../courier_providers.dart';
@@ -225,16 +226,13 @@ Future<void> _addDocument(
       title: const Text('Attach document'),
       content: ValueListenableBuilder<String>(
         valueListenable: type,
-        builder: (context, value, _) => DropdownButtonFormField<String>(
+        builder: (context, value, _) => AppSelect<String>(
+          label: 'Document type',
           value: value,
-          decoration: const InputDecoration(labelText: 'Document type'),
           items: const [
-            DropdownMenuItem(
-              value: 'REGISTRATION',
-              child: Text('Registration'),
-            ),
-            DropdownMenuItem(value: 'INSURANCE', child: Text('Insurance')),
-            DropdownMenuItem(value: 'INSPECTION', child: Text('Inspection')),
+            AppSelectItem(value: 'REGISTRATION', label: 'Registration'),
+            AppSelectItem(value: 'INSURANCE', label: 'Insurance'),
+            AppSelectItem(value: 'INSPECTION', label: 'Inspection'),
           ],
           onChanged: (v) => type.value = v ?? value,
         ),
@@ -296,15 +294,12 @@ Future<void> _vehicleForm(
           children: [
             ValueListenableBuilder<String>(
               valueListenable: type,
-              builder: (context, value, _) => DropdownButtonFormField<String>(
+              builder: (context, value, _) => AppSelect<String>(
+                label: 'Type',
                 value: value,
-                decoration: const InputDecoration(labelText: 'Type'),
                 items: [
                   for (final t in _vehicleTypes)
-                    DropdownMenuItem(
-                      value: t,
-                      child: Text(t[0] + t.substring(1).toLowerCase()),
-                    ),
+                    AppSelectItem(value: t, label: t[0] + t.substring(1).toLowerCase()),
                 ],
                 onChanged: (v) => type.value = v ?? value,
               ),

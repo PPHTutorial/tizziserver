@@ -40,6 +40,7 @@ import '../features/catalog/screens/vendor_hub_screen.dart';
 import '../features/catalog/screens/vendor_screen.dart';
 import '../features/selling/screens/vendor_order_detail_screen.dart';
 import '../features/selling/screens/vendor_orders_screen.dart';
+import '../features/selling/screens/vendor_wallet_screen.dart';
 import '../features/catalog/screens/wishlist_screen.dart';
 import '../features/commerce/screens/address_book_screen.dart';
 import '../features/commerce/screens/cart_screen.dart';
@@ -114,6 +115,8 @@ class RoutePaths {
   static String productReviews(String slug) => '/product/$slug/reviews';
   static String vendor(String id) => '/vendor/$id';
   static const sell = '/sell';
+  static const sellDashboard = '/sell/dashboard';
+  static const sellProducts = '/sell/products';
   static const newProduct = '/sell/product/new';
   static String editProduct(String id) => '/sell/product/$id';
   static const sellOrders = '/sell/orders';
@@ -172,6 +175,7 @@ class RoutePaths {
   static const advertising = '/sell/advertising';
   static String campaign(String id) => '/sell/advertising/$id';
   static const vendorAnalytics = '/sell/analytics';
+  static const vendorWallet = '/sell/wallet';
   static const courierHistory = '/courier/history';
   static const referrals = '/me/referrals';
 }
@@ -360,6 +364,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const VendorHubScreen(),
       ),
       GoRoute(
+        path: RoutePaths.sellDashboard,
+        builder: (_, __) => const VendorDashboardScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.sellProducts,
+        builder: (_, __) => const VendorProductsScreen(),
+      ),
+      GoRoute(
         path: RoutePaths.sellDocuments,
         builder: (_, __) => const VendorKycScreen(),
       ),
@@ -539,6 +551,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RoutePaths.vendorAnalytics,
         builder: (_, __) => const VendorAnalyticsScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.vendorWallet,
+        builder: (_, __) => const VendorWalletScreen(),
       ),
       GoRoute(
         path: RoutePaths.courierHistory,

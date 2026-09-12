@@ -11,7 +11,7 @@ export const ProductStatus = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED", "SUSPENDE
 export const ProductSort = z.enum(["relevance", "newest", "price_asc", "price_desc", "rating"]);
 
 // --- shared shapes ------------------------------------------------------
-export const CategoryAttributeType = z.enum(["text", "number", "boolean", "select"]);
+export const CategoryAttributeType = z.enum(["text", "number", "boolean", "select", "color"]);
 export const CategoryAttributeField = z.object({
   key: z.string(),
   label: z.string(),

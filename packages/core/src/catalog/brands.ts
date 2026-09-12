@@ -253,3 +253,41 @@ export async function resolveBrandLogos(names: string[]): Promise<BrandLogo[]> {
   const unique = Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)));
   return Promise.all(unique.map(resolveBrandLogo));
 }
+
+export interface BrandCandidate {
+  name: string;
+  domain: string;
+  /** Brandfetch-hosted icon URL for live-typeahead preview only — small and
+   * disposable, so unlike `resolveBrandLogo` this is never downloaded/
+   * re-hosted here. We only pay the storage cost once the vendor actually
+   * commits to a brand and `resolveBrandLogo` runs for it. */
+  icon: string | null;
+}
+
+/** Search-as-you-type brand suggestions, backed by the Brandfetch Search
+ * API (already used internally by `resolveBrandLogo` for single-name
+ * resolution) — this is what lets the product-editor brand field offer
+ * real suggestions instead of a free-text field, without us owning a
+ * brand-name dataset. Returns [] (not an error) when unconfigured, too
+ * short a query, or the upstream call fails — callers should treat "no
+ * suggestions" as a normal, silent outcome. */
+export async function searchBrandCandidates(rawQuery: string, limit = 10): Promise<BrandCandidate[]> {
+  const query = rawQuery.trim();
+  if (query.length < 2) return [];
+  const key = env.BRANDFETCH_API_KEY;
+  if (!key) return [];
+  try {
+    const res = await fetch(`https://api.brandfetch.io/v2/search/${encodeURIComponent(query)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return [];
+    const results = (await res.json()) as { name?: string; domain?: string; icon?: string }[];
+    return results
+      .filter((r): r is { name: string; domain: string; icon?: string } => !!r.name && !!r.domain)
+      .slice(0, limit)
+      .map((r) => ({ name: r.name, domain: r.domain, icon: r.icon ?? null }));
+  } catch {
+    return [];
+  }
+}

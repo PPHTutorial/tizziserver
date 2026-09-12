@@ -22,3 +22,8 @@ final sellerHandoffDeliveryProvider =
     FutureProvider.autoDispose.family<DeliveryDto, String>(
   (ref, deliveryId) => ref.watch(stallApiProvider).vendorDelivery(deliveryId),
 );
+
+/// The vendor's payout history (PIN-gated requests land here once submitted).
+final vendorPayoutsProvider = FutureProvider.autoDispose<List<PayoutDto>>(
+  (ref) => ref.watch(stallApiProvider).vendorPayouts(),
+);

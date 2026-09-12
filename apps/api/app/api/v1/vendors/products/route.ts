@@ -4,6 +4,13 @@ import { withApi } from "@/src/http/route";
 
 const Query = z.object({ status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional() });
 
+const VariantInput = z.object({
+  sku: z.string().min(1).max(80).optional(),
+  name: z.string().min(1).max(80),
+  options: z.record(z.string(), z.unknown()).optional(),
+  priceMinor: z.number().int().positive(),
+});
+
 const CreateBody = z.object({
   title: z.string().min(3).max(140),
   description: z.string().min(10).max(4000),
@@ -13,6 +20,8 @@ const CreateBody = z.object({
   priceMinor: z.number().int().positive(),
   currency: z.string().length(3).optional(),
   images: z.array(z.string()).max(8).optional(),
+  video: z.string().optional(),
+  variants: z.array(VariantInput).max(20).optional(),
   attributes: z.record(z.string(), z.unknown()).optional(),
 });
 

@@ -9,15 +9,21 @@ const KIND_PREFIX: Record<string, string> = {
   vendorBanner: "vendors",
   vendorKycDoc: "vendors/kyc",
   vendorKycSelfie: "vendors/kyc",
+  product: "products",
+  productVideo: "products/video",
 };
 
 const CONTENT_TYPE_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
 };
 
 const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES_VIDEO = 80 * 1024 * 1024;
 
 /**
  * Generic authenticated image upload backing the avatar / vendor logo+banner
@@ -41,10 +47,13 @@ export async function POST(req: NextRequest) {
     const file = form.get("file");
     if (!(file instanceof Blob)) throw new AppError("VALIDATION", "Missing file");
     if (file.size === 0) throw new AppError("VALIDATION", "Empty file");
-    if (file.size > MAX_BYTES) throw new AppError("VALIDATION", "Image must be 5MB or smaller");
+    const maxBytes = kind === "productVideo" ? MAX_BYTES_VIDEO : MAX_BYTES;
+    if (file.size > maxBytes) {
+      throw new AppError("VALIDATION", kind === "productVideo" ? "Video must be 80MB or smaller" : "Image must be 5MB or smaller");
+    }
 
     const ext = CONTENT_TYPE_EXT[file.type];
-    if (!ext) throw new AppError("VALIDATION", "Only JPEG, PNG, or WebP images are supported");
+    if (!ext) throw new AppError("VALIDATION", "Only JPEG, PNG, WebP images or MP4, MOV, WebM videos are supported");
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const key = `${KIND_PREFIX[kind]}/${principal.userId}/${kind}-${randomToken(8)}.${ext}`;

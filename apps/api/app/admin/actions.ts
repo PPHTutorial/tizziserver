@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@stall/db";
 import { env } from "@stall/config";
-import { auth, trust, ads, admin as adminSvc, auctions } from "@stall/core";
+import { auth, trust, ads, admin as adminSvc, auctions, catalog } from "@stall/core";
 import { createAdminSession, clearAdminSession, requireAdmin, requireSuperAdmin } from "@/src/admin/session";
 
 // --- auth --------------------------------------------------------------
@@ -82,6 +82,18 @@ export async function reviewKyc(form: FormData) {
   await trust.reviewKycCase(s.userId, id, decision, note);
   revalidatePath("/admin/kyc");
   revalidatePath(`/admin/kyc/${id}`);
+}
+
+// --- product review --------------------------------------------------
+
+export async function reviewProduct(form: FormData) {
+  const s = await requireAdmin();
+  const id = String(form.get("id"));
+  const decision = String(form.get("decision")) as "APPROVE" | "REJECT";
+  const note = String(form.get("note") ?? "") || undefined;
+  await catalog.reviewProduct(s.userId, id, decision, note);
+  revalidatePath("/admin/product-review");
+  revalidatePath(`/admin/product-review/${id}`);
 }
 
 // --- disputes ------------------------------------------------------

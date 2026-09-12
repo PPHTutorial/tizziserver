@@ -190,6 +190,7 @@ enum ProductCondition {
 
 enum ProductStatus {
   DRAFT
+  PENDING_REVIEW
   PUBLISHED
   ARCHIVED
   SUSPENDED
@@ -1085,6 +1086,9 @@ model Product {
   ratingCount   Int                      @default(0)
   searchVector  Unsupported("tsvector")?
   publishedAt   DateTime?
+  reviewNote    String?
+  reviewedById  String?
+  reviewedAt    DateTime?
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
   deletedAt     DateTime?

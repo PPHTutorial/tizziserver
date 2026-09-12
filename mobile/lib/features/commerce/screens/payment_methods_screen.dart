@@ -7,6 +7,7 @@ import '../../../app/providers.dart';
 import '../../../design/components.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/icons.dart';
+import '../../../design/selectors.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../commerce_providers.dart';
@@ -212,20 +213,14 @@ Future<void> _addSheet(BuildContext context, WidgetRef ref) async {
             const SizedBox(height: AppSpace.s16),
             ValueListenableBuilder<String>(
               valueListenable: brand,
-              builder: (context, value, _) => DropdownButtonFormField<String>(
+              builder: (context, value, _) => AppSelect<String>(
+                label: 'Type',
                 value: value,
-                decoration: const InputDecoration(labelText: 'Type'),
                 items: const [
-                  DropdownMenuItem(value: 'Visa', child: Text('Visa')),
-                  DropdownMenuItem(
-                    value: 'Mastercard',
-                    child: Text('Mastercard'),
-                  ),
-                  DropdownMenuItem(value: 'MTN MoMo', child: Text('MTN MoMo')),
-                  DropdownMenuItem(
-                    value: 'Vodafone Cash',
-                    child: Text('Vodafone Cash'),
-                  ),
+                  AppSelectItem(value: 'Visa', label: 'Visa'),
+                  AppSelectItem(value: 'Mastercard', label: 'Mastercard'),
+                  AppSelectItem(value: 'MTN MoMo', label: 'MTN MoMo'),
+                  AppSelectItem(value: 'Vodafone Cash', label: 'Vodafone Cash'),
                 ],
                 onChanged: (v) => brand.value = v ?? value,
               ),

@@ -8,6 +8,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/kyc", label: "KYC queue" },
+  { href: "/admin/product-review", label: "Product review" },
   { href: "/admin/disputes", label: "Disputes" },
   { href: "/admin/campaigns", label: "Ad review" },
   { href: "/admin/boost-tiers", label: "Boost tiers" },

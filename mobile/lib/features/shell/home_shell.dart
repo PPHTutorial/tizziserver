@@ -14,6 +14,7 @@ import '../../design/tokens.g.dart';
 import '../../design/widgets.dart';
 import '../auth/screens/select_role_screen.dart';
 import '../auth/security_actions.dart';
+import '../catalog/catalog_providers.dart';
 import '../catalog/screens/catalog_home_body.dart';
 import '../catalog/screens/vendor_hub_screen.dart';
 import '../commerce/commerce_providers.dart';
@@ -25,6 +26,7 @@ import '../courier/screens/courier_earnings_screen.dart';
 import '../courier/screens/courier_jobs_screen.dart';
 import '../courier/screens/courier_profile_screen.dart';
 import '../selling/screens/vendor_orders_screen.dart';
+import '../selling/screens/vendor_wallet_screen.dart';
 import 'app_bottom_nav.dart';
 import '../../design/icons.dart';
 
@@ -81,7 +83,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           'explore' => const CatalogExploreBody(),
           'orders' when boot.activeRole == 'VENDOR' => const VendorOrdersBody(),
           'orders' => const OrdersBody(),
-          'dashboard' || 'products' || 'sell' => const VendorHubBody(),
+          'dashboard' => const VendorDashboardBody(),
+          'products' => const VendorProductsBody(),
+          'sell' => const VendorHubBody(),
+          'wallet' when boot.activeRole == 'VENDOR' => const VendorWalletBody(),
           _ => _PlaceholderTab(boot: boot, navKey: key),
         };
 
@@ -421,6 +426,14 @@ class _AccountTab extends ConsumerWidget {
     final auth = ref.watch(authControllerProvider);
     final c = context.colors;
     final role = auth.activeRole ?? 'CUSTOMER';
+    // Any account can hold an approved vendor profile alongside its active
+    // role (e.g. a multi-role user currently acting as CUSTOMER who also
+    // sells) — gate "View my storefront" on that profile existing, not on
+    // `role`, so it doesn't disappear just because VENDOR isn't the active role.
+    final vendorStatus = ref.watch(vendorStatusProvider).valueOrNull;
+    final myVendorId = vendorStatus != null && vendorStatus.isApproved
+        ? vendorStatus.vendorId
+        : null;
 
     List<Widget> divided(List<Widget> rows) {
       final out = <Widget>[];
@@ -442,6 +455,14 @@ class _AccountTab extends ConsumerWidget {
     }
 
     final shopping = <Widget>[
+      // Visible to every role, not just CUSTOMER — a single-role VENDOR,
+      // ADMIN, or COURIER account otherwise has no path into the customer
+      // catalog/browsing UI at all (their own nav array never includes it).
+      AppListRow(
+        icon: AppIcons.shopping_bag_outlined,
+        label: 'Browse marketplace',
+        onTap: () => context.push(RoutePaths.allProducts),
+      ),
       AppListRow(
         icon: AppIcons.receipt_long_outlined,
         label: 'My orders',
@@ -480,6 +501,12 @@ class _AccountTab extends ConsumerWidget {
     ];
 
     final selling = <Widget>[
+      if (myVendorId != null)
+        AppListRow(
+          icon: AppIcons.storefront_outlined,
+          label: 'View my storefront',
+          onTap: () => context.push(RoutePaths.vendor(myVendorId)),
+        ),
       if (role == 'VENDOR' && boot.hasFeature('advertising'))
         AppListRow(
           icon: AppIcons.campaign_outlined,

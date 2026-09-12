@@ -282,6 +282,13 @@ async function requireActiveVendor(userId: string) {
   return vendor;
 }
 
+export interface ProductVariantInput {
+  sku?: string;
+  name: string;
+  options?: Record<string, unknown>;
+  priceMinor: number;
+}
+
 export interface ProductDraftInput {
   userId: string;
   platformSlug: string;
@@ -293,6 +300,8 @@ export interface ProductDraftInput {
   priceMinor: number;
   currency?: string;
   images?: string[];
+  video?: string;
+  variants?: ProductVariantInput[];
   attributes?: Record<string, unknown>;
 }
 
@@ -314,10 +323,21 @@ export async function createProductDraft(input: ProductDraftInput) {
       status: "DRAFT",
       platformSlugs: [input.platformSlug],
       media: {
-        create: (input.images ?? []).map((fileKey, i) => ({ kind: "IMAGE" as const, fileKey, sortOrder: i })),
+        create: [
+          ...(input.images ?? []).map((fileKey, i) => ({ kind: "IMAGE" as const, fileKey, sortOrder: i })),
+          ...(input.video ? [{ kind: "VIDEO" as const, fileKey: input.video, sortOrder: 0 }] : []),
+        ],
       },
       variants: {
-        create: { sku: uniqueSlug(`${input.title}-v`), name: "Default", priceMinor: input.priceMinor },
+        create:
+          input.variants && input.variants.length > 0
+            ? input.variants.map((v, i) => ({
+                sku: v.sku ?? uniqueSlug(`${input.title}-v${i}`),
+                name: v.name,
+                options: v.options as Prisma.InputJsonValue | undefined,
+                priceMinor: v.priceMinor,
+              }))
+            : [{ sku: uniqueSlug(`${input.title}-v`), name: "Default", priceMinor: input.priceMinor }],
       },
       offers: {
         create: {
@@ -332,9 +352,8 @@ export async function createProductDraft(input: ProductDraftInput) {
     include: { variants: true, offers: true },
   });
 
-  const variant = product.variants[0]!;
-  await prisma.inventory.create({
-    data: { variantId: variant.id, vendorId: vendor.id, quantity: 0, lowStockThreshold: 3 },
+  await prisma.inventory.createMany({
+    data: product.variants.map((v) => ({ variantId: v.id, vendorId: vendor.id, quantity: 0, lowStockThreshold: 3 })),
   });
 
   return { id: product.id, slug: product.slug, status: product.status };
@@ -350,6 +369,8 @@ export async function updateProductDraft(input: {
   categoryId?: string;
   priceMinor?: number;
   images?: string[];
+  video?: string;
+  variants?: ProductVariantInput[];
   quantity?: number;
   attributes?: Record<string, unknown>;
 }) {
@@ -375,19 +396,50 @@ export async function updateProductDraft(input: {
     await prisma.vendorOffer.update({ where: { id: product.offers[0].id }, data: { condition: input.condition } });
   }
 
+  // Images and video are independent media kinds — replacing one must never
+  // wipe the other (this used to `deleteMany` the whole `ProductMedia` set
+  // whenever `images` was sent, silently dropping any video).
   if (input.images) {
-    await prisma.productMedia.deleteMany({ where: { productId: product.id } });
+    await prisma.productMedia.deleteMany({ where: { productId: product.id, kind: "IMAGE" } });
     await prisma.productMedia.createMany({
       data: input.images.map((fileKey, i) => ({ productId: product.id, kind: "IMAGE" as const, fileKey, sortOrder: i })),
     });
   }
+  if (input.video !== undefined) {
+    await prisma.productMedia.deleteMany({ where: { productId: product.id, kind: "VIDEO" } });
+    if (input.video) {
+      await prisma.productMedia.create({ data: { productId: product.id, kind: "VIDEO", fileKey: input.video, sortOrder: 0 } });
+    }
+  }
   if (input.priceMinor != null && product.offers[0]) {
     await prisma.vendorOffer.update({ where: { id: product.offers[0].id }, data: { priceMinor: input.priceMinor } });
-    if (product.variants[0]) {
+    // Only sync the lone legacy "Default" variant — once `variants` replaces
+    // the set below, each one carries its own explicit price instead.
+    if (!input.variants && product.variants[0]) {
       await prisma.productVariant.update({ where: { id: product.variants[0].id }, data: { priceMinor: input.priceMinor } });
     }
   }
-  if (input.quantity != null && product.variants[0]) {
+  if (input.variants && input.variants.length > 0) {
+    // Replace the full variant set. `Inventory.variant` is `onDelete: Cascade`
+    // so dropping a variant takes its inventory row with it — no orphans.
+    await prisma.productVariant.deleteMany({ where: { productId: product.id } });
+    const created = await prisma.$transaction(
+      input.variants.map((v, i) =>
+        prisma.productVariant.create({
+          data: {
+            productId: product.id,
+            sku: v.sku ?? uniqueSlug(`${input.title ?? product.title}-v${i}`),
+            name: v.name,
+            options: v.options as Prisma.InputJsonValue | undefined,
+            priceMinor: v.priceMinor,
+          },
+        }),
+      ),
+    );
+    await prisma.inventory.createMany({
+      data: created.map((v) => ({ variantId: v.id, vendorId: vendor.id, quantity: 0, lowStockThreshold: 3 })),
+    });
+  } else if (input.quantity != null && product.variants[0]) {
     await prisma.inventory.upsert({
       where: { variantId_vendorId: { variantId: product.variants[0].id, vendorId: vendor.id } },
       create: { variantId: product.variants[0].id, vendorId: vendor.id, quantity: input.quantity },
@@ -397,6 +449,10 @@ export async function updateProductDraft(input: {
   return { id: product.id, updated: true };
 }
 
+/** Submit a draft for admin moderation (Figma's "Publish" action) — no longer
+ * goes straight live. Moves the product to `PENDING_REVIEW`; it only becomes
+ * `PUBLISHED` (and its offers `ACTIVE`) once an admin approves it via
+ * `reviewProduct`. */
 export async function publishProduct(userId: string, productId: string) {
   const vendor = await requireActiveVendor(userId);
   const product = await prisma.product.findFirst({
@@ -407,17 +463,11 @@ export async function publishProduct(userId: string, productId: string) {
   if (product.media.length === 0) throw new AppError("VALIDATION", "Add at least one image before publishing");
   if (product.offers.length === 0) throw new AppError("VALIDATION", "Set a price before publishing");
 
-  await prisma.$transaction([
-    prisma.product.update({
-      where: { id: product.id },
-      data: { status: "PUBLISHED", publishedAt: new Date() },
-    }),
-    prisma.vendorOffer.updateMany({
-      where: { productId: product.id, vendorId: vendor.id },
-      data: { status: "ACTIVE" },
-    }),
-  ]);
-  return { id: product.id, status: "PUBLISHED" as const };
+  await prisma.product.update({
+    where: { id: product.id },
+    data: { status: "PENDING_REVIEW" },
+  });
+  return { id: product.id, status: "PENDING_REVIEW" as const };
 }
 
 /** Pause/resume a live listing (Figma's edit-listing "Pause Listing" action)
@@ -457,6 +507,104 @@ export async function archiveProduct(userId: string, productId: string) {
       : []),
   ]);
   return { id: product.id, status: "ARCHIVED" as const };
+}
+
+// --- admin: product review ------------------------------------------
+
+/** Moderation queue backing `/admin/product-review` — oldest submission
+ * first, so nothing lingers unreviewed at the back of the line. */
+export async function listProductsPendingReview(opts: { cursor?: string; limit?: number } = {}) {
+  const take = Math.min(Math.max(opts.limit ?? 50, 1), 50);
+  const rows = await prisma.product.findMany({
+    where: { status: "PENDING_REVIEW" },
+    orderBy: { updatedAt: "asc" },
+    take,
+    ...(opts.cursor ? { skip: 1, cursor: { id: opts.cursor } } : {}),
+    include: {
+      vendor: { select: { id: true, displayName: true } },
+      media: { take: 1, orderBy: { sortOrder: "asc" }, select: { fileKey: true } },
+    },
+  });
+  return rows.map((p) => ({
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    vendorId: p.vendorId,
+    vendorName: p.vendor.displayName,
+    image: p.media[0]?.fileKey ?? null,
+    submittedAt: p.updatedAt.toISOString(),
+  }));
+}
+
+/** Full detail for one pending product — backs the review detail screen. */
+export async function getProductForReview(productId: string) {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: {
+      vendor: { select: { id: true, displayName: true } },
+      category: { select: { id: true, name: true } },
+      media: { orderBy: { sortOrder: "asc" } },
+      offers: true,
+    },
+  });
+  if (!product) throw new AppError("NOT_FOUND", "Product not found");
+  return {
+    id: product.id,
+    title: product.title,
+    slug: product.slug,
+    description: product.description,
+    brand: product.brand,
+    condition: product.condition,
+    status: product.status,
+    category: product.category.name,
+    vendorId: product.vendor.id,
+    vendorName: product.vendor.displayName,
+    priceMinor: product.offers[0]?.priceMinor ?? null,
+    currency: product.offers[0]?.currency ?? "GHS",
+    media: product.media.map((m) => ({ id: m.id, kind: m.kind, fileKey: m.fileKey })),
+    submittedAt: product.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * Admin decision on a submitted product (mirrors `trust.reviewKycCase`'s
+ * approve/reject shape). APPROVE does what `publishProduct` used to do
+ * on its own — go live + activate offers — REJECT sends it back to DRAFT
+ * so the vendor can fix it up and resubmit.
+ */
+export async function reviewProduct(adminUserId: string, productId: string, decision: "APPROVE" | "REJECT", note?: string) {
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product || product.status !== "PENDING_REVIEW") {
+    throw new AppError("NOT_FOUND", "No pending product with that id");
+  }
+
+  if (decision === "APPROVE") {
+    await prisma.$transaction([
+      prisma.product.update({
+        where: { id: product.id },
+        data: { status: "PUBLISHED", publishedAt: new Date(), reviewedAt: new Date(), reviewedById: adminUserId, reviewNote: note ?? null },
+      }),
+      prisma.vendorOffer.updateMany({
+        where: { productId: product.id, vendorId: product.vendorId },
+        data: { status: "ACTIVE" },
+      }),
+      prisma.auditLog.create({
+        data: { actorId: adminUserId, actorType: "USER", action: "admin.product.review", targetType: "Product", targetId: product.id, after: { decision, note } },
+      }),
+    ]);
+    return { id: product.id, status: "PUBLISHED" as const };
+  }
+
+  await prisma.$transaction([
+    prisma.product.update({
+      where: { id: product.id },
+      data: { status: "DRAFT", reviewedAt: new Date(), reviewedById: adminUserId, reviewNote: note ?? null },
+    }),
+    prisma.auditLog.create({
+      data: { actorId: adminUserId, actorType: "USER", action: "admin.product.review", targetType: "Product", targetId: product.id, after: { decision, note } },
+    }),
+  ]);
+  return { id: product.id, status: "DRAFT" as const };
 }
 
 // --- vendor KYC (documents + selfie) -------------------------------
@@ -544,16 +692,18 @@ export async function getMyProduct(userId: string, productId: string) {
   const product = await prisma.product.findFirst({
     where: { id: productId, vendorId: vendor.id },
     include: {
-      media: { orderBy: { sortOrder: "asc" }, select: { fileKey: true } },
+      media: { orderBy: { sortOrder: "asc" }, select: { kind: true, fileKey: true } },
       offers: { where: { vendorId: vendor.id }, take: 1 },
-      variants: { take: 1 },
+      variants: true,
     },
   });
   if (!product) throw new AppError("NOT_FOUND", "Product not found");
-  const variant = product.variants[0];
-  const inventory = variant
-    ? await prisma.inventory.findUnique({ where: { variantId_vendorId: { variantId: variant.id, vendorId: vendor.id } } })
-    : null;
+  const inventory = product.variants.length
+    ? await prisma.inventory.findMany({
+        where: { variantId: { in: product.variants.map((v) => v.id) }, vendorId: vendor.id },
+      })
+    : [];
+  const qtyByVariant = new Map(inventory.map((i) => [i.variantId, i.quantity]));
   return {
     id: product.id,
     slug: product.slug,
@@ -566,9 +716,20 @@ export async function getMyProduct(userId: string, productId: string) {
     offerStatus: product.offers[0]?.status ?? null,
     priceMinor: product.offers[0]?.priceMinor ?? null,
     currency: product.offers[0]?.currency ?? "GHS",
-    images: product.media.map((m) => m.fileKey),
-    quantity: inventory?.quantity ?? 0,
+    images: product.media.filter((m) => m.kind === "IMAGE").map((m) => m.fileKey),
+    video: product.media.find((m) => m.kind === "VIDEO")?.fileKey ?? null,
+    variants: product.variants.map((v) => ({
+      id: v.id,
+      sku: v.sku,
+      name: v.name,
+      options: (v.options ?? {}) as Record<string, unknown>,
+      priceMinor: v.priceMinor,
+      quantity: qtyByVariant.get(v.id) ?? 0,
+    })),
+    // Kept for older single-variant clients/back-compat with the "Stock qty" field.
+    quantity: product.variants[0] ? qtyByVariant.get(product.variants[0].id) ?? 0 : 0,
     attributes: product.attributes ?? {},
+    reviewNote: product.reviewNote,
   };
 }
 

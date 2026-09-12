@@ -147,6 +147,35 @@ class SecondaryButton extends StatelessWidget {
   }
 }
 
+/// Shared chrome for [AppField] and [AppSelect] (and anything else that wants
+/// to look like a filled, rounded form field) — the single source of truth
+/// for the decoration so the two widgets can never visually drift apart.
+InputDecoration appFieldDecoration(
+  BuildContext context, {
+  String? hintText,
+  Widget? prefixIcon,
+  Widget? suffixIcon,
+}) {
+  final c = context.colors;
+  return InputDecoration(
+    hintText: hintText,
+    prefixIcon: prefixIcon,
+    suffixIcon: suffixIcon,
+    filled: true,
+    fillColor: c.surface,
+    contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.s16, vertical: AppSpace.s16),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: c.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      borderSide: BorderSide(color: c.primary, width: 1.5),
+    ),
+  );
+}
+
 class AppField extends StatelessWidget {
   const AppField({
     super.key,
@@ -196,22 +225,7 @@ class AppField extends StatelessWidget {
           inputFormatters: inputFormatters,
           maxLines: obscureText ? 1 : maxLines,
           minLines: maxLines > 1 ? 3 : null,
-          decoration: InputDecoration(
-            hintText: hintText,
-            prefixIcon: prefix,
-            filled: true,
-            fillColor: c.surface,
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: AppSpace.s16, vertical: AppSpace.s16),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              borderSide: BorderSide(color: c.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              borderSide: BorderSide(color: c.primary, width: 1.5),
-            ),
-          ),
+          decoration: appFieldDecoration(context, hintText: hintText, prefixIcon: prefix),
         ),
       ],
     );
