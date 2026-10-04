@@ -291,6 +291,15 @@ export const routes = {
     response: c.VendorPageResponse,
     errors: [404],
   },
+  vendorPhone: {
+    method: "GET",
+    path: "/api/v1/vendors/{id}/phone",
+    summary: "Tap-to-reveal seller phone (signed-in, rate-limited, audited; 404 if the vendor opted out)",
+    tags: ["vendors"],
+    auth: true,
+    response: c.VendorPhoneResponse,
+    errors: [401, 404, 429],
+  },
   vendorProducts: {
     method: "GET",
     path: "/api/v1/vendors/{id}/products",

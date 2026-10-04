@@ -2,6 +2,7 @@ import { prisma } from "@stall/db";
 import { AppError } from "../errors.ts";
 import { categoryBySlug } from "./categories.ts";
 import { resolveBrandLogo } from "./brands.ts";
+import { hasRevealablePhone } from "./vendors.ts";
 import { clampLimit, type Page } from "./util.ts";
 
 export type ProductSort = "relevance" | "newest" | "price_asc" | "price_desc" | "rating";
@@ -234,7 +235,20 @@ export async function getProductDetail(slugOrId: string, platformSlug: string) {
         where: { status: "ACTIVE" },
         orderBy: { priceMinor: "asc" },
         include: {
-          vendor: { select: { id: true, displayName: true, logo: true, ratingAvg: true, ratingCount: true } },
+          vendor: {
+            select: {
+              id: true,
+              displayName: true,
+              logo: true,
+              ratingAvg: true,
+              ratingCount: true,
+              showPhone: true,
+              // Only to compute `phoneAvailable` — the number itself is never
+              // put in this public payload (see `revealVendorPhone`).
+              business: { select: { phones: true } },
+              user: { select: { phoneVerifiedAt: true, deletedAt: true } },
+            },
+          },
           gasListing: true,
         },
       },
@@ -295,7 +309,14 @@ export async function getProductDetail(slugOrId: string, platformSlug: string) {
       currency: o.currency,
       condition: o.condition,
       fulfilment: o.fulfilment ?? {},
-      vendor: o.vendor,
+      vendor: {
+        id: o.vendor.id,
+        displayName: o.vendor.displayName,
+        logo: o.vendor.logo,
+        ratingAvg: o.vendor.ratingAvg,
+        ratingCount: o.vendor.ratingCount,
+        phoneAvailable: hasRevealablePhone(o.vendor),
+      },
       gas: o.gasListing
         ? {
             cylinderType: o.gasListing.cylinderType,

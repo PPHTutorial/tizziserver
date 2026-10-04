@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../api/api_exception.dart';
@@ -753,10 +755,83 @@ class _SimilarRail extends ConsumerWidget {
   }
 }
 
-class _OfferRow extends StatelessWidget {
+/// One seller's offer, with direct contact: chat opens (or reuses) the
+/// buyer↔vendor conversation; the phone is never in the listing payload —
+/// "Show number" fetches it on tap (signed-in, rate-limited, audited), and
+/// only for sellers who haven't turned phone sharing off.
+class _OfferRow extends ConsumerStatefulWidget {
   const _OfferRow({required this.offer, required this.currency});
   final OfferView offer;
   final String currency;
+
+  @override
+  ConsumerState<_OfferRow> createState() => _OfferRowState();
+}
+
+class _OfferRowState extends ConsumerState<_OfferRow> {
+  bool _openingChat = false;
+  bool _revealing = false;
+  String? _phone;
+
+  OfferView get offer => widget.offer;
+
+  bool _requireSignIn(String why) {
+    if (ref.read(authControllerProvider).isAuthenticated) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(why),
+        action: SnackBarAction(
+          label: 'Sign in',
+          onPressed: () => context.push(RoutePaths.phone),
+        ),
+      ),
+    );
+    return false;
+  }
+
+  void _toast(Object e, String fallback) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(e is StallApiException ? e.message : fallback)),
+    );
+  }
+
+  Future<void> _chat() async {
+    if (!_requireSignIn('Sign in to message this seller.')) return;
+    setState(() => _openingChat = true);
+    try {
+      final cid = await ref
+          .read(stallApiProvider)
+          .conversationForVendor(offer.vendorId);
+      if (mounted) {
+        context.push(RoutePaths.conversation(cid), extra: offer.vendorName);
+      }
+    } catch (e) {
+      _toast(e, 'Could not open chat.');
+    } finally {
+      if (mounted) setState(() => _openingChat = false);
+    }
+  }
+
+  Future<void> _revealPhone() async {
+    if (!_requireSignIn("Sign in to see the seller's number.")) return;
+    setState(() => _revealing = true);
+    try {
+      final phone = await ref
+          .read(stallApiProvider)
+          .revealVendorPhone(offer.vendorId);
+      if (mounted) setState(() => _phone = phone);
+    } catch (e) {
+      _toast(e, 'Could not load the number.');
+    } finally {
+      if (mounted) setState(() => _revealing = false);
+    }
+  }
+
+  Future<void> _call() async {
+    final uri = Uri(scheme: 'tel', path: _phone);
+    if (!await launchUrl(uri)) _toast('', 'No phone app available.');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -765,24 +840,63 @@ class _OfferRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpace.s8),
       child: AppCard(
         onTap: () => context.push(RoutePaths.vendor(offer.vendorId)),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(offer.vendorName,
-                      style: context.text.titleSmall?.copyWith(color: c.onPrimaryContainer)),
-                  Text(
-                    offer.gas != null
-                        ? '${offer.gas!.weightKg} kg · ${offer.gas!.requiresExchange ? "exchange" : "with deposit"}'
-                        : offer.condition,
-                    style: context.text.bodyMedium?.copyWith(color: c.textMed),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(offer.vendorName,
+                          style: context.text.titleSmall?.copyWith(color: c.onPrimaryContainer)),
+                      Text(
+                        offer.gas != null
+                            ? '${offer.gas!.weightKg} kg · ${offer.gas!.requiresExchange ? "exchange" : "with deposit"}'
+                            : offer.condition,
+                        style: context.text.bodyMedium?.copyWith(color: c.textMed),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(formatMoney(offer.priceMinor, offer.currency), style: context.text.titleMedium),
+              ],
+            ),
+            const SizedBox(height: AppSpace.s8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _openingChat ? null : _chat,
+                    icon: const Icon(AppIcons.chat_bubble_outline, size: 18),
+                    label: const Text('Chat'),
+                  ),
+                ),
+                if (offer.vendorPhoneAvailable) ...[
+                  const SizedBox(width: AppSpace.s8),
+                  Expanded(
+                    child: _phone == null
+                        ? OutlinedButton.icon(
+                            onPressed: _revealing ? null : _revealPhone,
+                            icon: const Icon(AppIcons.call, size: 18),
+                            label: Text(_revealing ? 'Loading…' : 'Show number'),
+                          )
+                        : FilledButton.icon(
+                            onPressed: _call,
+                            onLongPress: () {
+                              Clipboard.setData(ClipboardData(text: _phone!));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Number copied')),
+                              );
+                            },
+                            icon: const Icon(AppIcons.call, size: 18),
+                            label: FittedBox(child: Text(_phone!)),
+                          ),
                   ),
                 ],
-              ),
+              ],
             ),
-            Text(formatMoney(offer.priceMinor, offer.currency), style: context.text.titleMedium),
           ],
         ),
       ),

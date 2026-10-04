@@ -280,8 +280,8 @@ class StallApi {
     return PublicUser.fromJson(d);
   }
 
-  /// Uploads an image (avatar / vendor logo / vendor banner) and returns its
-  /// storage key — pass that key to [updateProfile] / [updateVendorProfile].
+  /// Uploads an image (avatar / vendor logo / banner / product photo) or a
+  /// product video and returns its storage key — pass that key to [updateProfile] / [updateVendorProfile].
   Future<String> uploadMedia({
     required List<int> bytes,
     required String filename,
@@ -308,6 +308,7 @@ class StallApi {
     String? banner,
     List<String>? themeColors,
     List<String>? services,
+    bool? showPhone,
   }) =>
       _send(
         'PATCH',
@@ -319,6 +320,7 @@ class StallApi {
           if (banner != null) 'banner': banner,
           if (themeColors != null) 'themeColors': themeColors,
           if (services != null) 'services': services,
+          if (showPhone != null) 'showPhone': showPhone,
         },
       );
 
@@ -629,6 +631,7 @@ class StallApi {
     String? banner,
     List<String>? themeColors,
     List<String>? services,
+    bool? showPhone,
     required Map<String, dynamic> business,
   }) async {
     final d = await _send(
@@ -641,6 +644,7 @@ class StallApi {
         if (banner != null) 'banner': banner,
         if (themeColors != null) 'themeColors': themeColors,
         if (services != null) 'services': services,
+        if (showPhone != null) 'showPhone': showPhone,
         'business': business,
       },
     );
@@ -669,6 +673,7 @@ class StallApi {
     String? brand,
     String? condition,
     List<String>? images,
+    String? video,
     Map<String, dynamic>? attributes,
   }) async {
     final d = await _send(
@@ -682,6 +687,7 @@ class StallApi {
         if (brand != null) 'brand': brand,
         if (condition != null) 'condition': condition,
         if (images != null) 'images': images,
+        if (video != null) 'video': video,
         if (attributes != null) 'attributes': attributes,
       },
     );
@@ -695,6 +701,8 @@ class StallApi {
     String? condition,
     int? priceMinor,
     List<String>? images,
+    // `''` removes the listing's video; null leaves it untouched.
+    String? video,
     int? quantity,
     Map<String, dynamic>? attributes,
   }) => _send(
@@ -706,6 +714,7 @@ class StallApi {
       if (condition != null) 'condition': condition,
       if (priceMinor != null) 'priceMinor': priceMinor,
       if (images != null) 'images': images,
+      if (video != null) 'video': video,
       if (quantity != null) 'quantity': quantity,
       if (attributes != null) 'attributes': attributes,
     },
@@ -1679,6 +1688,13 @@ class StallApi {
       body: {'deliveryId': deliveryId},
     );
     return d['conversationId'] as String;
+  }
+
+  /// Tap-to-reveal seller phone (signed-in only; 404 when the seller opted
+  /// out). Never cache it beyond the screen that asked.
+  Future<String> revealVendorPhone(String vendorId) async {
+    final d = await _send('GET', '/api/v1/vendors/$vendorId/phone');
+    return d['phone'] as String;
   }
 
   Future<String> conversationForVendor(String vendorId) async {

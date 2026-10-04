@@ -11,6 +11,7 @@ const Body = z.object({
   banner: z.string().max(500).optional(),
   themeColors: z.array(HexColor).min(3).max(7).optional(),
   services: z.array(z.string().min(1).max(40)).max(20).optional(),
+  showPhone: z.boolean().optional(),
   business: z.object({
     legalName: z.string().min(2).max(120),
     regNumber: z.string().max(60).optional(),
@@ -38,6 +39,7 @@ export const POST = withApi(
       banner: body.banner,
       themeColors: body.themeColors,
       services: body.services,
+      showPhone: body.showPhone,
       business: body.business,
     }),
 );

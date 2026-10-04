@@ -30,7 +30,8 @@ dependencies:
   image_cropper: ^12.2.1
   flutter_image_compress: ^2.5.1
   image: ^4.9.2
-  ffmpeg_kit_flutter_new: ^4.6.2
+  ffmpeg_kit_flutter_new_min: ^3.6.4
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

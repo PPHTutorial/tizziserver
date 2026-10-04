@@ -4,4 +4,8 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Debug only: the local dev stack is plain http (API :3000, MinIO media),
+         which Android 9+ blocks by default — notably for ExoPlayer product
+         videos. Release builds keep the HTTPS-only default. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

@@ -213,6 +213,7 @@ class OfferView {
     required this.vendorName,
     this.vendorLogo,
     this.vendorRating = 0,
+    this.vendorPhoneAvailable = false,
     this.gas,
   });
 
@@ -224,6 +225,8 @@ class OfferView {
   final String vendorName;
   final String? vendorLogo;
   final double vendorRating;
+  /// The seller shares a phone — fetch it with `revealVendorPhone` on tap.
+  final bool vendorPhoneAvailable;
   final GasListing? gas;
 
   factory OfferView.fromJson(Map<String, dynamic> j) {
@@ -237,6 +240,7 @@ class OfferView {
       vendorName: v['displayName'] as String? ?? 'Seller',
       vendorLogo: v['logo'] as String?,
       vendorRating: (v['ratingAvg'] as num?)?.toDouble() ?? 0,
+      vendorPhoneAvailable: v['phoneAvailable'] == true,
       gas: j['gas'] is Map<String, dynamic>
           ? GasListing.fromJson(j['gas'] as Map<String, dynamic>)
           : null,
@@ -633,6 +637,7 @@ class VendorStatus {
     this.banner,
     this.themeColors = const [],
     this.services = const [],
+    this.showPhone = true,
     this.business,
   });
   final bool onboarded;
@@ -646,6 +651,7 @@ class VendorStatus {
   final String? banner;
   final List<String> themeColors;
   final List<String> services;
+  final bool showPhone;
   final VendorBusinessLocation? business;
 
   bool get isApproved => kycStatus == 'APPROVED';
@@ -663,6 +669,7 @@ class VendorStatus {
         banner: j['banner'] as String?,
         themeColors: (j['themeColors'] as List?)?.map((e) => e as String).toList() ?? const [],
         services: (j['services'] as List?)?.map((e) => e as String).toList() ?? const [],
+        showPhone: j['showPhone'] != false,
         business: j['business'] == null
             ? null
             : VendorBusinessLocation.fromJson(j['business'] as Map<String, dynamic>),
@@ -724,6 +731,7 @@ class VendorProductDetail {
     this.priceMinor,
     this.currency = 'GHS',
     this.images = const [],
+    this.video,
     this.quantity = 0,
     this.attributes = const {},
   });
@@ -740,6 +748,7 @@ class VendorProductDetail {
   final int? priceMinor;
   final String currency;
   final List<String> images;
+  final String? video;
   final int quantity;
   final Map<String, dynamic> attributes;
 
@@ -759,6 +768,7 @@ class VendorProductDetail {
         images: (j['images'] as List<dynamic>? ?? const [])
             .map((e) => e as String)
             .toList(growable: false),
+        video: j['video'] as String?,
         quantity: _int(j['quantity']) ?? 0,
         attributes: (j['attributes'] as Map<String, dynamic>?) ?? const {},
       );

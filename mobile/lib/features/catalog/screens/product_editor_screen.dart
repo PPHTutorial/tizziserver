@@ -13,6 +13,7 @@ import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../../auth/auth_util.dart';
 import '../catalog_providers.dart';
+import '../media/product_media_editor.dart';
 
 /// §25 screens 456–462 — the add / edit product wizard. Creates a DRAFT, then
 /// offers to publish (`POST /vendors/products/{id}/publish`).
@@ -76,9 +77,9 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   late final _qty = TextEditingController(
     text: '${widget.existing?.quantity ?? 1}',
   );
-  late final _image = TextEditingController(
-    text: widget.existing?.images.firstOrNull,
-  );
+  late List<String> _images = [...?widget.existing?.images];
+  late String? _video = widget.existing?.video;
+  bool _mediaBusy = false;
   String? _categoryId;
   late String _condition = widget.existing?.condition ?? 'NEW';
   bool _busy = false;
@@ -119,7 +120,7 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
   void dispose() {
     _brandDebounce?.cancel();
     _brand.removeListener(_onBrandChanged);
-    for (final ctl in [_title, _desc, _brand, _price, _qty, _image]) {
+    for (final ctl in [_title, _desc, _brand, _price, _qty]) {
       ctl.dispose();
     }
     for (final ctl in _attrText.values) {
@@ -254,9 +255,6 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
 
     final err = await runCatching(() async {
       final api = ref.read(stallApiProvider);
-      final images = _image.text.trim().isEmpty
-          ? <String>[]
-          : [_image.text.trim()];
 
       if (_effectiveId == null) {
         _createdId = await api.createProduct(
@@ -266,7 +264,8 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
           priceMinor: _priceMinor,
           brand: _brand.text.trim().isEmpty ? null : _brand.text.trim(),
           condition: _condition,
-          images: images,
+          images: _images,
+          video: _video,
           attributes: attributes,
         );
         await api.updateProduct(
@@ -280,7 +279,10 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
           description: _desc.text.trim(),
           condition: _condition,
           priceMinor: _priceMinor,
-          images: images.isEmpty ? null : images,
+          // Always the full ordered list — sending only changed keys would
+          // wipe the rest (the route replaces every IMAGE row).
+          images: _images,
+          video: _video == widget.existing?.video ? null : (_video ?? ''),
           quantity: int.tryParse(_qty.text.trim()),
           attributes: attributes,
         );
@@ -501,23 +503,31 @@ class _EditorBodyState extends ConsumerState<_EditorBody> {
                     ],
                   ),
                   const SizedBox(height: AppSpace.s16),
-                  AppField(
-                    label: 'Image key (optional)',
-                    controller: _image,
-                    hintText: 'uploads/my-photo.jpg',
+                  ProductMediaEditor(
+                    images: _images,
+                    video: _video,
+                    onImagesChanged: (v) => setState(() => _images = v),
+                    onVideoChanged: (v) => setState(() => _video = v),
+                    onBusyChanged: (v) {
+                      if (mounted) setState(() => _mediaBusy = v);
+                    },
                   ),
                   InlineError(_error),
                   const SizedBox(height: AppSpace.s24),
                   PrimaryButton(
                     label: widget.isNew ? 'Save draft' : 'Save changes',
                     loading: _busy,
-                    onPressed: () => _save(thenPublish: false),
+                    onPressed: _mediaBusy
+                        ? null
+                        : () => _save(thenPublish: false),
                   ),
                   if (widget.isNew) ...[
                     const SizedBox(height: AppSpace.s12),
                     SecondaryButton(
                       label: 'Save & publish',
-                      onPressed: _busy ? null : () => _save(thenPublish: true),
+                      onPressed: _busy || _mediaBusy
+                          ? null
+                          : () => _save(thenPublish: true),
                     ),
                     const SizedBox(height: AppSpace.s8),
                     Text(

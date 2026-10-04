@@ -74,6 +74,8 @@ export const OfferView = z.object({
     logo: z.string().nullable(),
     ratingAvg: z.number(),
     ratingCount: z.number().int(),
+    /** Show "Show number" — fetch it from `GET /vendors/{id}/phone` on tap. */
+    phoneAvailable: z.boolean(),
   }),
   gas: z
     .object({
@@ -225,6 +227,7 @@ export const VendorMeResponse = ok(
       banner: z.string().nullable(),
       themeColors: z.array(z.string()),
       services: z.array(z.string()),
+      showPhone: z.boolean(),
       business: VendorBusinessLocation.nullable(),
     }),
   ]),
@@ -233,6 +236,8 @@ export const VendorMeResponse = ok(
 // --- requests -------------------------------------------------------
 const HexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 
+export const VendorPhoneResponse = ok(z.object({ phone: z.string() }));
+
 export const OnboardingRequest = z.object({
   displayName: z.string().min(2).max(80),
   bio: z.string().max(500).optional(),
@@ -240,6 +245,7 @@ export const OnboardingRequest = z.object({
   banner: z.string().max(500).optional(),
   themeColors: z.array(HexColor).min(3).max(7).optional(),
   services: z.array(z.string().min(1).max(40)).max(20).optional(),
+  showPhone: z.boolean().optional(),
   business: z.object({
     legalName: z.string().min(2).max(120),
     regNumber: z.string().max(60).optional(),
@@ -264,6 +270,7 @@ export const UpdateVendorProfileRequest = z.object({
   banner: z.string().max(500).optional(),
   themeColors: z.array(HexColor).min(3).max(7).optional(),
   services: z.array(z.string().min(1).max(40)).max(20).optional(),
+  showPhone: z.boolean().optional(),
 });
 
 export const CreateProductRequest = z.object({
@@ -275,6 +282,7 @@ export const CreateProductRequest = z.object({
   priceMinor: z.number().int().positive(),
   currency: z.string().length(3).optional(),
   images: z.array(z.string()).max(8).optional(),
+  video: z.string().optional(),
   attributes: z.record(z.string(), z.unknown()).optional(),
 });
 export const UpdateProductRequest = z.object({
@@ -285,6 +293,8 @@ export const UpdateProductRequest = z.object({
   categoryId: z.string().optional(),
   priceMinor: z.number().int().positive().optional(),
   images: z.array(z.string()).max(8).optional(),
+  /** Storage key of the listing video; `""` removes it. */
+  video: z.string().optional(),
   quantity: z.number().int().nonnegative().optional(),
   attributes: z.record(z.string(), z.unknown()).optional(),
 });
@@ -304,6 +314,7 @@ export const MyProductDetailResponse = ok(
     priceMinor: z.number().int().nullable(),
     currency: z.string(),
     images: z.array(z.string()),
+    video: z.string().nullable(),
     quantity: z.number().int(),
     attributes: z.record(z.string(), z.unknown()),
   }),

@@ -73,6 +73,7 @@ export interface OnboardingInput {
   banner?: string;
   themeColors?: string[];
   services?: string[];
+  showPhone?: boolean;
   business: {
     legalName: string;
     regNumber?: string;
@@ -101,6 +102,7 @@ export async function startVendorOnboarding(input: OnboardingInput) {
           ...(input.banner !== undefined ? { banner: input.banner } : {}),
           ...(input.themeColors !== undefined ? { themeColors: input.themeColors } : {}),
           ...(input.services !== undefined ? { services: input.services } : {}),
+          ...(input.showPhone !== undefined ? { showPhone: input.showPhone } : {}),
           platformIds: Array.from(new Set([...existing.platformIds, input.platformSlug])),
         },
       })
@@ -113,6 +115,7 @@ export async function startVendorOnboarding(input: OnboardingInput) {
           banner: input.banner,
           themeColors: input.themeColors ?? [],
           services: input.services ?? [],
+          showPhone: input.showPhone ?? true,
           status: "PENDING",
           platformIds: [input.platformSlug],
         },
@@ -134,6 +137,8 @@ export async function startVendorOnboarding(input: OnboardingInput) {
     update: {
       legalName: input.business.legalName,
       regNumber: input.business.regNumber,
+      // Resubmitting after a rejection must be able to change the number.
+      ...(input.business.phone !== undefined ? { phones: input.business.phone ? [input.business.phone] : [] } : {}),
       email: input.business.email,
       addressLine: input.business.addressLine,
       city: input.business.city,
@@ -200,6 +205,7 @@ export async function vendorKycStatus(userId: string) {
     banner: vendor.banner,
     themeColors: vendor.themeColors,
     services: vendor.services,
+    showPhone: vendor.showPhone,
     business: vendor.business
       ? {
           addressLine: vendor.business.addressLine,
@@ -222,7 +228,15 @@ export async function vendorKycStatus(userId: string) {
  */
 export async function updateMyVendorProfile(
   userId: string,
-  input: { displayName?: string; bio?: string; logo?: string; banner?: string; themeColors?: string[]; services?: string[] },
+  input: {
+    displayName?: string;
+    bio?: string;
+    logo?: string;
+    banner?: string;
+    themeColors?: string[];
+    services?: string[];
+    showPhone?: boolean;
+  },
 ) {
   const vendor = await prisma.vendorProfile.findUnique({ where: { userId } });
   if (!vendor) throw new AppError("FORBIDDEN", "Complete vendor onboarding first");
@@ -235,10 +249,50 @@ export async function updateMyVendorProfile(
       ...(input.banner !== undefined ? { banner: input.banner.trim() || null } : {}),
       ...(input.themeColors !== undefined ? { themeColors: input.themeColors } : {}),
       ...(input.services !== undefined ? { services: input.services } : {}),
+      ...(input.showPhone !== undefined ? { showPhone: input.showPhone } : {}),
     },
-    select: { id: true, displayName: true, bio: true, logo: true, banner: true, themeColors: true, services: true },
+    select: { id: true, displayName: true, bio: true, logo: true, banner: true, themeColors: true, services: true, showPhone: true },
   });
   return updated;
+}
+
+type PhoneSource = {
+  showPhone: boolean;
+  business: { phones: string[] } | null;
+  user: { phone?: string; phoneVerifiedAt: Date | null; deletedAt: Date | null };
+};
+
+/** The shop's business line first, else the owner's verified login phone. */
+function vendorPhone(v: PhoneSource): string | null {
+  if (!v.showPhone || v.user.deletedAt) return null;
+  const business = v.business?.phones.find((p) => p.trim());
+  if (business) return business.trim();
+  return v.user.phoneVerifiedAt ? (v.user.phone ?? null) : null;
+}
+
+/** Whether the product page should offer "Show number" for this vendor. */
+export function hasRevealablePhone(v: Omit<PhoneSource, "user"> & { user: Omit<PhoneSource["user"], "phone"> }) {
+  if (!v.showPhone || v.user.deletedAt) return false;
+  return Boolean(v.business?.phones.some((p) => p.trim())) || v.user.phoneVerifiedAt != null;
+}
+
+/**
+ * Tap-to-reveal: the number is fetched only when a signed-in buyer asks for
+ * it (rate-limited + audited at the route), never shipped in listing payloads.
+ */
+export async function revealVendorPhone(vendorId: string) {
+  const vendor = await prisma.vendorProfile.findFirst({
+    where: { id: vendorId, deletedAt: null },
+    select: {
+      showPhone: true,
+      business: { select: { phones: true } },
+      user: { select: { phone: true, phoneVerifiedAt: true, deletedAt: true } },
+    },
+  });
+  if (!vendor) throw new AppError("NOT_FOUND", "Vendor not found");
+  const phone = vendorPhone(vendor);
+  if (!phone) throw new AppError("NOT_FOUND", "This seller doesn't share a phone number. Send them a message instead.");
+  return { phone };
 }
 
 /**

@@ -32,6 +32,7 @@ class _EditShopProfileScreenState
   String? _bannerKey;
   List<String> _themeColors = const [];
   List<String> _services = const [];
+  bool _showPhone = true;
   bool _initialized = false;
   bool _uploadingLogo = false;
   bool _uploadingBanner = false;
@@ -47,6 +48,7 @@ class _EditShopProfileScreenState
     _bannerKey = s.banner;
     _themeColors = s.themeColors;
     _services = s.services;
+    _showPhone = s.showPhone;
   }
 
   @override
@@ -125,6 +127,7 @@ class _EditShopProfileScreenState
             // all — omit it entirely rather than send an under-sized array.
             themeColors: _themeColors.length >= 3 ? _themeColors : null,
             services: _services,
+            showPhone: _showPhone,
           );
       ref.invalidate(vendorStatusProvider);
       if (mounted) Navigator.of(context).pop();
@@ -207,6 +210,16 @@ class _EditShopProfileScreenState
                             ServicesPicker(
                               selected: _services,
                               onChanged: (v) => setState(() => _services = v),
+                            ),
+                            const SizedBox(height: AppSpace.s16),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              value: _showPhone,
+                              onChanged: (v) => setState(() => _showPhone = v),
+                              title: const Text('Let buyers call me'),
+                              subtitle: const Text(
+                                'Buyers tap "Show number" on your listings to see your business phone. Turn off to accept chat messages only.',
+                              ),
                             ),
                             if (_error != null) InlineError(_error!),
                             const SizedBox(height: AppSpace.s24),

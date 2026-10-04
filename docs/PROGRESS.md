@@ -4,11 +4,77 @@
 > Resume a cleared session by typing **`RESUME STALL`** (see `docs/RESUME.md`).
 > Flush state before clearing context by typing **`SAVE STALL`**.
 
-Last updated: **2026-09-12** (Session 60)
+Last updated: **2026-10-04** (Session 61)
 
 ---
 
 ## CURRENT STATE (one paragraph)
+
+**Session 61 (cont. 2) — LGPL ffmpeg, product-page chat/call, "Sell on Stall" flow.**
+(1) Swapped `ffmpeg_kit_flutter_new` (full-GPL) → **`ffmpeg_kit_flutter_new_min` 3.6.4
+(LGPL-3.0)**; `prepareProductVideo` now encodes with the hardware `h264_mediacodec` (Android)
+/ `h264_videotoolbox` (iOS) at 2.5 Mbps (no x264). iOS deployment target must be ≥14.0 for
+this pod. (2) **Seller contact on the product page** — each `_OfferRow` now has Chat
+(`conversationForVendor`) + **tap-to-reveal "Show number"** → Call (`url_launcher` `tel:`,
+long-press copies). User's policy: numbers shown by default but **never in public payloads** —
+only `vendor.phoneAvailable` ships; the number comes from new `GET /vendors/{id}/phone`
+(signed-in, 20/h rate limit, audited `vendor.phone.reveal`, 404 if opted out). Source:
+`Business.phones[0]`, else the owner's *verified* login phone. New `VendorProfile.showPhone
+Boolean @default(true)` (migration `20261004200000_vendor_show_phone`, hand-written — the
+dev DB was down) + "Let buyers call me" switch in `edit_shop_profile_screen.dart` and
+`PATCH /vendors/me`. Manifest `<queries>` for `tel`. (3) **"Sell on Stall"** — new
+`sell_onboarding.dart` `SellOnboardingFlow`: branded intro (perks + "Start selling") then 4
+steps (store + business phone + call toggle → branding → location w/ real country picker,
+city required → services + review) replacing the single long `_OnboardingForm` in
+`vendor_hub_screen.dart` (deleted). Decided **no separate `state` column**: the existing
+`Business.region` is labelled "State / region" (Ghana regions, Nigerian/US states). Fixed
+`startVendorOnboarding` dropping a changed business phone on resubmit; onboarding accepts
+`showPhone`. Contracts → `openapi.json` 207 paths/241 ops. typecheck 8/8, analyze 0.
+**Dev env note:** the user's *Intrieva* Docker stack occupies 5432/6379/9000 (and 9100/9101
+are taken) — Stall ran side-by-side: native PG `PGPORT=5433 node scripts/dev-postgres.mjs
+start`, containers `stall-dev-redis` (6380) + `stall-dev-s3` MinIO (9200, public bucket
+`stall-media`), API with env overrides for **both** `DATABASE_URL` and
+`DATABASE_POOLING_URL` (the client prefers the pooling URL) using `127.0.0.1` (not
+`localhost` — resolves to `::1`, Docker binds IPv4 only). Phone via `adb reverse` 3000/9200.
+
+**Session 61 (cont.) — Finished the product-media pipeline `a016c29` left half-done.** That
+commit added `image_cropper`, `google_mlkit_subject_segmentation`, `flutter_image_compress`,
+`image`, `ffmpeg_kit_flutter_new` + `product`/`productVideo` upload kinds, but nothing used
+them and the listing editor still had a free-text "Image key" field (which also silently
+dropped images 2–8 on every save of an existing listing — fixed). New
+`mobile/lib/features/catalog/media/`: `product_media_processor.dart` (crop → ≤1600px JPEG →
+optional ML Kit white-background on Android only; video → ffmpeg ≤1280px H.264 `faststart`,
+≤60s, pass-through ≤8MB, fallback to original ≤80MB) and `product_media_editor.dart` (up to 8
+photos, first = cover, make-cover/remove, camera or multi-pick, 1 video). Editor sends the full
+ordered `images` list + `video` (`''` clears) and blocks save while uploading. Backend core +
+routes already supported `video`; added it to `packages/contracts` (Create/Update/MyProduct)
+→ `openapi.json` 206 paths/240 ops. Android: `UCropActivity` + ML Kit `subject_segment`
+model meta-data in the manifest; `minSdk` 24 committed with a corrected comment. Verified:
+`pnpm typecheck` 8/8, `flutter analyze` 0. **Not yet run on a device.** ⚠️ `ffmpeg_kit_flutter_new`
+is the **full-GPL** build (x264) — licensing + APK-size decision for the user (see NEXT ACTIONS).
+
+**Session 61 — Ledger catch-up + repo consolidation (no code changes).** `tizziserver`
+(branch `stall-rebuild`) is now the **single canonical repo**; `stall-web`/`stall-mobile` are
+frozen at their S60 heads (`78e9591` / `29f7f55`) and no longer receive disbursements — see
+DECISION LOG 2026-10-04. Logged three commits made directly here after S60 that the ledger
+never recorded: **`485c246`** — brand-logo cache + variants (migrations
+`20260912122706_add_brand_logo_cache`, `20260912132333_brand_logo_variants`,
+`GET catalog/brands/logo`), `GET vendors/featured` + `featured_vendors_screen.dart`, a phone
+**country-code picker** (`countries.dart`, `country_picker.dart`, `phone_entry_screen.dart` —
+closes Figma-backlog item 1), nav/home/search/promotions touch-ups; **`35eacfd`** — email +
+phone change with OTP verify (`/me/email[/verify]`, `/me/phone[/verify]`), **vendor KYC**
+(`/vendors/kyc`, `vendor_kyc_screen.dart`, replaces `business_docs_screen.dart` + the
+`vendors/business/documents` route), shop-profile pickers (location/services/cover/theme
+color, `theme_palettes.dart`), brand catalog expansion, `packages/core/scripts/*-otp.ts` debug
+helpers, + a migration; **`a016c29`** — **vendor wallet** (`vendor_wallet_screen.dart`),
+**admin product-review queue** (`apps/api/app/admin/product-review/*`, wired into
+`vendors/products/{id}/publish`), `GET catalog/brands/search`, design-system
+`color_picker`/`color_names`/`selectors`, vendor-hub rework, + a migration. None of the three
+has been re-verified this session (typecheck/analyze/tests not run). Uncommitted at session
+start: `mobile/android/app/build.gradle.kts` `minSdk` 23→24 (comment above still says 23+),
+and a stray multi-sector vision note appended as a comment to
+`apps/api/app/api/v1/cart/route.ts` (left in place pending the user's call).
+`04-SCREEN-CATALOG.md` status column is stale (all 64 Figma frames are built per S59).
 
 **Session 60 — Disbursed S59, then shipped item 2/4: category-specific product
 fields.** Resumed on a stale gap: S59 finished item 1 (avatar/vendor upload) but —
@@ -676,6 +742,9 @@ B4 (real payment-gateway keys), B5 (Google Maps key), B6 (Firebase FCM) still st
 working fallbacks. Merge `stall-rebuild` → `main` and OS-rename `tizziserver` → `stall`
 remain user-owned.
 
+**SUPERSEDED (S61, 2026-10-04): `tizziserver` is canonical again — develop and commit here;
+the split repos are frozen.** Historical note follows.
+
 **Since S15, active development happens in the split repos, not here** — see the S15/S16
 CURRENT STATE paragraphs above. `stall-web` and `stall-mobile` (siblings of this folder) are
 the live repos with their own `main` branches; `tizziserver` stays as edit scratch space /
@@ -901,7 +970,35 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 **Post-launch UX backlog (S59/S60) — items 1–2/4 done + disbursed, do the rest in
 order, one per fresh session:**
-0. **Pre-flight: diff tizziserver against `stall-web`/`stall-mobile` before starting.**
+0. ~~**Pre-flight: diff tizziserver against `stall-web`/`stall-mobile` before starting.**~~
+   **OBSOLETE (S61)** — `tizziserver` is canonical, split repos frozen; nothing to disburse.
+   Instead: re-verify the post-S60 commits (`pnpm typecheck`, `flutter analyze`, Vitest).
+   S61: typecheck 8/8 + analyze 0 done; Vitest not yet re-run.
+0a′. **On-device test BLOCKED by this PC's Android toolchain (S61).** Every Gradle build
+   that actually runs `processGrandpriceDebugResources` deadlocks in `aapt2 link` (aapt2 idle,
+   Gradle waiting on its daemon reply; 2×20 min) — environmental: Defender real-time scanning
+   with no exclusions for `E:\gradle-cache`, the repo, the Android SDK/Flutter; ~3 GB free RAM
+   (WSL/Intrieva ~7.6 GB). User to add Defender exclusions + reboot, then run:
+   `flutter run -d R58R737VJ2N --flavor grandprice --dart-define=STALL_API_URL=http://localhost:3000 --dart-define=STALL_MEDIA_URL=http://localhost:9200/stall-media`
+   after **`pwsh scripts/dev-side-by-side.ps1`** (S61: brings up Stall PG :5433, Redis
+   :6380, MinIO :9200 + bucket, migrations, `adb reverse` 3000/9200, then the API — a reboot
+   wipes all of these, `localhost:3000` on the phone is dead without it). Also S61: the
+   **main manifest had no `INTERNET` permission** (only debug/profile did → release builds
+   could reach no server) — fixed; debug manifest now sets `usesCleartextTraffic="true"` (the
+   dev stack is plain http; ExoPlayer videos would otherwise fail), release stays HTTPS-only. Seed vendor `maqshsw826uh447tyyks55bk` (Accra Electronics
+   Hub) was given dev phone `+233200000001` so "Show number" appears on `nimbus-14-laptop`.
+0a. **Product media (S61) — on-device test (licensing decision DONE: LGPL `_min`).** Exercise
+   `product_editor_screen.dart` → `ProductMediaEditor` on Android: crop, multi-pick, white
+   background, cover reorder, video >8MB (transcode path). Needs MinIO/S3 up. **Decide:**
+   `ffmpeg_kit_flutter_new` is GPL (full-gpl, x264) — shipping it obliges GPL-compatible
+   distribution and adds tens of MB per ABI (measured S61: ffmpeg `.so`s = 40.8 MB arm64-v8a,
+   77.3 MB armeabi-v7a, ~47 MB each x86/x86_64, uncompressed). `assembleGrandpriceDebug`
+   built clean S61 (manifest UCrop + ML Kit + minSdk 24 OK); the `tizzigas` flavor stalled in
+   an idle `aapt2` at `processTizzigasDebugResources` — environmental (same code), retry
+   after a reboot / AV exclusion on the build dir. LGPL alternative: swap to
+   `ffmpeg_kit_flutter_new_min` and encode with `h264_mediacodec` (Android) /
+   `h264_videotoolbox` (iOS) — one-line change in `prepareProductVideo` — or drop on-device
+   transcoding and transcode server-side in `apps/worker`.
    S60 found a second, older layer of undisbursed drift (wishlist masonry grid,
    `select_role_screen.dart`/`settings_screen.dart` tweaks, a `socket.io-client` devDep,
    font assets, ~20 more mobile screen diffs, `docs/design/Untitled/*`) that predates S59
@@ -915,11 +1012,11 @@ order, one per fresh session:**
    (banner+logo picker, via seller dashboard → "Edit shop profile"). Needs MinIO/S3 actually
    running (`STORAGE_PROVIDER`) for uploaded images to resolve through `mediaUrl()`. Item 2:
    `product_editor_screen.dart`'s dynamic fields for `phones`/`laptops`/`fashion`.
-3. **Direct chat/call from the product page.** Surface the same chat entry point already on
+3. ✅ **DONE S61** (tap-to-reveal phone, vendor opt-out). **Direct chat/call from the product page.** Surface the same chat entry point already on
    the vendor screen (`vendor_screen.dart`) directly on `product_detail_screen.dart`. "Call"
    needs a decision on vendor phone-visibility policy before adding a dialer button — ask the
    user, don't assume.
-4. **Distinct "Sell on Stall" onboarding flow.** Its own branded entry point (not the generic
+4. ✅ **DONE S61** (`sell_onboarding.dart`; region doubles as state). **Distinct "Sell on Stall" onboarding flow.** Its own branded entry point (not the generic
    role grid) collecting logo/banner/shop name/structured address
    (street/city/state/region/country) — `Business`/`VendorProfile` need new address columns
    (migration). Keep it decoupled from the `edit_shop_profile_screen.dart` built in S59, so
@@ -943,7 +1040,7 @@ real backend bug. `winner_claim_screen.dart` already renders this correctly ("Bu
    unclear what this should even do operationally (approve the buyer's ticket? confirm stock
    for a product that's also draw-linked?), so this needs a product decision on the actual
    mechanic before it can be scoped, not just a missing-endpoint fix like the others below.
-1. **Country-code picker** for phone entry (`phone_entry_screen.dart`) — Figma's
+1. ✅ **DONE in `485c246`** (`countries.dart` + `country_picker.dart`). **Country-code picker** for phone entry (`phone_entry_screen.dart`) — Figma's
    `phone-verification` frame shows a flag+prefix selector (🇳🇬 +234); today it's one free-text
    field the user types the full E.164 number into. Needs a country list (flag/name/dial-code)
    + a picker sheet; purely additive, no backend change.
@@ -1089,6 +1186,7 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-10-04 (S61) | **`tizziserver` (branch `stall-rebuild`) is the single canonical repo again. Supersedes the S15 split decision: `stall-web`/`stall-mobile` are frozen at `78e9591`/`29f7f55` and no longer receive per-file disbursements.** Re-splitting for cross-platform delivery is user-owned, to be revisited later (e.g. as a scripted subtree/filter export, not manual copying). | Manual per-file disbursement drifted twice (S59 undisbursed; then ~73 mobile files after S60 as the user committed here directly). One source of truth stops the drift; the monorepo already builds web/API and the Flutter app independently. |
 | 2026-09-03 (S15) | **Split the `tizziserver` monorepo into two independent, fresh-history private GitHub repos — `stall-web` (everything but `mobile/`) and `stall-mobile` (the Flutter app) — both under account `PPHTutorial`. `tizziserver` itself is kept, untouched, as a pending revert point** (HEAD `33f2f93`; the uncommitted Phase 3–8 work was copied out, never committed here). Editing workflow going forward: make changes in `tizziserver` (it has the fullest, most current tree), then disburse — copy the changed files to the matching path in whichever split repo owns them (`mobile/*` → `stall-mobile`, everything else → `stall-web`) and commit there. `tizziserver` is not pushed from directly. | The user wants `stall-web`/`stall-mobile` to be the real, independently-versioned deliverables (each installable/buildable standalone, e.g. for separate CI or separate contributors), while preserving `tizziserver`'s working tree exactly as it was in case the Phase 3–8 buildout needs to be reverted later — splitting first and reverting `tizziserver` after would have lost that work permanently. |
 | 2026-09-02 (S14) | **`BoostTier` is the only source of ad/boost pricing + rank multipliers — nothing is hardcoded in the app, the ranker, or the API.** The admin console is the sole writer (`ads.upsertBoostTier`, `/admin/boost-tiers`); mobile reads the active set via `GET /ads/tiers`; `serving.rankBoostMap` reads `rankBoostBps` per campaign/boost. `env.ADS_DEFAULT_CPM/CPC_MINOR` are fallbacks only (a campaign with no tier). | The roadmap is explicit: "backend-configurable `BoostTier` (no hardcoded tiers)". Keeps pricing an ops lever, not a deploy. |
 | 2026-09-02 (S14) | **A campaign's full budget is charged to platform escrow on submit; `AdEvent`s accrue `spentMinor`; settle (COMPLETED/CANCELLED) releases the spent portion → platform REVENUE and refunds the remainder → vendor wallet.** CPM bills `round(priceMinor/1000)` per impression, CPC bills `priceMinor` per click, FLAT_DAILY bills a day rate in the nightly rollup. Budget-exhaustion auto-pauses the campaign. `settleCampaign` flips to its terminal status **first** (guarded `updateMany`) so a retry after a partial failure can't double-release into REVENUE. | Mirrors the S10/S12 escrow model (order + auction) — ad spend is another prepaid escrow that nets to zero. The status-first guard is the S14 security fix S1. |
@@ -1154,6 +1252,9 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Session | What changed |
 |------|---------|--------------|
+| 2026-10-04 | 61 (cont. 2) | **LGPL ffmpeg (`_min` + hardware H.264); product-page Chat + tap-to-reveal phone (`showPhone` opt-out, `GET /vendors/{id}/phone`); branded 4-step Sell on Stall flow.** Migration `20261004200000_vendor_show_phone` applied to dev DB (:5433). API verified: `phoneAvailable` in product payload, reveal 401 unauthenticated. |
+| 2026-10-04 | 61 (cont.) | **Product media pipeline finished** (picker/crop/compress/white-bg/video transcode + upload in the listing editor; contracts `video`; manifest UCrop + ML Kit; fixed image-loss-on-save). typecheck 8/8, analyze 0; device test + GPL decision pending. |
+| 2026-10-04 | 61 | **Ledger catch-up + repo consolidation, docs only.** Logged post-S60 commits `485c246`/`35eacfd`/`a016c29` (brand logos, featured vendors, country picker, email/phone change, vendor KYC, vendor wallet, admin product review, brand search, color pickers) in CURRENT STATE. Decided `tizziserver` is canonical; split repos frozen. NEXT ACTIONS pre-flight diff + Figma-backlog item 1 (country picker) marked done/obsolete. Oriented token-cheaply (heading grep + slices; no reads of `file.json`/renders/full ledger). |
 | 2026-09-11 | 59 | **The Figma structural fidelity sweep is now complete — all 64 real screens accounted for.** Final batch: `marketplace-promotions` confirmed as legitimate convergence onto the existing promotions/campaigns + coupon systems (no gap). `reviews-screen`: real gap — a dedicated full review list with a 1-5★ distribution bar chart didn't exist, only a hardcoded top-4 preview on product detail with no way to see the rest; added `listProductReviews` (cursor pagination + a `groupBy`-derived star distribution) + `GET .../reviews` (previously POST-only), and a new `ReviewsScreen` linked from product detail's "Reviews (N)" row via a new "See all" action. `empty-cart-state`/`loading-skeleton`/`error-state`: all three already well-covered by existing shared components (`EmptyState`, `SkeletonList`, `AppErrorView` — used across 14 files) — `AppErrorView` in particular is more sophisticated than the mockup (context-aware messaging: offline/maintenance/rate-limited/404/500 each get distinct copy, not just one generic message). `draw-stages` (live multi-stage draw visualization with a real-time spectator count and rolling standings): confirmed no backing exists anywhere — the actual draw engine is a commit-reveal mechanism resolving via one `runDraw` call, with no concept of "stages" or live viewer counts in the schema or realtime channels; flagged in NEXT ACTIONS alongside the other new-subsystem items rather than built. **Also this session**: ran the full app on the connected physical device via a fresh debug build + install (`adb reverse` needed for the physical device to reach the dev machine's `localhost:3000` — not a code bug) and visually confirmed several of this session's headline fixes live: the countdown timer on the flash-deals rail, and the wishlist heart now rendering on every product card across the home feed and similar-products rail. Verified throughout: `pnpm -r typecheck` clean, `@stall/core` test 75/77 (same 2 pre-existing unrelated failures), `flutter analyze` 0/0, `flutter test` 39/39 both `tizziserver` and standalone. API rebuilt + restarted, reviews route curl-verified live with real data. Committed to `stall-web` (`0221fe4`) and `stall-mobile` (`9d41875`). **Sweep summary**: of 64 real screens, 2 have no built counterpart (`featured-vendors`, `terms-auction-rules` — known since S47), 6 need genuinely new subsystems (country-code picker, vendor Follow, AI recommendations, trending-draws ranking, live draw-stage visualization, plus the S57 "Authorize draw seat" mechanic needing a product decision) and are recorded in NEXT ACTIONS as a scoped backlog, and every other screen was checked and — where real gaps existed — fixed. Real bugs found and fixed along the way: a genuine data-loss bug in product editing (S57), a fake/non-functional KYC submission on winner claims (S51), and a real backend cross-sell feature that existed in the schema but was never wired end-to-end (S52). |
 | 2026-09-11 | 58 | **Misc batch — one widely-leveraged fix (wishlist heart on the shared product card, used in every grid across the app) plus referral-screen share/explainer; settings, help-center, and terms-of-service confirmed either already solid or a known pre-existing gap.** `product-feed` (Figma's Explore-tab mockup, heart icon on every card): `ProductCardTile` — the single shared card component behind home rails, category grids, search results, and deals — had no wishlist affordance at all; only the full product-detail page could save an item. Converted it to a `ConsumerWidget` and added the same heart-overlay pattern already used on the standalone wishlist screen (top-right circle button, filled/outline heart, wired to the existing `toggleWishlist` endpoint with an error-tolerant tap handler matching product-detail's own pattern). Because this widget is reused so broadly, this single change adds quick-save to every product grid in the app at once. `referral-share`: had real stats/apply-code/referral-list already, but only "Copy code" existed (no native share) and no mention that referrals boost Inverse Draw qualification scoring — which is real backend behavior (`QualificationRule(factor: REFERRAL, weight: 0.25)`, confirmed in the seed data) that was simply never surfaced on the screen. Added a Share button (same `share_plus` pattern used elsewhere) and a GrandPrice-gated explainer note. `settings-screen`, `help-disputes` (support_screen.dart): both checked and confirmed already solid — settings intentionally routes 2FA/password/notifications to their real dedicated screens rather than reimplementing toggles inline (already self-documented in a code comment), and support has real tickets + FAQ, just organized slightly differently from the mockup (no search bar, no separate "track dispute" quick action — tickets already double as that). `terms-auction-rules`: confirmed still one of the two known, pre-existing gaps from the S47 coverage map (no built counterpart anywhere) — left as a known gap, not fabricated as placeholder legal text. Verified: `flutter analyze` 0/0, `flutter test` 39/39 both `tizziserver` and standalone (mobile-only batch, no backend changes). Committed to `stall-mobile` (`a4d6470`). ~17 screens remain in the structural pass. |
 | 2026-09-11 | 57 | **Seller-tools batch — found and fixed a real data-loss bug (edit-listing opened blank and silently blanked fields on save), added condition/pause/delete to product management, and enriched inventory + seller-orders with real data that existed but was never queried.** `create-listing`/`edit-listing`: `product_editor_screen.dart` never fetched the existing product when editing — the form opened blank, and since `updateProductDraft` always writes whatever the (empty) form holds with no validation gate on the edit path, saving without retyping the *entire* title and description would silently erase them. Fixed with a new `getMyProduct` (full editable detail) + `GET /vendors/products/{id}`, pre-populating every field. Also wired three real, backend-supported-but-never-exposed pieces: `condition` (NEW/USED/REFURBISHED — `createProductDraft` already took it, mobile never sent it; `updateProductDraft` didn't take it at all, now does), pause/resume (new `setListingPaused`, toggles the vendor's own `VendorOffer.status` without touching the shared `Product` row) + `POST .../pause`, and delete (new `archiveProduct` — soft-delete via `Product.status = ARCHIVED` + offer paused, never a hard delete since order history may reference it) + `DELETE /vendors/products/{id}`. `seller-inventory`: added real All/Active/Paused tabs (client-side filter on the already-fetched list, by offer status, with counts) plus Stock/Views per card — `quantity` (from `Inventory`) and `viewCount` (the `Product.views` relation, a unique-viewer count) were one join away and simply never queried; swapped the raw `Card`/`ListTile` for `AppCard`/`StatusBadge` to match the rest of the app (this screen predated the S16 sweep). `seller-orders`: added the buyer's name to each order card — `Order.customer` was one relation away and never selected. `seller-analytics` and `product-boosting` checked lightly (both are real, functional, data-backed screens, just structured differently from the Figma mockup) — not deep-verified against the mockup given the scope already covered this batch. **Found but deliberately NOT built**: Figma's `seller-orders` frame shows an "Authorize draw seat" action on every order card; no backend mechanism for this exists anywhere in the auction code, and what it should actually do operationally is genuinely unclear — flagged in NEXT ACTIONS as needing a product decision, not a missing-endpoint fix. Verified throughout: `pnpm -r typecheck` clean, `@stall/core` test 75/77 (same 2 pre-existing unrelated failures), `flutter analyze` 0/0, `flutter test` 39/39 both `tizziserver` and standalone. API rebuilt + restarted three times across this batch, each new route curl-verified (401 without auth). Committed to `stall-web` (`b6dddef`, `d52bae6`) and `stall-mobile` (`b309a8b`, `fbe3664`). ~20 screens remain in the structural pass. |

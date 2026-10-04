@@ -756,6 +756,10 @@ model VendorProfile {
   banner      String?
   themeColors String[]      @default([])
   services    String[]      @default([])
+  /// Buyers may reveal the shop phone (Business.phones[0], else the owner's
+  /// verified phone) with a tap on the product page — never in public payloads.
+  /// On by default; the vendor can opt out in shop settings.
+  showPhone   Boolean       @default(true)
   status      ProfileStatus @default(PENDING)
   verifiedAt  DateTime?
   ratingAvg   Float         @default(0)

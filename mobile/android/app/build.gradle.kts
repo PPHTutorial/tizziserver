@@ -43,8 +43,9 @@ android {
         applicationId = "com.stall.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // mobile_scanner needs 23+ (Android 6.0) — below the Flutter default of 21.
-        minSdk = 23
+        // 24+ (Android 7.0): ffmpeg_kit_flutter_new and ML Kit subject segmentation
+        // (product media); mobile_scanner alone needed 23.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
