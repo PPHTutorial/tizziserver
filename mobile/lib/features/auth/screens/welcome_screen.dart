@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/providers.dart';
 import '../../../app/router.dart';
 import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
@@ -16,6 +17,11 @@ class WelcomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
+    // Social sign-in is flag-gated per tenant (`social_login`) — the provider
+    // SDK hand-off isn't wired yet, so it's off by default.
+    final social =
+        ref.watch(bootstrapProvider).valueOrNull?.hasFeature('social_login') ??
+        false;
     return Scaffold(
       backgroundColor: c.bg,
       body: SafeArea(
@@ -42,25 +48,34 @@ class WelcomeScreen extends ConsumerWidget {
                 label: 'Use email instead',
                 onPressed: () => context.push(RoutePaths.email),
               ),
-              const SizedBox(height: AppSpace.s20),
-              Row(
-                children: [
-                  Expanded(child: Divider(color: c.border)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.s12),
-                    child: Text('or', style: context.text.bodyMedium?.copyWith(color: c.textLow)),
-                  ),
-                  Expanded(child: Divider(color: c.border)),
-                ],
-              ),
-              const SizedBox(height: AppSpace.s20),
-              for (final p in SocialProviderId.values) ...[
-                SecondaryButton(
-                  label: p.label,
-                  icon: p.icon,
-                  onPressed: () => startSocialSignIn(context, ref, p),
+              if (social) ...[
+                const SizedBox(height: AppSpace.s20),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: c.border)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpace.s12,
+                      ),
+                      child: Text(
+                        'or',
+                        style: context.text.bodyMedium?.copyWith(
+                          color: c.textLow,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: c.border)),
+                  ],
                 ),
-                const SizedBox(height: AppSpace.s12),
+                const SizedBox(height: AppSpace.s20),
+                for (final p in SocialProviderId.values) ...[
+                  SecondaryButton(
+                    label: p.label,
+                    icon: p.icon,
+                    onPressed: () => startSocialSignIn(context, ref, p),
+                  ),
+                  const SizedBox(height: AppSpace.s12),
+                ],
               ],
               const SizedBox(height: AppSpace.s8),
               Center(

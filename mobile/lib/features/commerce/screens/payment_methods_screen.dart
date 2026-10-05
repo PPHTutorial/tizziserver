@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -88,7 +89,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
                               icon: AppIcons.credit_card,
                               title: 'No payment methods',
                               message:
-                                  'Add a card or mobile-money account to check out faster.',
+                                  'Top up your wallet by card or mobile money, then check out from your balance.',
                             )
                           : Column(
                               children: [
@@ -97,16 +98,28 @@ class PaymentMethodsScreen extends ConsumerWidget {
                             ),
                     ),
                     const SizedBox(height: AppSpace.s8),
-                    OutlinedButton(
-                      onPressed: () => _addSheet(context, ref),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: const StadiumBorder(),
-                        side: BorderSide(color: c.primary),
-                        foregroundColor: c.primary,
+                    // Saving cards needs the provider's tokenisation (not wired
+                    // yet), so release builds route card/MoMo through wallet
+                    // top-ups (Paystack hosted checkout) instead of this form.
+                    if (!kDebugMode)
+                      Text(
+                        'Pay by card or mobile money when you top up your wallet.',
+                        textAlign: TextAlign.center,
+                        style: context.text.bodyMedium?.copyWith(
+                          color: c.textMed,
+                        ),
+                      )
+                    else
+                      OutlinedButton(
+                        onPressed: () => _addSheet(context, ref),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 52),
+                          shape: const StadiumBorder(),
+                          side: BorderSide(color: c.primary),
+                          foregroundColor: c.primary,
+                        ),
+                        child: const Text('+ Add New Payment Method'),
                       ),
-                      child: const Text('+ Add New Payment Method'),
-                    ),
                   ],
                 ),
               ),
@@ -126,12 +139,14 @@ class _MethodCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final m = method;
-    final isMobileMoney = const {
-      'momo',
-      'mtn momo',
-      'vodafone cash',
-      'airteltigo',
-    }.contains(m.gateway.toLowerCase()) || m.label.toLowerCase().contains('cash');
+    final isMobileMoney =
+        const {
+          'momo',
+          'mtn momo',
+          'vodafone cash',
+          'airteltigo',
+        }.contains(m.gateway.toLowerCase()) ||
+        m.label.toLowerCase().contains('cash');
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.s12),
       child: AppCard(

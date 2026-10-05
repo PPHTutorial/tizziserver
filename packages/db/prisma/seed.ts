@@ -57,7 +57,7 @@ const platformFeatures: Record<string, Record<string, FlagVal>> = {
     "wallet.withdraw": true,
     chat: true,
     coupons: true,
-    social_login: true,
+    social_login: false, // provider SDK hand-off not wired yet (MVP: phone/email OTP only)
     "kyc.required": true,
   },
   "tizzi-gas": {
@@ -71,7 +71,7 @@ const platformFeatures: Record<string, Record<string, FlagVal>> = {
     "wallet.withdraw": true,
     chat: true,
     coupons: true,
-    social_login: true,
+    social_login: false, // provider SDK hand-off not wired yet (MVP: phone/email OTP only)
     "kyc.required": true,
   },
 };
