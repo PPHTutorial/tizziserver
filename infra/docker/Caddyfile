@@ -18,3 +18,14 @@ api.{$DOMAIN} {
 rt.{$DOMAIN} {
 	reverse_proxy realtime:3001
 }
+
+# Public product/vendor media straight from MinIO (the bucket is public-read,
+# see minio-init). Read-only: anything but GET/HEAD is refused here, so the
+# S3 write API is never exposed. The app sets
+# --dart-define=STALL_MEDIA_URL=https://media.<domain>/stall-media.
+media.{$DOMAIN} {
+	@write not method GET HEAD
+	respond @write 405
+	reverse_proxy minio:9000
+	header Cache-Control "public, max-age=31536000, immutable"
+}

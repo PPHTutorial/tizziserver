@@ -70,7 +70,8 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
       mc mb --ignore-existing local/${S3_BUCKET:-stall-media} &&
-      echo 'minio bucket ready'
+      mc anonymous set download local/${S3_BUCKET:-stall-media} &&
+      echo 'minio bucket ready (public read; served at media.$${DOMAIN})'
       "
     restart: "no"
 
@@ -82,6 +83,43 @@ services:
       MEILI_ENV: production
     volumes:
       - meilidata:/meili_data
+
+  # One-shot schema migration before the app services start (reuses the api
+  # image, which carries packages/db + the Prisma CLI). `migrate deploy` only
+  # applies committed migrations — never resets or drops.
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    working_dir: /app/packages/db
+    command: ["pnpm", "exec", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stall}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stall}?schema=public
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  # Nightly compressed pg_dump kept 14 days in the `pgbackups` volume. This is
+  # on-box only — copy /backups off the VPS (e.g. rclone to R2/S3) for real
+  # disaster recovery.
+  pgbackup:
+    image: postgis/postgis:16-3.5
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: >
+      /bin/sh -c "
+      while true; do
+        pg_dump -h postgres -U ${POSTGRES_USER:-stall} -d ${POSTGRES_DB:-stall} -Fc -f /backups/stall-$$(date +%Y%m%d-%H%M).dump &&
+        echo backup ok;
+        find /backups -name 'stall-*.dump' -mtime +14 -delete;
+        sleep 86400;
+      done
+      "
+    volumes:
+      - pgbackups:/backups
+    depends_on:
+      postgres: { condition: service_healthy }
 
   api:
     build:
@@ -97,6 +135,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       STORAGE_PROVIDER: s3
     depends_on:
+      migrate: { condition: service_completed_successfully }
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       minio: { condition: service_healthy }
@@ -110,8 +149,13 @@ services:
     env_file: [../../.env.prod]
     environment:
       NODE_ENV: production
+      # realtime authorises room joins against Postgres (@stall/core).
+      DATABASE_URL: postgresql://${POSTGRES_USER:-stall}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stall}?schema=public
+      DATABASE_POOLING_URL: postgresql://${POSTGRES_USER:-stall}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-stall}?schema=public
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
     depends_on:
+      migrate: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     expose: ["3001"]
 
@@ -129,6 +173,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       STORAGE_PROVIDER: s3
     depends_on:
+      migrate: { condition: service_completed_successfully }
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       minio: { condition: service_healthy }
@@ -148,11 +193,13 @@ services:
     depends_on:
       - api
       - realtime
+      - minio
 
 volumes:
   pgdata:
   redisdata:
   miniodata:
   meilidata:
+  pgbackups:
   caddydata:
   caddyconfig:

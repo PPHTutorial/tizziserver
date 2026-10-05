@@ -34,6 +34,23 @@ resource "cloudflare_record" "realtime_v6" {
   proxied = true
 }
 
+resource "cloudflare_record" "media" {
+  zone_id = var.cloudflare_zone_id
+  name    = "media"
+  type    = "A"
+  content = var.vps_ip
+  proxied = true
+}
+
+resource "cloudflare_record" "media_v6" {
+  count   = var.vps_ipv6 == null ? 0 : 1
+  zone_id = var.cloudflare_zone_id
+  name    = "media"
+  type    = "AAAA"
+  content = var.vps_ipv6
+  proxied = true
+}
+
 # WAF: managed ruleset + a rate-limit on the auth + checkout endpoints.
 # Identical to infra/terraform/cloudflare.tf's rules — the origin changed
 # (VPS instead of Cloud Run), the edge policy didn't.
