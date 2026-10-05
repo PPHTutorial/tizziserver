@@ -47,11 +47,11 @@ class VendorScreen extends ConsumerWidget {
                     onPressed: vendor.valueOrNull == null
                         ? null
                         : () => SharePlus.instance.share(
-                              ShareParams(
-                                text:
-                                    'Check out ${vendor.valueOrNull!.displayName} on Stall.',
-                              ),
+                            ShareParams(
+                              text:
+                                  'Check out ${vendor.valueOrNull!.displayName} on Stall.',
                             ),
+                          ),
                   ),
                   PopupMenuButton<String>(
                     onSelected: (v) {
@@ -127,6 +127,8 @@ class VendorScreen extends ConsumerWidget {
                                       if (v.ratingCount > 0)
                                         '★ ${v.ratingAvg.toStringAsFixed(1)}',
                                       '${v.productCount} products',
+                                      if (v.followerCount > 0)
+                                        '${v.followerCount} ${v.followerCount == 1 ? 'follower' : 'followers'}',
                                       if (v.location != null) v.location,
                                     ].join(' · '),
                                     style: context.text.bodyMedium?.copyWith(
@@ -162,37 +164,52 @@ class VendorScreen extends ConsumerWidget {
                           AppSpace.s16,
                           0,
                         ),
-                        child: OutlinedButton.icon(
-                          icon: const Icon(
-                            AppIcons.chat_bubble_outline,
-                            size: 18,
-                          ),
-                          label: const Text('Message seller'),
-                          onPressed: () async {
-                            try {
-                              final cid = await ref
-                                  .read(stallApiProvider)
-                                  .conversationForVendor(vendorId);
-                              if (context.mounted) {
-                                context.push(
-                                  RoutePaths.conversation(cid),
-                                  extra: v.displayName,
-                                );
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      e is StallApiException
-                                          ? e.message
-                                          : 'Could not open chat.',
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
-                          },
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _FollowButton(
+                                vendorId: vendorId,
+                                initiallyFollowing: v.isFollowing,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpace.s8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: const Icon(
+                                  AppIcons.chat_bubble_outline,
+                                  size: 18,
+                                ),
+                                label: const Text('Message'),
+                                onPressed: () async {
+                                  try {
+                                    final cid = await ref
+                                        .read(stallApiProvider)
+                                        .conversationForVendor(vendorId);
+                                    if (context.mounted) {
+                                      context.push(
+                                        RoutePaths.conversation(cid),
+                                        extra: v.displayName,
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            e is StallApiException
+                                                ? e.message
+                                                : 'Could not open chat.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -301,4 +318,74 @@ class _EmptyShop extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Figma `seller-store` Follow toggle — optimistic, reverts on failure;
+/// signed-out users are pointed at sign-in.
+class _FollowButton extends ConsumerStatefulWidget {
+  const _FollowButton({
+    required this.vendorId,
+    required this.initiallyFollowing,
+  });
+  final String vendorId;
+  final bool initiallyFollowing;
+
+  @override
+  ConsumerState<_FollowButton> createState() => _FollowButtonState();
+}
+
+class _FollowButtonState extends ConsumerState<_FollowButton> {
+  late bool _following = widget.initiallyFollowing;
+  bool _busy = false;
+
+  Future<void> _toggle() async {
+    if (!ref.read(authControllerProvider).isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Sign in to follow stores.'),
+          action: SnackBarAction(
+            label: 'Sign in',
+            onPressed: () => context.push(RoutePaths.phone),
+          ),
+        ),
+      );
+      return;
+    }
+    final next = !_following;
+    setState(() {
+      _following = next;
+      _busy = true;
+    });
+    try {
+      await ref
+          .read(stallApiProvider)
+          .setFollowingVendor(widget.vendorId, follow: next);
+      ref.invalidate(vendorPageProvider(widget.vendorId));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _following = !next);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e is StallApiException ? e.message : 'Could not update follow.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _following
+      ? OutlinedButton.icon(
+          onPressed: _busy ? null : _toggle,
+          icon: const Icon(AppIcons.check_circle, size: 18),
+          label: const Text('Following'),
+        )
+      : FilledButton.icon(
+          onPressed: _busy ? null : _toggle,
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Follow'),
+        );
 }

@@ -542,6 +542,13 @@ class StallApi {
     return _items(d, FeaturedVendorDto.fromJson);
   }
 
+  /// Follow / unfollow a storefront (both idempotent); returns the new
+  /// follower count.
+  Future<int> setFollowingVendor(String id, {required bool follow}) async {
+    final d = await _send(follow ? 'POST' : 'DELETE', '/api/v1/vendors/$id/follow');
+    return (d['followerCount'] as num?)?.toInt() ?? 0;
+  }
+
   Future<VendorPage> vendor(String id) async {
     final d = await _send('GET', '/api/v1/vendors/$id', auth: false);
     return VendorPage.fromJson(d);

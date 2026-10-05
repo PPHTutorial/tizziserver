@@ -499,6 +499,8 @@ class VendorPage {
     this.verified = false,
     this.productCount = 0,
     this.location,
+    this.followerCount = 0,
+    this.isFollowing = false,
   });
 
   final String id;
@@ -511,6 +513,8 @@ class VendorPage {
   final bool verified;
   final int productCount;
   final String? location;
+  final int followerCount;
+  final bool isFollowing;
 
   factory VendorPage.fromJson(Map<String, dynamic> j) => VendorPage(
         id: j['id'] as String,
@@ -523,6 +527,8 @@ class VendorPage {
         verified: j['verifiedAt'] != null,
         productCount: _int(j['productCount']) ?? 0,
         location: j['location'] as String?,
+        followerCount: _int(j['followerCount']) ?? 0,
+        isFollowing: j['isFollowing'] == true,
       );
 }
 
