@@ -2,6 +2,11 @@
     <!-- Release builds talk to the API too — without this only debug/profile
          (whose manifests add it for the Flutter tool) could reach any server. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- geolocator (lib/core/location.dart): nearby sellers, delivery pins,
+         shop location, courier position. Without these every request is
+         silently denied on Android. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
