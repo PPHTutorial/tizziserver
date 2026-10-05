@@ -49,6 +49,11 @@ Tizzi Gas follows as a second store listing, and iOS follows after Android is st
 
 ### 2b. Code: remaining before launch (all ❌ unless noted)
 
+> **Update 2026-10-05 (overnight session S62), on `stall-rebuild`.** Done in code: **C1** Paystack adapter (hosted checkout, verify, refund, HMAC-SHA512 webhook; tested with a stubbed API only, so run one sandbox top-up before launch) · **C2** app opens `authorizationUrl` and confirms on return (`POST /payments/intents/{id}/confirm`) · **C3** payout drain only auto-settles under mock; manual `/admin/payouts` queue (mark paid with transfer ref / fail and refund) · **C4** manual card form hidden in release builds · **C5** in-app Delete account + Download my data (Settings → Privacy & legal) · **C6** social sign-in gated on `social_login` (seeded off) · **C7** `SEED_PROFILE=production` + `SEED_ADMIN_PHONE` · **C8** `GET /api/v1/health` · **C9** location permissions · **C10** release builds refuse missing dart-defines · **C11** `/legal/privacy` + `/legal/terms` (set `LEGAL_ENTITY_NAME`, `LEGAL_ENTITY_ADDRESS`, `SUPPORT_EMAIL`).
+> **Payments model at MVP: wallet-first.** Order checkout, tickets and win-target pay from the wallet; card/MoMo comes in through Paystack wallet top-ups. Direct gateway checkout refuses hosted providers with `TOP_UP_REQUIRED`.
+> Infra (2c) also fixed: prod compose runs `migrate deploy` before the apps, realtime has its DB URL, media is served read-only at `media.<domain>` (public-read bucket, Terraform DNS added), and nightly on-box `pg_dump` is kept 14 days (**still copy it off-box**). Production now refuses to boot with mock payments (unless `ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true` for staging) or without `REDIS_URL`.
+> Still open: **C12** device tap-through · **C13** push (FCM). **KYC documents share the public media bucket**, so they must move to a private bucket or signed URLs before real vendors upload IDs.
+
 | # | Item | Why it blocks | Where |
 |---|---|---|---|
 | C1 | **Implement `PaystackGateway`** (createIntent → `authorizationUrl`, verify/capture, refund, webhook HMAC-SHA512 with `PAYSTACK_SECRET_KEY`) | `PaystackGateway`/`FlutterwaveGateway`/`StripeGateway` all extend `UnconfiguredGateway` and **throw**, so `mock` is the only working provider | `packages/core/src/payments/providers.ts` |
