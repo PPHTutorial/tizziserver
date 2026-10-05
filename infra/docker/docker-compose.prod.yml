@@ -48,8 +48,10 @@ services:
       timeout: 3s
       retries: 10
 
+  # MinIO stopped publishing free images (Docker Hub minio/* and quay.io
+  # minio/mc are gone); pgsty/* are community builds of the same server/client.
   minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -64,7 +66,7 @@ services:
       retries: 15
 
   minio-init:
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
     depends_on:
       minio:
         condition: service_healthy
@@ -78,7 +80,8 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
       mc mb --ignore-existing local/${S3_BUCKET:-stall-media} &&
-      sed 's/BUCKET/${S3_BUCKET:-stall-media}/g' /policy.tmpl.json > /tmp/policy.json &&
+      p=$$(cat /policy.tmpl.json) &&
+      printf '%s' \"$${p//BUCKET/${S3_BUCKET:-stall-media}}\" > /tmp/policy.json &&
       mc anonymous set-json /tmp/policy.json local/${S3_BUCKET:-stall-media} &&
       echo 'minio bucket ready (listing media public at media.$${DOMAIN}; kyc/ + invoices/ private)'
       "
@@ -108,9 +111,8 @@ services:
       postgres: { condition: service_healthy }
     restart: "no"
 
-  # Nightly compressed pg_dump kept 14 days in the `pgbackups` volume. This is
-  # on-box only — copy /backups off the VPS (e.g. rclone to R2/S3) for real
-  # disaster recovery.
+  # Nightly compressed pg_dump kept 14 days in the `pgbackups` volume (on-box);
+  # `backup-offsite` copies each dump off the VPS.
   pgbackup:
     image: postgis/postgis:16-3.5
     restart: unless-stopped
@@ -129,6 +131,36 @@ services:
       - pgbackups:/backups
     depends_on:
       postgres: { condition: service_healthy }
+
+  # Off-box copy of the nightly dumps to any S3-compatible bucket (Cloudflare
+  # R2, Backblaze B2, AWS S3). Copy-only (`mc mirror` without --remove), so
+  # the remote keeps dumps the box has rotated out — set a lifecycle rule on
+  # the bucket for retention. Idles with a warning until BACKUP_S3_* are set.
+  backup-offsite:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+    restart: unless-stopped
+    environment:
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+    entrypoint: >
+      /bin/sh -c "
+      if [ -z \"$$BACKUP_S3_ENDPOINT\" ] || [ -z \"$$BACKUP_S3_BUCKET\" ]; then
+        echo 'WARNING: BACKUP_S3_* not set - database backups are on-box only';
+        exec sleep infinity;
+      fi;
+      mc alias set offsite \"$$BACKUP_S3_ENDPOINT\" \"$$BACKUP_S3_ACCESS_KEY_ID\" \"$$BACKUP_S3_SECRET_ACCESS_KEY\" >/dev/null || exit 1;
+      while true; do
+        sleep 3600;
+        mc mirror --overwrite /backups offsite/$$BACKUP_S3_BUCKET/postgres && echo offsite backup ok || echo 'offsite backup FAILED';
+        sleep 82800;
+      done
+      "
+    volumes:
+      - pgbackups:/backups:ro
+    depends_on:
+      - pgbackup
 
   api:
     build:
