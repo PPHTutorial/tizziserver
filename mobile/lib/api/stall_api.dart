@@ -1690,6 +1690,26 @@ class StallApi {
     return d['conversationId'] as String;
   }
 
+  /// Full JSON bundle of the caller's personal data (rate-limited 3/hour).
+  Future<Map<String, dynamic>> exportMyData() =>
+      _send('GET', '/api/v1/me/data-export');
+
+  /// `{status: none|GRACE_PERIOD|..., purgeAfter?, canCancel?}`.
+  Future<Map<String, dynamic>> accountDeletionStatus() =>
+      _send('GET', '/api/v1/me/account/deletion');
+
+  /// Schedules deletion after the server's grace period; 409 while the user
+  /// still has open orders.
+  Future<Map<String, dynamic>> requestAccountDeletion({String? reason}) =>
+      _send(
+        'POST',
+        '/api/v1/me/account/deletion',
+        body: {if (reason != null) 'reason': reason},
+      );
+
+  Future<void> cancelAccountDeletion() =>
+      _send('DELETE', '/api/v1/me/account/deletion');
+
   /// Tap-to-reveal seller phone (signed-in only; 404 when the seller opted
   /// out). Never cache it beyond the screen that asked.
   Future<String> revealVendorPhone(String vendorId) async {

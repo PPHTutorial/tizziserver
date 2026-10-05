@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../privacy_actions.dart';
 import '../../../app/providers.dart';
 import '../../../app/router.dart';
 import '../../../design/context_ext.dart';
@@ -145,11 +146,44 @@ class _PhoneEntryScreenState extends ConsumerState<PhoneEntryScreen> {
         ),
         InlineError(_error),
         const SizedBox(height: AppSpace.s16),
-        Text(
-          'By continuing you agree to the Terms and acknowledge the Privacy Policy.',
-          style: Theme.of(context).textTheme.bodyMedium,
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              'By continuing you agree to the ',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            _LegalLink('Terms', onTap: () => openLegalPage(ref, 'terms')),
+            Text(
+              ' and acknowledge the ',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            _LegalLink(
+              'Privacy Policy',
+              onTap: () => openLegalPage(ref, 'privacy'),
+            ),
+            Text('.', style: Theme.of(context).textTheme.bodyMedium),
+          ],
         ),
       ],
     );
   }
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink(this.label, {required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Text(
+      label,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: Theme.of(context).colorScheme.primary,
+        decoration: TextDecoration.underline,
+      ),
+    ),
+  );
 }

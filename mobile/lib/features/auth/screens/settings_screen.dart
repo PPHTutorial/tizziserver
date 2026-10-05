@@ -11,6 +11,7 @@ import '../../../design/tokens.g.dart';
 import '../../comms/screens/notifications_screen.dart'
     show NotificationPrefsSheet;
 import '../../trust/trust_providers.dart';
+import '../privacy_actions.dart';
 import '../security_actions.dart';
 
 /// Figma's `settings-screen` frame — Account Settings / Notifications /
@@ -27,6 +28,7 @@ class SettingsScreen extends ConsumerWidget {
     final c = context.colors;
     final boot = ref.watch(bootstrapProvider).valueOrNull;
     final security = ref.watch(securityCentreProvider);
+    final deletion = ref.watch(accountDeletionProvider).valueOrNull;
 
     Widget sectionLabel(String s) => Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -151,6 +153,33 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                       showChevron: false,
+                    ),
+                  ]),
+                  sectionLabel('Privacy & legal'),
+                  card([
+                    AppListRow(
+                      icon: AppIcons.description_outlined,
+                      label: 'Download my data',
+                      onTap: () => downloadMyData(context, ref),
+                    ),
+                    AppListRow(
+                      icon: AppIcons.shield_outlined,
+                      label: 'Privacy policy',
+                      onTap: () => openLegalPage(ref, 'privacy'),
+                    ),
+                    AppListRow(
+                      icon: AppIcons.gavel_outlined,
+                      label: 'Terms of service',
+                      onTap: () => openLegalPage(ref, 'terms'),
+                    ),
+                    AppListRow(
+                      icon: AppIcons.delete_outline,
+                      label: 'Delete account',
+                      tint: c.error,
+                      trailing: isDeletionPending(deletion)
+                          ? const StatusBadge('SCHEDULED', tone: BadgeTone.warning)
+                          : null,
+                      onTap: () => manageAccountDeletion(context, ref, deletion),
                     ),
                   ]),
                   const SizedBox(height: AppSpace.s24),
