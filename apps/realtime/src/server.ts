@@ -20,6 +20,7 @@ import { Server as IOServer, type Socket } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import IORedis from "ioredis";
 import { env } from "@stall/config";
+import { prisma } from "@stall/db";
 import { verifyAccessToken, delivery as deliverySvc, couriers, comms, initObservability } from "@stall/core";
 
 initObservability("stall-realtime");
@@ -78,6 +79,10 @@ async function authPrincipal(socket: Socket) {
     (typeof socket.handshake.query.token === "string" ? socket.handshake.query.token : undefined);
   if (!token) throw new Error("missing token");
   const claims = await verifyAccessToken(token);
+  // Same token-epoch check as the HTTP API — "log out everywhere" / account
+  // revocation must also refuse socket handshakes.
+  const te = await prisma.tokenEpoch.findUnique({ where: { userId: claims.sub } });
+  if (!te || te.ver !== claims.ver) throw new Error("token no longer valid");
   return { userId: claims.sub, roles: claims.roles, activeRole: claims.activeRole };
 }
 
