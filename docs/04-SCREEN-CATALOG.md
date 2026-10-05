@@ -6,6 +6,8 @@ status. **This is the checklist we tick as screens get specced and built.**
 
 Status legend: `⬜ not started` · `📝 spec written` · `🎨 design done` · `🔨 building` ·
 `✅ shipped`. Update the section rows as work proceeds (see `RESUME.md`).
+Statuses last re-verified against `mobile/lib` + `app/router.dart` on 2026-10-05 (post-S61);
+"shipped" = screen code merged, not yet device-verified (see `docs/06-MVP-RELEASE.md`).
 
 Gate column: `all` = every platform · `gp` = GrandPrice only · `gas` = Tizzi Gas relevant ·
 capability key in `()`.
@@ -16,40 +18,40 @@ capability key in `()`.
 
 | # | MD Section | Screens | Primary module(s) | Roles | Gate | Realtime | Maps | Phase | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| 01 | Design System | components | `packages/tokens` + `packages/design` | — | all | — | — | 0 | ⬜ |
-| 02 | Authentication & Account Access | 1–20 | `auth`, identity | all | all | — | — | 1 | 🔨 (built S8, pending device e2e) |
-| 03 | Customer Home & Marketplace | 21–40 | `catalog`, `promotions` | Customer | all (`catalog.scope`) | notif | nearby | 2 | 🔨 (S9: home rails, flash deals, banners, nearby-vendors map, quick actions — personalisation depth remains) |
-| 04 | Search & Discovery | 41–59 | `catalog/search` | Customer | all | — | location filter | 2 | 🔨 (S9: FTS+trigram search, sort, price-filter sheet, recent searches — suggestions/autocomplete remain) |
-| 05 | Product Experience | 60–80 | `catalog`, `reviews` | Customer | all | — | — | 2 | 🔨 (S9: detail, fullscreen gallery, offers/variants/reviews/Q&A, similar products, wishlist — video remains) |
-| 06 | Cart & Checkout | 81–103 | `cart`, `checkout`, `payments`, `coupons` | Customer | all | — | address picker | 3 | ⬜ |
-| 07 | Orders & Fulfilment | 104–123 | `orders`, `returns`, `refunds` | Customer | all | order events | — | 3 | ⬜ |
-| 08 | Delivery & Courier — Customer | 124–151 | `delivery` | Customer | all (`delivery.live_tracking`) | **tracking** | **live map** | 4 | ⬜ |
-| 09 | Courier Registration & Onboarding | 152–170 | `couriers`, `kyc` | Courier | all | — | — | 4 | ⬜ |
-| 10 | Courier Vehicle Management | 171–185 | `couriers/vehicles` | Courier | all | — | — | 4 | ⬜ |
-| 11 | Courier Service Area & Availability | 186–197 | `couriers/service-areas` | Courier | all | presence | **area editor, courier map** | 4 | ⬜ |
-| 12 | Courier Job Marketplace | 198–212 | `delivery/jobs`, dispatch | Courier | all | **jobs feed** | **jobs map** | 4 | ⬜ |
-| 13 | Courier Active Delivery | 213–242 | `delivery/active`, verification | Courier | all | **tracking** | **navigation** | 4 | ⬜ |
-| 14 | Courier Earnings & Wallet | 243–262 | `wallet`, `payouts`, `couriers/earnings` | Courier | all (`wallet.withdraw`) | balance push | — | 4 | ⬜ |
-| 15 | Courier Performance | 263–274 | `couriers/performance`, analytics | Courier | all | — | — | 4/7 | ⬜ |
-| 16 | Courier Profile & Settings | 275–290 | `couriers`, identity, `security` | Courier | all | — | — | 4 | ⬜ |
-| 17 | GrandPrice Auction System | 291–321 | `auctions` | Customer | **gp** (`auction`) | draw live | prize delivery map | 5 | ⬜ |
-| 18 | Tickets, Qualification & Ranking | 322–338 | `auctions/tickets`, `qualification` | Customer | **gp** (`auction`) | qualification push | — | 5 | ⬜ |
-| 19 | Wallet & Financial System | 339–356 | `wallet`, `payments`, `security` | Customer | all (`wallet`) | balance push | — | 3 | ⬜ |
-| 20 | Coupons & Promotions | 357–368 | `coupons`, `promotions`, `referrals` | Customer | all (`coupons`) | — | — | 3 | 🔨 (S9: promotions read-side — flash deals / campaigns / banners live; coupons + referrals = Phase 3) |
-| 21 | Chat & Communication | 369–382 | `chat` | Customer/Vendor/Courier | all (`chat`) | **chat** | share location | 6 | ⬜ |
-| 22 | Notifications | 383–394 | `notifications` | all | all | **notifications** | — | 6 | ⬜ |
-| 23 | Customer Profile | 395–415 | identity, `users`, addresses | Customer | all | — | saved locations | 2/6 | ⬜ |
-| 24 | KYC, Trust & Safety | 416–434 | `kyc`, `reports`, `security` | all | all | — | — | 6 | ⬜ |
-| 25 | Vendor Mobile System | 435–469 | `vendors`, `orders`, `catalog`, `wallet` | Vendor | all | order/pickup push | — | 2/3/4 | 🔨 (seller hub: onboarding→KYC→dashboard + add/edit/publish wizard built S9) |
-| 26 | Vendor Boosting & Advertising | 470–486 | `campaigns`, `boosts`, `ads` | Vendor | **gp** (`advertising`) | — | — | 7 | ⬜ |
-| 27 | Support & Disputes | 487–502 | `support`, `disputes` | all | all | dispute push | — | 6 | ⬜ |
-| 28 | Global System States | 503–522 | `packages/design` | — | all | offline detect | permission primers | 0/ongoing | ⬜ |
-| 29 | Global Overlays & Component Screens | components | `packages/design` | — | all | — | map sheet, QR | 0/ongoing | ⬜ |
-| 30 | Responsive & Tablet | variants | `packages/design` + every screen | — | all | — | two-pane maps | ongoing | ⬜ |
-| 31 | Font & Icon Requirements | rule | `packages/tokens` | — | all | — | FA markers | 0 | ⬜ |
+| 01 | Design System | components | `packages/tokens` + `packages/design` | — | all | — | — | 0 | ✅ (`mobile/lib/design/*` + `packages/tokens`) |
+| 02 | Authentication & Account Access | 1–20 | `auth`, identity | all | all | — | — | 1 | 🔨 (all screens built; native Google/Apple/Facebook SDKs still stubbed in `social.dart`) |
+| 03 | Customer Home & Marketplace | 21–40 | `catalog`, `promotions` | Customer | all (`catalog.scope`) | notif | nearby | 2 | ✅ (home rails, deals, nearby map, featured vendors; AI-recommendation banner deferred) |
+| 04 | Search & Discovery | 41–59 | `catalog/search` | Customer | all | — | location filter | 2 | ✅ (FTS+trigram search, filters, voice search, barcode scan) |
+| 05 | Product Experience | 60–80 | `catalog`, `reviews` | Customer | all | — | — | 2 | ✅ (detail, gallery + video S61, reviews, seller chat/call S61; vendor Follow deferred) |
+| 06 | Cart & Checkout | 81–103 | `cart`, `checkout`, `payments`, `coupons` | Customer | all | — | address picker | 3 | ✅ (cart, checkout, payment methods, confirmation — real gateway pending B4) |
+| 07 | Orders & Fulfilment | 104–123 | `orders`, `returns`, `refunds` | Customer | all | order events | — | 3 | ✅ (orders, order detail, returns, invoices) |
+| 08 | Delivery & Courier — Customer | 124–151 | `delivery` | Customer | all (`delivery.live_tracking`) | **tracking** | **live map** | 4 | ✅ (`delivery_tracking_screen.dart` live map + rating; masked-call bridge not built) |
+| 09 | Courier Registration & Onboarding | 152–170 | `couriers`, `kyc` | Courier | all | — | — | 4 | ✅ (`courier_onboarding_screen.dart`) |
+| 10 | Courier Vehicle Management | 171–185 | `couriers/vehicles` | Courier | all | — | — | 4 | ✅ (`courier_vehicles_screen.dart`) |
+| 11 | Courier Service Area & Availability | 186–197 | `couriers/service-areas` | Courier | all | presence | **area editor, courier map** | 4 | ✅ (`courier_areas_screen.dart`) |
+| 12 | Courier Job Marketplace | 198–212 | `delivery/jobs`, dispatch | Courier | all | **jobs feed** | **jobs map** | 4 | ✅ (`courier_jobs_screen.dart`) |
+| 13 | Courier Active Delivery | 213–242 | `delivery/active`, verification | Courier | all | **tracking** | **navigation** | 4 | ✅ (`active_delivery_screen.dart`, foreground location) |
+| 14 | Courier Earnings & Wallet | 243–262 | `wallet`, `payouts`, `couriers/earnings` | Courier | all (`wallet.withdraw`) | balance push | — | 4 | ✅ (`courier_earnings_screen.dart`) |
+| 15 | Courier Performance | 263–274 | `couriers/performance`, analytics | Courier | all | — | — | 4/7 | ✅ (`courier_performance_screen.dart` + history) |
+| 16 | Courier Profile & Settings | 275–290 | `couriers`, identity, `security` | Courier | all | — | — | 4 | ✅ (`courier_profile_screen.dart`) |
+| 17 | GrandPrice Auction System | 291–321 | `auctions` | Customer | **gp** (`auction`) | draw live | prize delivery map | 5 | 🔨 (hub, detail, win/claim built; live multi-stage draw + Trending Draws deferred) |
+| 18 | Tickets, Qualification & Ranking | 322–338 | `auctions/tickets`, `qualification` | Customer | **gp** (`auction`) | qualification push | — | 5 | ✅ (qualification, my tickets, referrals) |
+| 19 | Wallet & Financial System | 339–356 | `wallet`, `payments`, `security` | Customer | all (`wallet`) | balance push | — | 3 | ✅ (wallet, transaction history) |
+| 20 | Coupons & Promotions | 357–368 | `coupons`, `promotions`, `referrals` | Customer | all (`coupons`) | — | — | 3 | ✅ (coupons, campaigns, referrals) |
+| 21 | Chat & Communication | 369–382 | `chat` | Customer/Vendor/Courier | all (`chat`) | **chat** | share location | 6 | ✅ (inbox, conversation, block/report) |
+| 22 | Notifications | 383–394 | `notifications` | all | all | **notifications** | — | 6 | 🔨 (notification centre + prefs; FCM push not wired in the app — B6) |
+| 23 | Customer Profile | 395–415 | identity, `users`, addresses | Customer | all | — | saved locations | 2/6 | 🔨 (profile, settings, addresses, security; no in-app account-deletion UI yet) |
+| 24 | KYC, Trust & Safety | 416–434 | `kyc`, `reports`, `security` | all | all | — | — | 6 | ✅ (vendor KYC, courier KYC, security centre, reports) |
+| 25 | Vendor Mobile System | 435–469 | `vendors`, `orders`, `catalog`, `wallet` | Vendor | all | order/pickup push | — | 2/3/4 | ✅ (Sell on Stall flow S61, dashboard, listings, orders, wallet, analytics) |
+| 26 | Vendor Boosting & Advertising | 470–486 | `campaigns`, `boosts`, `ads` | Vendor | **gp** (`advertising`) | — | — | 7 | ✅ (advertising centre, campaign detail, sponsored rail) |
+| 27 | Support & Disputes | 487–502 | `support`, `disputes` | all | all | dispute push | — | 6 | ✅ (`support_screen.dart`, `disputes_screen.dart`) |
+| 28 | Global System States | 503–522 | `packages/design` | — | all | offline detect | permission primers | 0/ongoing | 🔨 (skeleton/error/empty states in `components.dart`; offline detect + permission primers missing) |
+| 29 | Global Overlays & Component Screens | components | `packages/design` | — | all | — | map sheet, QR | 0/ongoing | 🔨 (sheets, map, report sheet; QR display not built) |
+| 30 | Responsive & Tablet | variants | `packages/design` + every screen | — | all | — | two-pane maps | ongoing | 🔨 (`responsive.dart` + product-detail tablet split; most screens phone-only) |
+| 31 | Font & Icon Requirements | rule | `packages/tokens` | — | all | — | FA markers | 0 | ✅ (Outfit/Inter bundled, FA icon map) |
 | 32 | Core Mobile Navigation | 3 nav sets | `platform` bootstrap + `AppBottomNav` | all | all | — | — | 1 | ✅ (S8 — `AppBottomNav` from `bootstrap.nav`; S9 wired tab bodies) |
 | 33 | Data-Model Awareness | rule | `packages/db` | — | — | — | — | see `02-DATA-MODEL.md` | ✅ (outlined) |
-| 34 | Final Figma Requirement | org rule | design file structure | — | — | — | — | ongoing | ⬜ |
+| 34 | Final Figma Requirement | org rule | design file structure | — | — | — | — | ongoing | ⬜ (design-file rule — not an app deliverable) |
 
 ## Feature-gate summary (what Tizzi Gas does NOT get)
 
