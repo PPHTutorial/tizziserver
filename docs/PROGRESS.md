@@ -1000,8 +1000,10 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
    coupons, a return refunds the buyer only the deal price and returns the subsidy to the
    platform (`activeFlashDiscounts` in `catalog/promotions.ts`, `quoteCheckout`,
    `reviewReturn`; test in `commerce.test.ts`). Switch to vendor-funded later = add an
-   opt-in on `PromotionItem` + price the vendor sub-order at the deal price; (b) coupon funding (now platform-funded:
-   vendor paid on full price) and whether return refunds should deduct the coupon share;
+   opt-in on `PromotionItem` + price the vendor sub-order at the deal price; (b) ~~coupon share on returns~~ **S63: a
+   return now forfeits the returned items' proportional share of the coupon** (refund = paid −
+   share; vendor charged list; share back to platform revenue — `couponShare` in
+   `commerce/orders.ts`, test in `commerce.test.ts`);
    (c) MVP scope per `06-MVP-RELEASE.md` §1 (GrandPrice-only, Android, Inverse Draw off).
 2. **Accounts/keys:** Paystack (test → live; set webhook URL
    `https://api.<domain>/api/v1/payments/webhook?gateway=paystack`, `PAYSTACK_CALLBACK_URL`),

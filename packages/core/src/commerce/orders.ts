@@ -614,6 +614,7 @@ export async function requestReturn(
           }
           amountMinor += paidShare(item, line.qty);
         }
+        amountMinor -= await couponShare(tx, vo.orderId, amountMinor);
 
         const ret = await tx.return.create({
           data: { vendorOrderId, reason: input.reason, items: input.items as unknown as Prisma.InputJsonValue, status: "REQUESTED" },
@@ -718,6 +719,7 @@ export async function reviewReturn(userId: string, returnId: string, decision: "
     amountMinor += paidShare(item, line.qty);
     listMinor += item.unitPriceMinor * line.qty;
   }
+  amountMinor -= await couponShare(prisma, ret.vendorOrder.orderId, amountMinor);
   if (amountMinor <= 0) throw new AppError("CONFLICT", "Return has no refundable items");
 
   const order = ret.vendorOrder.order;
@@ -731,13 +733,13 @@ export async function reviewReturn(userId: string, returnId: string, decision: "
     memo: `Return refund · ${order.number}`,
     reference: { orderId: order.id, vendorOrderId: ret.vendorOrderId, returnId: ret.id, refundId: refund.id },
   });
-  // The vendor was paid on the list price; the flash-deal part of that was a
-  // platform subsidy, so it goes back to the platform, not to the buyer.
+  // The vendor was paid on the list price; the flash-deal and coupon parts of
+  // that were a platform subsidy, so they go back to the platform, not the buyer.
   const subsidyMinor = listMinor - amountMinor;
   if (subsidyMinor > 0) {
     await postTxn({
       type: "ADJUSTMENT",
-      memo: `Flash-deal subsidy returned · ${order.number}`,
+      memo: `Promo subsidy returned · ${order.number}`,
       reference: { orderId: order.id, returnId: ret.id },
       lines: [
         { account: vendorPayable(vp.id, order.currency), direction: "DEBIT", amountMinor: subsidyMinor },
@@ -763,6 +765,21 @@ export async function reviewReturn(userId: string, returnId: string, decision: "
 /** What the buyer actually paid for `qty` units of an order line (flash deals included). */
 function paidShare(item: { qty: number; unitPriceMinor: number; totalMinor: number }, qty: number) {
   return item.qty > 0 ? Math.round((item.totalMinor * qty) / item.qty) : item.unitPriceMinor * qty;
+}
+
+/**
+ * The coupon's share of returned goods: the coupon was spread over every item
+ * in the order, so returning items forfeits their proportional part of it
+ * (the buyer can't keep coupon value on goods they sent back).
+ */
+async function couponShare(db: Pick<typeof prisma, "order" | "couponRedemption">, orderId: string, paidReturnedMinor: number) {
+  const redemption = await db.couponRedemption.findFirst({ where: { orderId }, select: { amountMinor: true } });
+  if (!redemption || redemption.amountMinor <= 0) return 0;
+  const order = await db.order.findUniqueOrThrow({ where: { id: orderId }, select: { itemsSubtotalMinor: true, discountMinor: true } });
+  // What the buyer paid for all items before the coupon (list minus flash deals).
+  const paidItemsMinor = order.itemsSubtotalMinor - (order.discountMinor - redemption.amountMinor);
+  if (paidItemsMinor <= 0) return 0;
+  return Math.min(paidReturnedMinor, Math.round((redemption.amountMinor * paidReturnedMinor) / paidItemsMinor));
 }
 
 /** The vendor's return queue (pending + past decisions). */

@@ -199,6 +199,35 @@ describe("flash deals (platform-funded)", () => {
   });
 });
 
+describe("coupon + return", () => {
+  it("a return forfeits the returned items' share of the coupon, which goes back to the platform", async () => {
+    const userId = await newCustomer();
+    await wallet.initiateTopUp({ userId, amountMinor: 1_000_000, platformSlug: PLATFORM });
+    await commerce.addToCart({ userId, platformSlug: PLATFORM, offerId: offerA, qty: 2 });
+    await commerce.applyCoupon({ userId, platformSlug: PLATFORM, code: "welcome10" });
+    const order = await commerce.placeOrder({ userId, platformSlug: PLATFORM, fulfilmentMethod: "PICKUP", payment: { method: "wallet" } });
+    const coupon = order.discountMinor;
+    expect(coupon).toBeGreaterThan(0);
+
+    const vo = order.vendorOrders[0]!;
+    const item = vo.items[0]!;
+    const vendorUser = await prisma.vendorProfile.findUniqueOrThrow({ where: { id: vo.vendorId }, select: { userId: true } });
+    await commerce.completeVendorOrder(vendorUser.userId, vo.id);
+
+    const expected = item.unitPriceMinor - Math.round(coupon / 2);
+    const walletBefore = await wallet.walletBalanceMinor(userId);
+    const payableBefore = await balanceOf(vendorPayable(vo.vendorId));
+    const revenueBefore = await balanceOf(platformRevenue(PLATFORM));
+    const req = await commerce.requestReturn(userId, vo.id, { reason: "changed mind", items: [{ orderItemId: item.id, qty: 1 }] });
+    expect(req.amountMinor).toBe(expected);
+    const reviewed = await commerce.reviewReturn(vendorUser.userId, req.id, "APPROVED");
+    expect(reviewed.refund?.amountMinor).toBe(expected);
+    expect(await wallet.walletBalanceMinor(userId)).toBe(walletBefore + expected);
+    expect(await balanceOf(vendorPayable(vo.vendorId))).toBe(payableBefore - item.unitPriceMinor);
+    expect(await balanceOf(platformRevenue(PLATFORM))).toBe(revenueBefore + (item.unitPriceMinor - expected));
+  });
+});
+
 describe("gateway payment + cancel/refund", () => {
   it("captures via the mock gateway, then a cancel refunds the original card — not the wallet", async () => {
     const userId = await newCustomer();
