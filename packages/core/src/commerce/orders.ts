@@ -434,8 +434,6 @@ export async function cancelOrder(userId: string, orderId: string) {
     throw new AppError("CONFLICT", "A seller has already started preparing part of this order — contact support");
   }
 
-  await releaseReservations(o.vendorOrders.map((v) => v.id)).catch(() => {});
-
   await prisma.$transaction(async (tx) => {
     // Atomic compare-and-swap: only one concurrent cancel request can win this
     // update, so a double-tap / retried request can't both pass the pre-check
@@ -447,11 +445,23 @@ export async function cancelOrder(userId: string, orderId: string) {
     if (guard.count === 0) {
       throw new AppError("CONFLICT", "This order was already updated by another request");
     }
-    await tx.vendorOrder.updateMany({ where: { orderId: o.id }, data: { status: "CANCELLED" } });
+    // Same CAS for the sub-orders: a vendor who moved to PREPARING after our
+    // pre-check above wins, and the whole cancel rolls back.
+    const voGuard = await tx.vendorOrder.updateMany({
+      where: { orderId: o.id, status: { in: ["NEW", "ACCEPTED"] } },
+      data: { status: "CANCELLED" },
+    });
+    if (voGuard.count !== o.vendorOrders.length) {
+      throw new AppError("CONFLICT", "A seller has already started preparing part of this order — contact support");
+    }
     await tx.fulfilment.updateMany({ where: { vendorOrderId: { in: o.vendorOrders.map((v) => v.id) } }, data: { status: "CANCELLED" } });
     await tx.orderEvent.create({ data: { orderId: o.id, type: "CANCELLED", actorType: "USER", actorId: userId } });
     await tx.outboxEvent.create({ data: { type: "order.cancelled", aggregateType: "Order", aggregateId: o.id, payload: { number: o.number } } });
   });
+
+  // Only the request that won the CAS above releases the inventory holds — a
+  // losing double-tap used to release them a second time before failing.
+  await releaseReservations(o.vendorOrders.map((v) => v.id)).catch(() => {});
 
   // Refund the captured total — to the original card if this was a gateway
   // order, otherwise to the customer's wallet.
@@ -831,18 +841,46 @@ export async function getVendorOrder(userId: string, vendorOrderId: string) {
   };
 }
 
-export async function setVendorOrderStatus(userId: string, vendorOrderId: string, next: "ACCEPTED" | "PREPARING" | "READY_FOR_PICKUP" | "HANDED_OVER") {
+/** Vendor prep states, in order. A sub-order only ever moves forward. */
+const VENDOR_PREP_FLOW = ["NEW", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "HANDED_OVER"] as const;
+type VendorPrepStatus = Exclude<(typeof VENDOR_PREP_FLOW)[number], "NEW">;
+/** Parent-order states in which a vendor may act on (prep / complete) a sub-order — i.e. paid and still live. */
+const ACTIONABLE_ORDER_STATUSES = ["PLACED", "CONFIRMED", "PARTIALLY_FULFILLED"] as const;
+
+export async function setVendorOrderStatus(userId: string, vendorOrderId: string, next: VendorPrepStatus) {
   const vp = await vendorProfileFor(userId);
-  const vo = await prisma.vendorOrder.findFirst({ where: { id: vendorOrderId, vendorId: vp.id } });
+  const vo = await prisma.vendorOrder.findFirst({ where: { id: vendorOrderId, vendorId: vp.id }, include: { order: { select: { status: true } } } });
   if (!vo) throw new AppError("NOT_FOUND", "Sub-order not found");
   if (["COMPLETED", "CANCELLED"].includes(vo.status)) throw new AppError("CONFLICT", `Sub-order is already ${vo.status}`);
-  await prisma.$transaction([
-    prisma.vendorOrder.update({ where: { id: vo.id }, data: { status: next } }),
-    prisma.orderEvent.create({ data: { orderId: vo.orderId, type: `VENDOR_${next}`, actorType: "USER", actorId: userId, data: { vendorOrderId } } }),
-    ...(next === "READY_FOR_PICKUP"
-      ? [prisma.fulfilment.updateMany({ where: { vendorOrderId: vo.id }, data: { status: "READY", readyAt: new Date() } })]
-      : []),
-  ]);
+  if (!(ACTIONABLE_ORDER_STATUSES as readonly string[]).includes(vo.order.status)) {
+    throw new AppError("CONFLICT", `The order is ${vo.order.status} — it can't be prepared`);
+  }
+
+  const nextRank = VENDOR_PREP_FLOW.indexOf(next);
+  const currentRank = VENDOR_PREP_FLOW.indexOf(vo.status as (typeof VENDOR_PREP_FLOW)[number]);
+  if (nextRank < currentRank) {
+    throw new AppError("CONFLICT", `Can't move a sub-order back from ${vo.status} to ${next}`);
+  }
+
+  if (nextRank > currentRank) {
+    // Compare-and-swap on (our status, a live parent order): a concurrent
+    // customer cancel or a parallel status change makes this a no-op instead
+    // of resurrecting/rewinding the sub-order.
+    const predecessors = VENDOR_PREP_FLOW.slice(0, nextRank);
+    await prisma.$transaction(async (tx) => {
+      const guard = await tx.vendorOrder.updateMany({
+        where: { id: vo.id, status: { in: [...predecessors] }, order: { status: { in: [...ACTIONABLE_ORDER_STATUSES] } } },
+        data: { status: next },
+      });
+      if (guard.count === 0) throw new AppError("CONFLICT", "This sub-order was already updated by another request");
+      await tx.orderEvent.create({ data: { orderId: vo.orderId, type: `VENDOR_${next}`, actorType: "USER", actorId: userId, data: { vendorOrderId } } });
+      if (next === "READY_FOR_PICKUP") {
+        await tx.fulfilment.updateMany({ where: { vendorOrderId: vo.id }, data: { status: "READY", readyAt: new Date() } });
+      }
+    });
+  }
+  // nextRank === currentRank: an idempotent retry — no new event, but still
+  // fall through so a READY_FOR_PICKUP retry can re-attempt a failed spawn.
 
   // Ready for pickup + delivery fulfilment ⇒ spawn a Delivery and start dispatch.
   let deliveryId: string | null = null;
@@ -868,6 +906,15 @@ export async function completeVendorOrder(userId: string, vendorOrderId: string)
   const vp = await vendorProfileFor(userId);
   const vo = await fetchVendorOrderWithItems({ id: vendorOrderId, vendorId: vp.id });
   if (!vo) throw new AppError("NOT_FOUND", "Sub-order not found");
+  if (vo.status === "COMPLETED") return { vendorOrderId: vo.id, status: "COMPLETED" as const };
+  // A delivery sub-order is completed by the courier's verified drop-off
+  // (`completeVendorOrderSystem`). Letting the vendor self-complete it would
+  // release their payout from escrow before the buyer has the goods — and
+  // would also block the buyer's cancel/refund.
+  const ful = await prisma.fulfilment.findUnique({ where: { vendorOrderId: vo.id }, select: { method: true } });
+  if (ful?.method === "DELIVERY") {
+    throw new AppError("CONFLICT", "Delivery orders complete automatically once the courier confirms drop-off");
+  }
   return completeVendorOrderInternal(vo, { actorType: "USER", actorId: userId });
 }
 
@@ -896,6 +943,11 @@ async function completeVendorOrderInternal(
 ) {
   if (vo.status === "COMPLETED") return { vendorOrderId: vo.id, status: "COMPLETED" as const };
   if (vo.status === "CANCELLED") throw new AppError("CONFLICT", "Sub-order was cancelled");
+  // Nothing is in escrow for an unpaid (PENDING_PAYMENT) order, and a
+  // cancelled/refunded one has already been paid back — never release payout.
+  if (!(ACTIONABLE_ORDER_STATUSES as readonly string[]).includes(vo.order.status)) {
+    throw new AppError("CONFLICT", `The order is ${vo.order.status} — it can't be completed`);
+  }
 
   const order = vo.order;
   let orderFulfilled = false;
@@ -905,7 +957,7 @@ async function completeVendorOrderInternal(
     // this update (Postgres row-locks it), so a double-tap / retried request
     // can't both pass the pre-check above and each post a RELEASE below.
     const guard = await tx.vendorOrder.updateMany({
-      where: { id: vo.id, status: { notIn: ["COMPLETED", "CANCELLED"] } },
+      where: { id: vo.id, status: { notIn: ["COMPLETED", "CANCELLED"] }, order: { status: { in: [...ACTIONABLE_ORDER_STATUSES] } } },
       data: { status: "COMPLETED" },
     });
     if (guard.count === 0) {
@@ -950,20 +1002,46 @@ async function completeVendorOrderInternal(
       // A delivery-backed fulfilment settles the delivery fee itself (escrow →
       // courier PAYABLE + platform REVENUE) on COMPLETED — don't double-release
       // it here. Pickup-only orders release the full fee to revenue.
-      const hasDelivery =
-        (await tx.fulfilment.count({ where: { vendorOrder: { orderId: order.id }, deliveryId: { not: null } } })) > 0;
-      const feeMinor =
-        (hasDelivery ? 0 : order.deliveryFeeMinor) + order.serviceFeeMinor + order.taxMinor;
-      if (feeMinor > 0) {
+      // Only the shares actually carried by a (non-cancelled) Delivery are
+      // settled there; any remainder — e.g. a sub-order whose delivery was
+      // never spawned — is released here so nothing is stranded in escrow.
+      const linked = await tx.fulfilment.findMany({
+        where: { vendorOrder: { orderId: order.id }, deliveryId: { not: null } },
+        select: { deliveryId: true },
+      });
+      const settledByDeliveries = linked.length
+        ? ((
+            await tx.delivery.aggregate({
+              where: { id: { in: linked.map((f) => f.deliveryId!) }, NOT: { status: { in: ["CANCELLED_BY_CUSTOMER", "CANCELLED_BY_COURIER", "CANCELLED_BY_SYSTEM"] } } },
+              _sum: { feeMinor: true },
+            })
+          )._sum.feeMinor ?? 0)
+        : 0;
+      const deliveryRemainder = Math.max(0, order.deliveryFeeMinor - settledByDeliveries);
+      // Coupon discounts are platform-funded: the vendor is paid on the
+      // undiscounted subtotal (released above), but escrow only ever received
+      // `subtotal - discount`. Net the discount against the order's fee
+      // revenue so escrow drains to exactly zero for this order.
+      const netFeeMinor = deliveryRemainder + order.serviceFeeMinor + order.taxMinor - order.discountMinor;
+      if (netFeeMinor !== 0) {
+        const escrow = platformEscrow(order.platformSlug, order.currency);
+        const revenue = platformRevenue(order.platformSlug, order.currency);
+        const amountMinor = Math.abs(netFeeMinor);
         await postTxn(
           {
             type: "FEE",
-            memo: `Order fees ${order.number}`,
-            reference: { orderId: order.id },
-            lines: [
-              { account: platformEscrow(order.platformSlug, order.currency), direction: "DEBIT", amountMinor: feeMinor },
-              { account: platformRevenue(order.platformSlug, order.currency), direction: "CREDIT", amountMinor: feeMinor },
-            ],
+            memo: `Order fees ${order.number}${order.discountMinor > 0 ? ` (net of ${order.discountMinor} promo)` : ""}`,
+            reference: { orderId: order.id, discountMinor: order.discountMinor },
+            lines:
+              netFeeMinor > 0
+                ? [
+                    { account: escrow, direction: "DEBIT", amountMinor },
+                    { account: revenue, direction: "CREDIT", amountMinor },
+                  ]
+                : [
+                    { account: revenue, direction: "DEBIT", amountMinor },
+                    { account: escrow, direction: "CREDIT", amountMinor },
+                  ],
           },
           tx,
         );
