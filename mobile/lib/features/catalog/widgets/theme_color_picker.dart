@@ -26,16 +26,16 @@ class _ThemeColorPickerState extends State<ThemeColorPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        // Wrap, not Row: three chips overflow narrow phones / large text.
+        Wrap(
+          spacing: AppSpace.s8,
+          runSpacing: AppSpace.s8,
           children: [
             for (final size in [3, 5, 7])
-              Padding(
-                padding: const EdgeInsets.only(right: AppSpace.s8),
-                child: ChoiceChip(
-                  label: Text('$size colors'),
-                  selected: _size == size,
-                  onSelected: (_) => setState(() => _size = size),
-                ),
+              ChoiceChip(
+                label: Text('$size colors'),
+                selected: _size == size,
+                onSelected: (_) => setState(() => _size = size),
               ),
           ],
         ),
