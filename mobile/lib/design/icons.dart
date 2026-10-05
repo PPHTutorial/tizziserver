@@ -131,6 +131,7 @@ class AppIcons {
   static const delete_outline = FontAwesomeIcons.trashCan;
   static const copy = FontAwesomeIcons.copy;
   static const copy_outlined = FontAwesomeIcons.copy;
+  static const account_balance = FontAwesomeIcons.buildingColumns;
 
   // engagement
   static const favorite = FontAwesomeIcons.solidHeart;

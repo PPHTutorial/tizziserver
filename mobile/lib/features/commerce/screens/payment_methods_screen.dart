@@ -100,7 +100,7 @@ class PaymentMethodsScreen extends ConsumerWidget {
                     const SizedBox(height: AppSpace.s8),
                     // Saving cards needs the provider's tokenisation (not wired
                     // yet), so release builds route card/MoMo through wallet
-                    // top-ups (Paystack hosted checkout) instead of this form.
+                    // top-ups (Flutterwave: hosted card page, in-app MoMo etc.) instead of this form.
                     if (!kDebugMode)
                       Text(
                         'Pay by card or mobile money when you top up your wallet.',

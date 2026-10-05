@@ -56,6 +56,8 @@ Tizzi Gas follows as a second store listing, and iOS follows after Android is st
 
 > **Update 2026-10-05 (S63).** Flash deals now charge the advertised deal price (platform-funded: vendor paid on list price, discount nets against platform revenue like coupons). Returns refund only what the buyer paid: the flash-deal discount and the returned items' proportional coupon share go back to the platform. Inverse Draw off at launch = admin console → Feature flags → `grandprice` / `auction` → off.
 
+> **Update 2026-10-05 (S64): Paystack replaced by Flutterwave.** `packages/core/src/payments/flutterwave.ts`. Card = Flutterwave's hosted page in an in-app browser tab (no card data in the app or on our servers). Mobile money (GH: MTN/Telecel/AirtelTigo), OPay, Apple Pay, Google Pay, bank transfer and bank-account debit = direct charges over the API, driven from native screens (`mobile/lib/features/commerce/payment_flow.dart`: approve-on-phone, OTP, one-time transfer account, provider page). Which methods show is per currency (GHS defaults to card + MoMo; OPay/bank are NGN, Apple/Google Pay are NGN/USD/GBP/EUR); override with `FLUTTERWAVE_METHODS`. **Security:** webhooks need `verif-hash`/`flutterwave-signature` and are only a hint; every settlement re-fetches the transaction (`verify_by_reference`) and requires status + exact amount + currency + tx_ref. Charge-once: the intent row is written before Flutterwave is called, the top-up `Idempotency-Key` is a unique column on the intent, settlement claims and credits the wallet in one transaction, and `payments.settledIntentId` is unique. Worker `payment-reconcile` re-verifies in-flight payments every minute (missed webhooks) and expires abandoned ones after 24 h; a verified late success still credits. Setup: `FLUTTERWAVE_SECRET_KEY`, `FLUTTERWAVE_WEBHOOK_HASH`, `FLUTTERWAVE_REDIRECT_URL` (prod refuses to boot without them); dashboard webhook `https://api.<domain>/api/v1/payments/webhook?gateway=flutterwave`. **Still to do:** one test-mode run of every enabled method (stubbed API only so far), and confirm with Flutterwave which methods the account has for GHS.
+
 | # | Item | Why it blocks | Where |
 |---|---|---|---|
 | C1 | **Implement `PaystackGateway`** (createIntent → `authorizationUrl`, verify/capture, refund, webhook HMAC-SHA512 with `PAYSTACK_SECRET_KEY`) | `PaystackGateway`/`FlutterwaveGateway`/`StripeGateway` all extend `UnconfiguredGateway` and **throw**, so `mock` is the only working provider | `packages/core/src/payments/providers.ts` |
@@ -94,7 +96,7 @@ Tizzi Gas follows as a second store listing, and iOS follows after Android is st
 | Service | Env | What it actually gates (verified) | MVP | Status |
 |---|---|---|---|---|
 | **Nalo SMS** | `SMS_PROVIDER=nalo`, `NALO_API_BASE_URL`, `NALO_API_KEY`, `NALO_SENDER_ID` | **All logins.** With `log` (the default), OTPs only print to the server log. A registered sender ID needs approval lead time | Required | ⚠️ (not in PROGRESS blockers) |
-| **Paystack** (B4) | `PAYMENTS_PROVIDER=paystack`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_WEBHOOK_SECRET`, `PAYMENTS_CURRENCY=GHS` | Checkout, wallet top-up, refunds, payouts (with C1/C3) | Required | ⚠️ + ❌ C1 |
+| **Flutterwave** (B4) | `PAYMENTS_PROVIDER=flutterwave`, `FLUTTERWAVE_SECRET_KEY`, `FLUTTERWAVE_WEBHOOK_HASH`, `FLUTTERWAVE_REDIRECT_URL`, `PAYMENTS_CURRENCY=GHS` | Wallet top-ups (all methods), refunds | Required | ⚠️ keys; adapter done S64 |
 | Cloudflare (B8) | `cloudflare_api_token`, `cloudflare_zone_id`, `cloudflare_account_id` (tfvars) | DNS/WAF/rate-limit in front of the VPS | Required | ⚠️ |
 | Domain | `DOMAIN` | Caddy certs, `api.`/`rt.`/`media.` hosts | Required | ⚠️ |
 | VPS (Hetzner/DO/…) | n/a | Everything. 4–8 vCPU / 16–32 GB is plenty for launch | Required | ⚠️ |
@@ -276,7 +278,7 @@ reviewed) and 5–10 couriers in one city (Accra; `AUCTION_WAREHOUSE_*` and pric
 | # | Risk / decision | Recommendation |
 |---|---|---|
 | D1 | **Inverse Draw legality** (paid entry + random winner) | Off at MVP. Get a Ghana gaming-law opinion. If you redesign it, consider a free-entry route or skill-based qualification |
-| D2 | Payments: Paystack only vs also Flutterwave | Paystack only (GH cards + MoMo, one adapter). Keep the port open for Flutterwave later |
+| D2 | Payments provider | **Decided S64: Flutterwave** (hosted card page + in-app MoMo/OPay/Apple Pay/Google Pay/bank). Paystack adapter removed |
 | D3 | Payouts: manual vs Paystack Transfers | Manual at MVP (low volume, fraud control); automate when volume demands it |
 | D4 | Hosting: self-host VPS vs GCP | VPS (`selfhost/`). Revisit at ~10k DAU or when you need HA |
 | D5 | Courier offers missed when the app is backgrounded (no FCM) | Accept for a single-city pilot with a small courier pool; FCM (B6) is the first post-launch item |

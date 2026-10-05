@@ -1027,35 +1027,61 @@ class StallApi {
     );
   }
 
-  /// Start a wallet top-up. The mock sandbox settles at once (`SUCCEEDED`);
-  /// a hosted-checkout provider (Paystack) returns `REQUIRES_ACTION` with an
-  /// `authorizationUrl` to open — then call [confirmPayment] on return.
-  Future<({String status, String intentId, String? authorizationUrl, int? balanceMinor})>
-  walletTopUp(int amountMinor, {String? gateway}) async {
-    final d = await _send(
-      'POST',
-      '/api/v1/wallet/topup',
-      extraHeaders: {
-        'Idempotency-Key': 'topup-${DateTime.now().microsecondsSinceEpoch}',
-      },
-      body: {
-        'amountMinor': amountMinor,
-        if (gateway != null) 'gateway': gateway,
-      },
-    );
+  /// Ways to pay the server will accept for a wallet top-up (depends on the
+  /// gateway and currency): `card`, `mobile_money`, `opay`, `apple_pay`,
+  /// `google_pay`, `bank_transfer`, `bank_account`.
+  Future<({String currency, List<String> methods})> paymentMethodsAvailable() async {
+    final d = await _send('GET', '/api/v1/payments/methods');
     return (
-      status: d['status'] as String? ?? 'SUCCEEDED',
-      intentId: d['intentId'] as String? ?? '',
-      authorizationUrl: d['authorizationUrl'] as String?,
-      balanceMinor: (d['balanceMinor'] as num?)?.toInt(),
+      currency: d['currency'] as String? ?? 'GHS',
+      methods: (d['methods'] as List<dynamic>? ?? const ['card']).cast<String>(),
     );
   }
 
-  /// Verify a hosted-checkout payment after the customer returns. Returns
-  /// `SUCCEEDED`, `FAILED`, or the still-pending status.
-  Future<String> confirmPayment(String intentId) async {
+  /// Start a wallet top-up. The mock sandbox settles at once (`SUCCEEDED`);
+  /// Flutterwave returns `REQUIRES_ACTION`/`PROCESSING` with a `nextAction`
+  /// to follow, then poll [confirmPayment] until it settles.
+  ///
+  /// [idempotencyKey] must stay the same across retries of ONE payment — the
+  /// server returns the existing payment for a repeated key instead of
+  /// charging again.
+  Future<PaymentIntentView> walletTopUp(
+    int amountMinor, {
+    required String idempotencyKey,
+    String? method,
+    Map<String, String>? details,
+    String? gateway,
+  }) async {
+    final d = await _send(
+      'POST',
+      '/api/v1/wallet/topup',
+      extraHeaders: {'Idempotency-Key': idempotencyKey},
+      body: {
+        'amountMinor': amountMinor,
+        if (method != null) 'method': method,
+        if (details != null && details.isNotEmpty) 'details': details,
+        if (gateway != null) 'gateway': gateway,
+      },
+    );
+    return PaymentIntentView(
+      id: d['intentId'] as String? ?? '',
+      status: d['status'] as String? ?? 'SUCCEEDED',
+      nextAction: (d['nextAction'] as Map?)?.cast<String, dynamic>(),
+      failureReason: d['failureReason'] as String?,
+    );
+  }
+
+  /// Ask the server to verify a payment with the provider now. Returns the
+  /// payment's current state (SUCCEEDED / FAILED, or still pending).
+  Future<PaymentIntentView> confirmPayment(String intentId) async {
     final d = await _send('POST', '/api/v1/payments/intents/$intentId/confirm');
-    return d['status'] as String? ?? 'REQUIRES_ACTION';
+    return PaymentIntentView.fromJson(d);
+  }
+
+  /// Submit the code for a payment whose next action is `otp`.
+  Future<PaymentIntentView> submitPaymentOtp(String intentId, String otp) async {
+    final d = await _send('POST', '/api/v1/payments/intents/$intentId/otp', body: {'otp': otp});
+    return PaymentIntentView.fromJson(d);
   }
 
   Future<int> walletWithdraw({

@@ -6,6 +6,8 @@
  *   - dispatch-sweep      : expire stale DeliveryOffers, advance the waterfall, time out undispatchable
  *   - eta-refresh         : recompute ETA for active deliveries from the last breadcrumb
  *   - payout-drain        : PENDING Payout → PROCESSING → PAID (mock gateway)
+ *   - payment-reconcile   : re-verify in-flight gateway payments with the provider
+ *                           (missed webhooks, closed apps), expire abandoned ones
  *   - stale-reservation-sweep : release stock reservations (+ refund if captured) held by
  *                               orders stuck in PENDING_PAYMENT past a crash-recovery window
  *   - breadcrumb-compact  : prune old DeliveryLocation rows
@@ -26,6 +28,7 @@ import {
   admin as adminSvc,
   privacy as privacySvc,
   commerce as commerceSvc,
+  payments as paymentsSvc,
   initObservability,
 } from "@stall/core";
 
@@ -113,6 +116,17 @@ async function payoutDrain() {
     // mock gateway settles instantly
     await prisma.payout.update({ where: { id: p.id }, data: { status: "PAID", gatewayRef: `mock_${p.id.slice(-8)}` } });
     console.log(`[payout-drain] ${p.ownerType}:${p.ownerId} ${p.amountMinor} → PAID`);
+  }
+}
+
+// --- payment reconcile -------------------------------------------
+async function paymentReconcile() {
+  if (env.PAYMENTS_PROVIDER === "mock") return;
+  try {
+    const r = await paymentsSvc.reconcilePendingIntents();
+    if (r.succeeded || r.failed || r.expired) console.log("[payment-reconcile]", r);
+  } catch (e) {
+    console.error("[payment-reconcile]", e);
   }
 }
 
@@ -220,6 +234,7 @@ const loops: Loop[] = [
   { name: "dispatch-sweep", everyMs: 5_000, fn: dispatchSweep },
   { name: "eta-refresh", everyMs: 30_000, fn: etaRefresh },
   { name: "payout-drain", everyMs: 20_000, fn: payoutDrain },
+  { name: "payment-reconcile", everyMs: 60_000, fn: paymentReconcile },
   { name: "auction-draws", everyMs: 15_000, fn: auctionDraws },
   { name: "dispute-sla", everyMs: 60_000, fn: disputeSla },
   { name: "ads-sweep", everyMs: 30_000, fn: adsSweep },

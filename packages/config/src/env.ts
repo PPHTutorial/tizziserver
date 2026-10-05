@@ -78,7 +78,7 @@ const schema = z.object({
   // --- Payments (Phase 3) ------------------------------------------------
   // `mock` is a deterministic in-process sandbox — no external accounts (B4).
   // Swap to a real provider once its sandbox keys are set.
-  PAYMENTS_PROVIDER: z.enum(["mock", "paystack", "flutterwave", "stripe"]).default("mock"),
+  PAYMENTS_PROVIDER: z.enum(["mock", "flutterwave", "stripe"]).default("mock"),
   // Staging escape hatch only: production refuses PAYMENTS_PROVIDER=mock
   // (anyone could "pay" for orders and top-ups for free) unless this is "true".
   ALLOW_MOCK_PAYMENTS_IN_PRODUCTION: z.enum(["true", "false"]).default("false"),
@@ -87,12 +87,16 @@ const schema = z.object({
   // with (header `x-mock-signature`). Dev-only default — set a real random
   // value before ever exposing this endpoint outside a trusted sandbox.
   MOCK_PAYMENTS_WEBHOOK_SECRET: z.string().default("dev-only-mock-webhook-secret-change-me"),
-  PAYSTACK_SECRET_KEY: z.string().optional(),
-  PAYSTACK_WEBHOOK_SECRET: z.string().optional(),
-  // Where Paystack sends the customer after paying (e.g. https://api.<domain>/payments/return).
-  PAYSTACK_CALLBACK_URL: z.string().url().optional(),
+  // Flutterwave v3. Webhook hash = the "Secret hash" set in Dashboard →
+  // Settings → Webhooks (sent back as `verif-hash` / signs `flutterwave-signature`).
   FLUTTERWAVE_SECRET_KEY: z.string().optional(),
   FLUTTERWAVE_WEBHOOK_HASH: z.string().optional(),
+  // Where the hosted card page / Apple Pay / Google Pay / OPay send the customer
+  // afterwards (e.g. https://api.<domain>/payments/return).
+  FLUTTERWAVE_REDIRECT_URL: z.string().url().optional(),
+  // Optional comma list narrowing the methods the app offers (card,mobile_money,
+  // opay,apple_pay,google_pay,bank_transfer,bank_account) to what the account has enabled.
+  FLUTTERWAVE_METHODS: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 
@@ -192,6 +196,9 @@ export function productionSecretProblems(e: {
   MOCK_PAYMENTS_WEBHOOK_SECRET: string;
   ALLOW_MOCK_PAYMENTS_IN_PRODUCTION?: string;
   REDIS_URL?: string;
+  FLUTTERWAVE_SECRET_KEY?: string;
+  FLUTTERWAVE_WEBHOOK_HASH?: string;
+  FLUTTERWAVE_REDIRECT_URL?: string;
 }): string[] {
   if (e.NODE_ENV !== "production") return [];
   const out: string[] = [];
@@ -206,6 +213,13 @@ export function productionSecretProblems(e: {
       "PAYMENTS_PROVIDER: mock settles every payment instantly for free — configure a real gateway " +
         "(or set ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true for a staging environment only)",
     );
+  }
+  if (e.PAYMENTS_PROVIDER === "flutterwave") {
+    // Without the hash every webhook is rejected (payments only settle when the
+    // app polls); without the redirect the hosted page returns to localhost.
+    for (const k of ["FLUTTERWAVE_SECRET_KEY", "FLUTTERWAVE_WEBHOOK_HASH", "FLUTTERWAVE_REDIRECT_URL"] as const) {
+      if (!e[k]) out.push(`${k}: required when PAYMENTS_PROVIDER=flutterwave`);
+    }
   }
   if (!e.REDIS_URL) {
     out.push("REDIS_URL: required in production — without Redis every rate limit (OTP, login, uploads) is skipped");

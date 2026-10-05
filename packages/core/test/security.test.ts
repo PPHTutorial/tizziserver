@@ -62,7 +62,7 @@ describe("productionSecretProblems", () => {
   };
   it("flags the committed dev keypair and default mock secret in production", () => {
     expect(productionSecretProblems(base)).toHaveLength(2);
-    expect(productionSecretProblems({ ...base, JWT_PUBLIC_KEY: "other", PAYMENTS_PROVIDER: "paystack" })).toEqual([]);
+    expect(productionSecretProblems({ ...base, JWT_PUBLIC_KEY: "other", PAYMENTS_PROVIDER: "stripe" })).toEqual([]);
   });
   it("refuses mock payments in production unless explicitly allowed (staging)", () => {
     const real = { ...base, JWT_PUBLIC_KEY: "other", MOCK_PAYMENTS_WEBHOOK_SECRET: "rotated" };
@@ -72,7 +72,7 @@ describe("productionSecretProblems", () => {
     expect(problems[0]).toMatch(/^PAYMENTS_PROVIDER/);
   });
   it("requires Redis in production so rate limits can't silently switch off", () => {
-    const problems = productionSecretProblems({ ...base, JWT_PUBLIC_KEY: "other", PAYMENTS_PROVIDER: "paystack", REDIS_URL: undefined });
+    const problems = productionSecretProblems({ ...base, JWT_PUBLIC_KEY: "other", PAYMENTS_PROVIDER: "stripe", REDIS_URL: undefined });
     expect(problems).toEqual([expect.stringMatching(/^REDIS_URL/)]);
   });
   it("is silent outside production", () => {

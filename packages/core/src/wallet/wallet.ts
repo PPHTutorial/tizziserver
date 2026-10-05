@@ -2,6 +2,8 @@ import { prisma, type Prisma } from "@stall/db";
 import { AppError } from "../errors.ts";
 import { verifyPin } from "../auth/credentials.ts";
 import { gatewayFor } from "../payments/providers.ts";
+import type { ChargeDetails, IntentResult, NextAction, PaymentMethodKind } from "../payments/gateway.ts";
+import { randomToken } from "../crypto.ts";
 import {
   balanceOf,
   gatewayClearing,
@@ -69,40 +71,54 @@ export async function topUpWallet(input: {
   gatewayRef?: string;
   currency?: string;
 }): Promise<{ balanceMinor: number }> {
-  const currency = input.currency ?? CUR;
-  await getOrCreateWallet(input.userId, currency);
-
-  const balanceMinor = await prisma.$transaction(async (tx) => {
-    const txn = await postTxn(
-      {
-        type: "TOPUP",
-        memo: `Wallet top-up via ${input.gateway}`,
-        reference: { gatewayRef: input.gatewayRef },
-        lines: [
-          { account: userWallet(input.userId, currency), direction: "CREDIT", amountMinor: input.amountMinor },
-          { account: gatewayClearing(input.platformSlug, currency), direction: "DEBIT", amountMinor: input.amountMinor },
-        ],
-      },
-      tx,
-    );
-    return recordWalletTxn(tx, input.userId, {
-      ledgerTxnId: txn.id,
-      direction: "credit",
-      amountMinor: input.amountMinor,
-      description: "Wallet top-up",
-      meta: { gateway: input.gateway, gatewayRef: input.gatewayRef },
-    });
-  });
-
+  await getOrCreateWallet(input.userId, input.currency ?? CUR);
+  const balanceMinor = await prisma.$transaction((tx) => creditTopUpTx(tx, input));
   return { balanceMinor };
 }
 
 /**
- * Top up via a payment gateway: create a `PaymentIntent`, capture it, and — on
- * success — credit the wallet. With `PAYMENTS_PROVIDER=mock` the capture is
- * synchronous. A hosted-checkout provider (Paystack) instead returns
- * `REQUIRES_ACTION` + `authorizationUrl`: the app opens it, and the wallet is
- * credited by the webhook or `confirmPaymentIntent` when the customer returns.
+ * The ledger + wallet-feed half of a top-up, inside the caller's transaction,
+ * so a gateway settlement can claim its intent and credit the wallet
+ * atomically: all or nothing, never charged-but-not-credited, never twice.
+ * The wallet must already exist (`getOrCreateWallet`).
+ */
+export async function creditTopUpTx(
+  tx: Prisma.TransactionClient,
+  input: { userId: string; amountMinor: number; platformSlug: string; gateway: string; gatewayRef?: string; currency?: string },
+): Promise<number> {
+  const currency = input.currency ?? CUR;
+  const txn = await postTxn(
+    {
+      type: "TOPUP",
+      memo: `Wallet top-up via ${input.gateway}`,
+      reference: { gatewayRef: input.gatewayRef },
+      lines: [
+        { account: userWallet(input.userId, currency), direction: "CREDIT", amountMinor: input.amountMinor },
+        { account: gatewayClearing(input.platformSlug, currency), direction: "DEBIT", amountMinor: input.amountMinor },
+      ],
+    },
+    tx,
+  );
+  return recordWalletTxn(tx, input.userId, {
+    ledgerTxnId: txn.id,
+    direction: "credit",
+    amountMinor: input.amountMinor,
+    description: "Wallet top-up",
+    meta: { gateway: input.gateway, gatewayRef: input.gatewayRef },
+  });
+}
+
+/**
+ * Top up via a payment gateway. With `PAYMENTS_PROVIDER=mock` the capture is
+ * synchronous. Flutterwave instead returns `REQUIRES_ACTION`/`PROCESSING` plus
+ * a `nextAction` (open the hosted card page, approve the MoMo prompt, enter an
+ * OTP, transfer to a one-time account…) and the wallet is credited once the
+ * provider confirms — by webhook, the app's confirm poll, or the worker's
+ * reconcile sweep, whichever is first; the others are no-ops.
+ *
+ * The intent row (with the provider reference) is written BEFORE the provider
+ * is called, so every charge the customer could approve has a record we can
+ * reconcile against.
  */
 export async function initiateTopUp(input: {
   userId: string;
@@ -110,12 +126,21 @@ export async function initiateTopUp(input: {
   platformSlug: string;
   gateway?: string;
   currency?: string;
+  method?: PaymentMethodKind;
+  details?: ChargeDetails;
+  /**
+   * Client retry key. Stored on the intent's unique column, so a double tap or
+   * a retried request (even two in flight at once) returns the first intent
+   * instead of charging the customer again.
+   */
+  idempotencyKey?: string;
 }): Promise<{
-  status: "SUCCEEDED" | "FAILED" | "REQUIRES_ACTION";
+  status: "SUCCEEDED" | "FAILED" | "REQUIRES_ACTION" | "PROCESSING";
   balanceMinor?: number;
   intentId: string;
   gatewayRef: string;
   authorizationUrl?: string;
+  nextAction?: NextAction;
   failureReason?: string;
 }> {
   const currency = input.currency ?? CUR;
@@ -123,30 +148,95 @@ export async function initiateTopUp(input: {
     throw new AppError("VALIDATION", "Minimum top-up is 100 minor units");
   }
   const gw = gatewayFor(input.gateway);
-  const intent = await gw.createIntent({
-    amountMinor: input.amountMinor,
-    currency,
-    purpose: "WALLET_TOPUP",
-    reference: `${input.userId}:${Date.now()}`,
-    userId: input.userId,
+  const method = input.method ?? "card";
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { id: input.userId },
+    select: { email: true, phone: true, firstName: true, lastName: true },
   });
-  const pi = await prisma.paymentIntent.create({
+  const presetRef = gw.capturesSynchronously ? undefined : `stl_${randomToken(12)}`;
+  const baseMeta = { platformSlug: input.platformSlug, method };
+  const idempotencyKey = input.idempotencyKey ? `topup:${input.userId}:${input.idempotencyKey}` : undefined;
+  if (idempotencyKey) {
+    const prior = await prisma.paymentIntent.findUnique({ where: { idempotencyKey } });
+    if (prior) return priorTopUp(prior);
+  }
+  const pi = await prisma.paymentIntent
+    .create({
     data: {
+      idempotencyKey,
       userId: input.userId,
       purpose: "WALLET_TOPUP",
       amountMinor: input.amountMinor,
       currency,
-      status: gw.capturesSynchronously ? "PROCESSING" : "REQUIRES_ACTION",
+      status: "REQUIRES_ACTION",
       gateway: gw.name,
+      gatewayRef: presetRef,
+      // The webhook needs platformSlug to credit the right platform's ledger.
+      metadata: baseMeta as Prisma.InputJsonValue,
+    },
+  })
+    .catch(async (e: unknown) => {
+      // Lost the race to a concurrent request with the same key.
+      const prior = idempotencyKey && (e as { code?: string }).code === "P2002"
+        ? await prisma.paymentIntent.findUnique({ where: { idempotencyKey } })
+        : null;
+      if (prior) return { duplicateOf: prior } as const;
+      throw e;
+    });
+  if ("duplicateOf" in pi) return priorTopUp(pi.duplicateOf);
+
+  let intent: IntentResult;
+  try {
+    intent = await gw.createIntent({
+      amountMinor: input.amountMinor,
+      currency,
+      purpose: "WALLET_TOPUP",
+      reference: pi.id,
+      userId: input.userId,
+      email: user.email ?? undefined,
+      phone: user.phone,
+      fullName: [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined,
+      ref: presetRef,
+      method,
+      details: input.details,
+    });
+  } catch (e) {
+    // A refusal (bad number, method off) is final. A timeout or network error
+    // is not: the provider may have created the charge, so leave the intent
+    // pending for the reconcile sweep to verify rather than lose a payment.
+    const definite = e instanceof AppError;
+    await prisma.paymentIntent.update({
+      where: { id: pi.id },
+      data: {
+        status: definite ? "FAILED" : "PROCESSING",
+        metadata: { ...baseMeta, failureReason: definite ? e.message : "provider_unreachable" } as Prisma.InputJsonValue,
+      },
+    });
+    throw e;
+  }
+
+  await prisma.paymentIntent.update({
+    where: { id: pi.id },
+    data: {
       gatewayRef: intent.ref,
       clientSecret: intent.clientSecret,
-      // The webhook needs this to credit the right platform's ledger.
-      metadata: { platformSlug: input.platformSlug } as Prisma.InputJsonValue,
+      status: intent.status === "PROCESSING" || gw.capturesSynchronously ? "PROCESSING" : "REQUIRES_ACTION",
+      metadata: {
+        ...baseMeta,
+        ...(intent.providerState ? { provider: intent.providerState } : {}),
+        ...(intent.nextAction ? { nextAction: intent.nextAction } : {}),
+      } as Prisma.InputJsonValue,
     },
   });
 
   if (!gw.capturesSynchronously) {
-    return { status: "REQUIRES_ACTION", intentId: pi.id, gatewayRef: intent.ref, authorizationUrl: intent.authorizationUrl };
+    return {
+      status: intent.status === "PROCESSING" ? "PROCESSING" : "REQUIRES_ACTION",
+      intentId: pi.id,
+      gatewayRef: intent.ref,
+      authorizationUrl: intent.authorizationUrl,
+      nextAction: intent.nextAction,
+    };
   }
 
   const cap = await gw.capture(intent.ref, input.amountMinor);
@@ -158,28 +248,44 @@ export async function initiateTopUp(input: {
     return { status: "FAILED", intentId: pi.id, gatewayRef: intent.ref, failureReason: cap.failureReason };
   }
 
-  await prisma.$transaction([
-    prisma.payment.create({
+  await getOrCreateWallet(input.userId, currency);
+  const balanceMinor = await prisma.$transaction(async (tx) => {
+    await tx.payment.create({
       data: {
         intentId: pi.id,
         status: "SUCCEEDED",
+        settledIntentId: pi.id,
         capturedMinor: cap.capturedMinor,
         feeMinor: cap.feeMinor,
         gatewayResponse: cap.raw as Prisma.InputJsonValue,
         processedAt: new Date(),
       },
-    }),
-    prisma.paymentIntent.update({ where: { id: pi.id }, data: { status: "SUCCEEDED" } }),
-  ]);
-  const { balanceMinor } = await topUpWallet({
-    userId: input.userId,
-    amountMinor: cap.capturedMinor,
-    platformSlug: input.platformSlug,
-    gateway: gw.name,
-    gatewayRef: intent.ref,
-    currency,
+    });
+    await tx.paymentIntent.update({ where: { id: pi.id }, data: { status: "SUCCEEDED" } });
+    return creditTopUpTx(tx, {
+      userId: input.userId,
+      amountMinor: cap.capturedMinor,
+      platformSlug: input.platformSlug,
+      gateway: gw.name,
+      gatewayRef: intent.ref,
+      currency,
+    });
   });
   return { status: "SUCCEEDED", balanceMinor, intentId: pi.id, gatewayRef: intent.ref };
+}
+
+/** The response of a top-up that already exists for this idempotency key. */
+function priorTopUp(pi: { id: string; status: string; gatewayRef: string | null; metadata: Prisma.JsonValue }) {
+  const meta = (pi.metadata ?? {}) as { nextAction?: NextAction };
+  const pending = pi.status === "REQUIRES_ACTION" || pi.status === "PROCESSING";
+  const nextAction = pending ? meta.nextAction : undefined;
+  return {
+    status: (pi.status === "CANCELLED" ? "FAILED" : pi.status) as "SUCCEEDED" | "FAILED" | "REQUIRES_ACTION" | "PROCESSING",
+    intentId: pi.id,
+    gatewayRef: pi.gatewayRef ?? "",
+    nextAction,
+    authorizationUrl: nextAction?.type === "redirect" ? nextAction.url : undefined,
+  };
 }
 
 /** Move funds from the user's wallet into platform escrow (order payment). */

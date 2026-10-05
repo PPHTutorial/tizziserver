@@ -1837,7 +1837,10 @@ model PaymentIntent {
   order    Order?    @relation(fields: [orderId], references: [id])
   payments Payment[]
 
+  // A provider reference settles exactly one intent (charge-once guarantee).
+  @@unique([gateway, gatewayRef])
   @@index([userId, createdAt])
+  @@index([status, updatedAt])
   @@map("payment_intents")
 }
 
@@ -1850,6 +1853,9 @@ model Payment {
   gatewayResponse Json?
   processedAt     DateTime?
   createdAt       DateTime      @default(now())
+  /// = intentId on the SUCCEEDED row of a gateway-settled intent. Unique, so the
+  /// database refuses a second success (and a second credit) for one intent.
+  settledIntentId String?       @unique
 
   intent PaymentIntent @relation(fields: [intentId], references: [id], onDelete: Cascade)
 

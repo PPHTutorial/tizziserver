@@ -9,7 +9,7 @@ import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../commerce_providers.dart';
-import '../hosted_payment.dart';
+import '../payment_flow.dart';
 import '../../../design/icons.dart';
 import '../../../design/responsive.dart';
 import '../../../app/router.dart';
@@ -193,33 +193,7 @@ class WalletScreen extends ConsumerWidget {
     );
   }
 
-  void _topUpSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.r2xl)),
-      ),
-      builder: (_) => _AmountSheet(
-        title: 'Top up wallet',
-        cta: 'Pay',
-        onSubmit: (amountMinor, _) async {
-          final r = await ref.read(stallApiProvider).walletTopUp(amountMinor);
-          if (r.status == 'REQUIRES_ACTION' && r.authorizationUrl != null) {
-            // Hosted checkout (card / MoMo): finish it after the sheet closes.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (context.mounted) {
-                completeHostedPayment(context, ref, r.intentId, r.authorizationUrl!);
-              }
-            });
-          }
-          ref.invalidate(walletProvider);
-          ref.invalidate(walletTxnsProvider);
-        },
-      ),
-    );
-  }
+  void _topUpSheet(BuildContext context, WidgetRef ref) => showTopUpSheet(context, ref);
 
   void _withdrawSheet(BuildContext context, WidgetRef ref, int balanceMinor) {
     showModalBottomSheet<void>(

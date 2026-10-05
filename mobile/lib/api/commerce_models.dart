@@ -729,3 +729,28 @@ class WalletTxnDto {
         at: _s(j['at']),
       );
 }
+
+/// A gateway payment in flight (wallet top-up). [nextAction] says what the
+/// customer does next while it's pending — `redirect` {url}, `otp` {message},
+/// `approve_on_phone` {message}, `bank_transfer` {accountNumber, bankName,
+/// amountMinor, expiresAt, note} — and is null once it has settled.
+class PaymentIntentView {
+  const PaymentIntentView({required this.id, required this.status, this.nextAction, this.failureReason});
+
+  factory PaymentIntentView.fromJson(Map<String, dynamic> j) => PaymentIntentView(
+        id: j['id'] as String? ?? '',
+        status: j['status'] as String? ?? 'REQUIRES_ACTION',
+        nextAction: (j['nextAction'] as Map?)?.cast<String, dynamic>(),
+        failureReason: j['failureReason'] as String?,
+      );
+
+  final String id;
+  final String status;
+  final Map<String, dynamic>? nextAction;
+  final String? failureReason;
+
+  bool get succeeded => status == 'SUCCEEDED';
+  bool get failed => status == 'FAILED' || status == 'CANCELLED';
+  bool get pending => !succeeded && !failed;
+  String? get actionType => nextAction?['type'] as String?;
+}
