@@ -1,7 +1,9 @@
 name: stall
 description: "Stall — multi-tenant marketplace & delivery engine."
 publish_to: 'none'
-version: 0.1.0
+# name+build → Android versionName+versionCode / iOS CFBundleShortVersionString+
+# CFBundleVersion (both read it via flutter.version*). Bump +N on every upload.
+version: 0.1.0+1
 
 environment:
   sdk: ^3.8.1
