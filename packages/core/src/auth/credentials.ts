@@ -2,7 +2,7 @@ import { Secret, TOTP } from "otpauth";
 import { prisma } from "@stall/db";
 import { hashSecret, numericCode, sha256Hex, verifySecret } from "../crypto.ts";
 import { AppError } from "../errors.ts";
-import { rateLimit } from "../redis.ts";
+import { getRedis, rateLimit } from "../redis.ts";
 import { verifyOtp } from "./otp.ts";
 
 const PIN_RE = /^\d{4,6}$/;
@@ -72,6 +72,10 @@ export async function verifyPin(userId: string, pin: string): Promise<void> {
   }
   if (await verifySecret(c.secretHash, pin)) {
     if (p.failed) await prisma.credential.update({ where: { id: c.id }, data: { params: { failed: 0 } } });
+    // A correct PIN ends any guessing, so clear the attempt ceiling — it
+    // otherwise counted successes too and locked out busy legitimate users
+    // (several wallet payments / withdrawals within the window).
+    await getRedis()?.del(`rl:pin:verify:${userId}`).catch(() => {});
     return;
   }
   const failed = (p.failed ?? 0) + 1;
