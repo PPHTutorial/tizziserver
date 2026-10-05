@@ -9,6 +9,7 @@ import '../../../design/context_ext.dart';
 import '../../../design/tokens.g.dart';
 import '../../../design/widgets.dart';
 import '../commerce_providers.dart';
+import '../hosted_payment.dart';
 import '../../../design/icons.dart';
 import '../../../design/responsive.dart';
 import '../../../app/router.dart';
@@ -204,7 +205,15 @@ class WalletScreen extends ConsumerWidget {
         title: 'Top up wallet',
         cta: 'Pay',
         onSubmit: (amountMinor, _) async {
-          await ref.read(stallApiProvider).walletTopUp(amountMinor);
+          final r = await ref.read(stallApiProvider).walletTopUp(amountMinor);
+          if (r.status == 'REQUIRES_ACTION' && r.authorizationUrl != null) {
+            // Hosted checkout (card / MoMo): finish it after the sheet closes.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                completeHostedPayment(context, ref, r.intentId, r.authorizationUrl!);
+              }
+            });
+          }
           ref.invalidate(walletProvider);
           ref.invalidate(walletTxnsProvider);
         },

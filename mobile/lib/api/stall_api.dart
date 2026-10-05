@@ -1027,7 +1027,11 @@ class StallApi {
     );
   }
 
-  Future<WalletDto> walletTopUp(int amountMinor, {String? gateway}) async {
+  /// Start a wallet top-up. The mock sandbox settles at once (`SUCCEEDED`);
+  /// a hosted-checkout provider (Paystack) returns `REQUIRES_ACTION` with an
+  /// `authorizationUrl` to open — then call [confirmPayment] on return.
+  Future<({String status, String intentId, String? authorizationUrl, int? balanceMinor})>
+  walletTopUp(int amountMinor, {String? gateway}) async {
     final d = await _send(
       'POST',
       '/api/v1/wallet/topup',
@@ -1039,11 +1043,19 @@ class StallApi {
         if (gateway != null) 'gateway': gateway,
       },
     );
-    return WalletDto(
-      currency: 'GHS',
-      balanceMinor: (d['balanceMinor'] as num?)?.toInt() ?? 0,
-      pinRequired: true,
+    return (
+      status: d['status'] as String? ?? 'SUCCEEDED',
+      intentId: d['intentId'] as String? ?? '',
+      authorizationUrl: d['authorizationUrl'] as String?,
+      balanceMinor: (d['balanceMinor'] as num?)?.toInt(),
     );
+  }
+
+  /// Verify a hosted-checkout payment after the customer returns. Returns
+  /// `SUCCEEDED`, `FAILED`, or the still-pending status.
+  Future<String> confirmPayment(String intentId) async {
+    final d = await _send('POST', '/api/v1/payments/intents/$intentId/confirm');
+    return d['status'] as String? ?? 'REQUIRES_ACTION';
   }
 
   Future<int> walletWithdraw({
