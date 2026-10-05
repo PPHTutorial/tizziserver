@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveClientIp, sniffMediaType } from "../src/security.ts";
 import { isBrandfetchAssetUrl } from "../src/catalog/brands.ts";
+import { productionSecretProblems } from "@stall/config";
 
 describe("resolveClientIp", () => {
   it("takes the entry appended by the trusted proxy, not the spoofable left-most one", () => {
@@ -47,5 +48,21 @@ describe("isBrandfetchAssetUrl", () => {
     expect(isBrandfetchAssetUrl("https://evilbrandfetch.io/x.png")).toBe(false);
     expect(isBrandfetchAssetUrl("https://cdn.brandfetch.io:8443/x.png")).toBe(false);
     expect(isBrandfetchAssetUrl("file:///etc/passwd")).toBe(false);
+  });
+});
+
+describe("productionSecretProblems", () => {
+  const base = {
+    NODE_ENV: "production",
+    JWT_PUBLIC_KEY: "MCowBQYDK2VwAyEAKvMYnCyKVQUTN+Iw80vWk3UagyyqYdyjFFsG0D43Q5k=",
+    PAYMENTS_PROVIDER: "mock",
+    MOCK_PAYMENTS_WEBHOOK_SECRET: "dev-only-mock-webhook-secret-change-me",
+  };
+  it("flags the committed dev keypair and default mock secret in production", () => {
+    expect(productionSecretProblems(base)).toHaveLength(2);
+    expect(productionSecretProblems({ ...base, JWT_PUBLIC_KEY: "other", PAYMENTS_PROVIDER: "paystack" })).toEqual([]);
+  });
+  it("is silent outside production", () => {
+    expect(productionSecretProblems({ ...base, NODE_ENV: "development" })).toEqual([]);
   });
 });

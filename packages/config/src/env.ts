@@ -172,6 +172,31 @@ const schema = z.object({
   BRANDFETCH_API_KEY: z.string().optional(),
 });
 
+/**
+ * Values committed to the repo (.env.example / schema defaults) are public —
+ * a production process must never run on them. The dev JWT keypair in
+ * .env.example would let anyone mint access tokens for any user and role.
+ */
+const COMMITTED_DEV_JWT_PUBLIC_KEY = "MCowBQYDK2VwAyEAKvMYnCyKVQUTN+Iw80vWk3UagyyqYdyjFFsG0D43Q5k=";
+const COMMITTED_MOCK_WEBHOOK_SECRET = "dev-only-mock-webhook-secret-change-me";
+
+export function productionSecretProblems(e: {
+  NODE_ENV: string;
+  JWT_PUBLIC_KEY: string;
+  PAYMENTS_PROVIDER: string;
+  MOCK_PAYMENTS_WEBHOOK_SECRET: string;
+}): string[] {
+  if (e.NODE_ENV !== "production") return [];
+  const out: string[] = [];
+  if (e.JWT_PUBLIC_KEY.trim() === COMMITTED_DEV_JWT_PUBLIC_KEY) {
+    out.push("JWT_PRIVATE_KEY/JWT_PUBLIC_KEY: the committed dev keypair must not be used in production");
+  }
+  if (e.PAYMENTS_PROVIDER === "mock" && e.MOCK_PAYMENTS_WEBHOOK_SECRET === COMMITTED_MOCK_WEBHOOK_SECRET) {
+    out.push("MOCK_PAYMENTS_WEBHOOK_SECRET: the committed default must not be used in production");
+  }
+  return out;
+}
+
 export type Env = z.infer<typeof schema>;
 
 let cached: Env | undefined;
@@ -184,6 +209,13 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       .map((i) => `  - ${i.path.join(".") || "(root)"}: ${i.message}`)
       .join("\n");
     throw new Error(`Invalid environment configuration:\n${issues}`);
+  }
+  // `next build` runs with NODE_ENV=production on CI's copied .env.example;
+  // the guard is for processes that actually serve traffic.
+  const isBuild = source.NEXT_PHASE === "phase-production-build";
+  const problems = isBuild ? [] : productionSecretProblems(parsed.data);
+  if (problems.length) {
+    throw new Error(`Insecure production configuration:\n${problems.map((p) => `  - ${p}`).join("\n")}`);
   }
   cached = parsed.data;
   return cached;
