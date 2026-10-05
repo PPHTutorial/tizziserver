@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveClientIp, sniffMediaType } from "../src/security.ts";
+import { isBrandfetchAssetUrl } from "../src/catalog/brands.ts";
 
 describe("resolveClientIp", () => {
   it("takes the entry appended by the trusted proxy, not the spoofable left-most one", () => {
@@ -33,5 +34,18 @@ describe("sniffMediaType", () => {
     expect(sniffMediaType(bytes("<svg xmlns="))).toBeNull();
     expect(sniffMediaType(bytes([0, 0, 0, 0x18], "ftypheic"))).toBeNull();
     expect(sniffMediaType(bytes([0xff, 0xd8]))).toBeNull();
+  });
+});
+
+describe("isBrandfetchAssetUrl", () => {
+  it("allows only https Brandfetch hosts", () => {
+    expect(isBrandfetchAssetUrl("https://cdn.brandfetch.io/id/logo.png")).toBe(true);
+    expect(isBrandfetchAssetUrl("https://asset.brandfetch.io/x.png")).toBe(true);
+    expect(isBrandfetchAssetUrl("http://cdn.brandfetch.io/x.png")).toBe(false);
+    expect(isBrandfetchAssetUrl("https://169.254.169.254/latest/meta-data")).toBe(false);
+    expect(isBrandfetchAssetUrl("https://brandfetch.io.evil.com/x.png")).toBe(false);
+    expect(isBrandfetchAssetUrl("https://evilbrandfetch.io/x.png")).toBe(false);
+    expect(isBrandfetchAssetUrl("https://cdn.brandfetch.io:8443/x.png")).toBe(false);
+    expect(isBrandfetchAssetUrl("file:///etc/passwd")).toBe(false);
   });
 });

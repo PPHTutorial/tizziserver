@@ -18,6 +18,7 @@
 import { prisma } from "@stall/db";
 import { env } from "@stall/config";
 import { storageProvider } from "../storage/index.ts";
+import { sniffMediaType } from "../security.ts";
 
 export interface BrandLogo {
   name: string;
@@ -147,21 +148,36 @@ function pickRasterFormat(formats: RawFormat[]): RawFormat | null {
 }
 
 const EXT_FOR_FORMAT: Record<string, string> = { png: "png", webp: "webp", jpeg: "jpg", jpg: "jpg" };
-const CONTENT_TYPE_FOR_FORMAT: Record<string, string> = {
-  png: "image/png",
-  webp: "image/webp",
-  jpeg: "image/jpeg",
-  jpg: "image/jpeg",
-};
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+/** https + a brandfetch.io / brandfetch.com host (incl. subdomains) only. */
+export function isBrandfetchAssetUrl(src: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(src);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443")) return false;
+  const h = u.hostname.toLowerCase();
+  return ["brandfetch.io", "brandfetch.com"].some((d) => h === d || h.endsWith(`.${d}`));
+}
 
 /** Download one Brandfetch-hosted image and re-host it under our own
  * storage key — the whole point being we never hit `src` (Brandfetch) again. */
-async function downloadAndStore(src: string, key: string, format: string): Promise<string | null> {
+async function downloadAndStore(src: string, key: string, _format: string): Promise<string | null> {
   try {
-    const res = await fetch(src, { signal: AbortSignal.timeout(6000) });
+    // `src` comes from a third-party API response — only fetch Brandfetch's
+    // own CDN over https, never follow redirects (SSRF into internal hosts).
+    if (!isBrandfetchAssetUrl(src)) return null;
+    const res = await fetch(src, { signal: AbortSignal.timeout(6000), redirect: "error" });
     if (!res.ok) return null;
+    if (Number(res.headers.get("content-length") ?? "0") > MAX_LOGO_BYTES) return null;
     const body = Buffer.from(await res.arrayBuffer());
-    const contentType = CONTENT_TYPE_FOR_FORMAT[format.toLowerCase()] ?? "application/octet-stream";
+    if (body.length > MAX_LOGO_BYTES) return null;
+    // Trust the bytes, not the declared format.
+    const contentType = sniffMediaType(body);
+    if (!contentType || !contentType.startsWith("image/")) return null;
     await storageProvider().putObject(key, body, contentType);
     return key;
   } catch {
