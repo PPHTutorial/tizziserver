@@ -6,6 +6,7 @@ import {
   listMyProducts,
   listProducts,
   publishProduct,
+  reviewProduct,
   reviewVendorKyc,
   searchProducts,
   startVendorOnboarding,
@@ -131,7 +132,14 @@ describe("vendor onboarding → KYC → publish", () => {
     await expect(publishProduct(user.id, draft.id)).rejects.toMatchObject({ code: "VALIDATION" });
 
     await updateProductDraft({ userId: user.id, productId: draft.id, images: ["bench/phone.jpg"], quantity: 5 });
-    const published = await publishProduct(user.id, draft.id);
+    // "Publish" now submits for moderation; an admin approval makes it live.
+    const submitted = await publishProduct(user.id, draft.id);
+    expect(submitted.status).toBe("PENDING_REVIEW");
+    expect((await listProducts({ platformSlug: "grandprice", categorySlug: "phones" })).items.map((p) => p.id)).not.toContain(draft.id);
+
+    const admin = await makeUser();
+    trashUsers.push(admin.id);
+    const published = await reviewProduct(admin.id, draft.id, "APPROVE");
     expect(published.status).toBe("PUBLISHED");
 
     const mine = await listMyProducts(user.id, "PUBLISHED");
