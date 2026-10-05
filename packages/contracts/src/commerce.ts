@@ -141,7 +141,10 @@ export const CheckoutQuote = z.object({
   currency: z.string(),
   fulfilmentMethod: FulfilmentMethod,
   itemsSubtotalMinor: z.number().int(),
+  /** coupon + flash-deal discounts */
   discountMinor: z.number().int(),
+  couponDiscountMinor: z.number().int(),
+  flashDiscountMinor: z.number().int(),
   deliveryFeeMinor: z.number().int(),
   serviceFeeMinor: z.number().int(),
   taxMinor: z.number().int(),

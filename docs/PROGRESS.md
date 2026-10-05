@@ -994,9 +994,13 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
 **S62 morning — what's left is almost all user-owned (see `docs/06-MVP-RELEASE.md`):**
-1. **Decide:** (a) flash-deal pricing — the app shows a deal price but checkout charges the
-   full price; pick vendor-funded (recommended, opt-in per vendor) or platform-funded, then
-   apply the discount in `commerce/cart.ts` pricing; (b) coupon funding (now platform-funded:
+1. **Decide:** (a) ~~flash-deal pricing~~ **S63: checkout now charges the deal price,
+   platform-funded** (flash deals are staff-created `Promotion`s, so vendors never consented
+   to fund them): vendor paid on list price, discount nets against platform fee revenue like
+   coupons, a return refunds the buyer only the deal price and returns the subsidy to the
+   platform (`activeFlashDiscounts` in `catalog/promotions.ts`, `quoteCheckout`,
+   `reviewReturn`; test in `commerce.test.ts`). Switch to vendor-funded later = add an
+   opt-in on `PromotionItem` + price the vendor sub-order at the deal price; (b) coupon funding (now platform-funded:
    vendor paid on full price) and whether return refunds should deduct the coupon share;
    (c) MVP scope per `06-MVP-RELEASE.md` §1 (GrandPrice-only, Android, Inverse Draw off).
 2. **Accounts/keys:** Paystack (test → live; set webhook URL

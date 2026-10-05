@@ -1,4 +1,5 @@
 import type { FulfilmentMethod } from "@stall/db";
+import { activeFlashDiscounts, flashDealUnitPrice } from "../catalog/promotions.ts";
 import { AppError } from "../errors.ts";
 import { getCart, type CartView } from "./cart.ts";
 import { evaluateCoupon } from "./coupons.ts";
@@ -21,7 +22,12 @@ export interface CheckoutQuote {
   currency: string;
   fulfilmentMethod: FulfilmentMethod;
   itemsSubtotalMinor: number;
+  /** coupon + flash-deal discounts (both platform-funded) */
   discountMinor: number;
+  couponDiscountMinor: number;
+  flashDiscountMinor: number;
+  /** what the buyer pays per cart line after flash deals (cart item id → minor) */
+  paidLineTotals: Record<string, number>;
   deliveryFeeMinor: number;
   serviceFeeMinor: number;
   taxMinor: number;
@@ -52,7 +58,7 @@ export async function quoteCheckout(input: QuoteInput, cartOverride?: CartView):
   let couponCode = cart.couponCode;
   let couponValid = cart.couponValid;
   let couponReason: string | null = null;
-  let discountMinor = cart.couponValid ? cart.couponDiscountMinor : 0;
+  let couponDiscountMinor = cart.couponValid ? cart.couponDiscountMinor : 0;
   let freeDelivery = cart.couponValid ? cart.freeDelivery : false;
 
   if (input.couponCode !== undefined && input.couponCode.trim().toUpperCase() !== (cart.couponCode ?? "")) {
@@ -66,9 +72,24 @@ export async function quoteCheckout(input: QuoteInput, cartOverride?: CartView):
     couponCode = input.couponCode.trim().toUpperCase();
     couponValid = evaln.valid;
     couponReason = evaln.reason ?? null;
-    discountMinor = evaln.valid ? evaln.discountMinor : 0;
+    couponDiscountMinor = evaln.valid ? evaln.discountMinor : 0;
     freeDelivery = evaln.valid ? evaln.freeDelivery : false;
   }
+
+  // Flash deals: charge the deal price the app advertises.
+  const items = cart.groups.flatMap((g) => g.items).filter((i) => i.available);
+  const flash = await activeFlashDiscounts(input.platformSlug, [...new Set(items.map((i) => i.productId))]);
+  const paidLineTotals: Record<string, number> = {};
+  let flashDiscountMinor = 0;
+  for (const g of cart.groups) {
+    for (const it of g.items) {
+      const bps = flash.get(it.productId);
+      const paid = bps ? flashDealUnitPrice(it.unitPriceMinor, bps) * it.qty : it.lineTotalMinor;
+      paidLineTotals[it.id] = paid;
+      flashDiscountMinor += it.lineTotalMinor - paid;
+    }
+  }
+  const discountMinor = Math.min(itemsSubtotalMinor, couponDiscountMinor + flashDiscountMinor);
 
   const netAfterDiscount = Math.max(0, itemsSubtotalMinor - discountMinor);
   const deliveryFeeMinor =
@@ -81,7 +102,10 @@ export async function quoteCheckout(input: QuoteInput, cartOverride?: CartView):
 
   const lines: QuoteLine[] = [
     { key: "subtotal", label: "Items subtotal", amountMinor: itemsSubtotalMinor },
-    ...(discountMinor > 0 ? [{ key: "discount" as const, label: "Discount", amountMinor: -discountMinor }] : []),
+    ...(flashDiscountMinor > 0 ? [{ key: "discount" as const, label: "Flash deals", amountMinor: -flashDiscountMinor }] : []),
+    ...(couponDiscountMinor > 0
+      ? [{ key: "discount" as const, label: "Coupon", amountMinor: -(discountMinor - flashDiscountMinor) }]
+      : []),
     { key: "delivery", label: method === "PICKUP" ? "Pickup" : "Delivery fee", amountMinor: deliveryFeeMinor },
     { key: "service", label: "Service fee", amountMinor: serviceFeeMinor },
     ...(taxMinor > 0 ? [{ key: "tax" as const, label: "Tax", amountMinor: taxMinor }] : []),
@@ -93,6 +117,9 @@ export async function quoteCheckout(input: QuoteInput, cartOverride?: CartView):
     fulfilmentMethod: method,
     itemsSubtotalMinor,
     discountMinor,
+    couponDiscountMinor: discountMinor - flashDiscountMinor,
+    flashDiscountMinor,
+    paidLineTotals,
     deliveryFeeMinor,
     serviceFeeMinor,
     taxMinor,

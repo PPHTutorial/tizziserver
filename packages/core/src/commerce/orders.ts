@@ -245,7 +245,9 @@ export async function placeOrder(input: PlaceOrderInput) {
           imageKey: it.image,
           qty: it.qty,
           unitPriceMinor: it.unitPriceMinor,
-          totalMinor: it.lineTotalMinor,
+          // What the buyer paid for the line (flash-deal price); unitPriceMinor
+          // stays the list price the vendor is paid on.
+          totalMinor: quote.paidLineTotals[it.id] ?? it.lineTotalMinor,
         })),
       });
       await tx.fulfilment.create({
@@ -371,7 +373,7 @@ export async function placeOrder(input: PlaceOrderInput) {
       const coupon = await tx.coupon.findUnique({ where: { code: quote.couponCode } });
       if (coupon) {
         await tx.couponRedemption.create({
-          data: { couponId: coupon.id, userId: input.userId, orderId: created.id, amountMinor: quote.discountMinor },
+          data: { couponId: coupon.id, userId: input.userId, orderId: created.id, amountMinor: quote.couponDiscountMinor },
         });
       }
     }
@@ -610,7 +612,7 @@ export async function requestReturn(
           if (already + line.qty > item.qty) {
             throw new AppError("VALIDATION", `Only ${item.qty - already} of "${item.titleSnapshot}" left to return`);
           }
-          amountMinor += item.unitPriceMinor * line.qty;
+          amountMinor += paidShare(item, line.qty);
         }
 
         const ret = await tx.return.create({
@@ -708,7 +710,14 @@ export async function reviewReturn(userId: string, returnId: string, decision: "
 
   const items = (ret.items as { orderItemId: string; qty: number }[] | null) ?? [];
   const itemsById = new Map(ret.vendorOrder.items.map((it) => [it.id, it]));
-  const amountMinor = items.reduce((sum, line) => sum + (itemsById.get(line.orderItemId)?.unitPriceMinor ?? 0) * line.qty, 0);
+  let amountMinor = 0;
+  let listMinor = 0;
+  for (const line of items) {
+    const item = itemsById.get(line.orderItemId);
+    if (!item) continue;
+    amountMinor += paidShare(item, line.qty);
+    listMinor += item.unitPriceMinor * line.qty;
+  }
   if (amountMinor <= 0) throw new AppError("CONFLICT", "Return has no refundable items");
 
   const order = ret.vendorOrder.order;
@@ -722,6 +731,20 @@ export async function reviewReturn(userId: string, returnId: string, decision: "
     memo: `Return refund · ${order.number}`,
     reference: { orderId: order.id, vendorOrderId: ret.vendorOrderId, returnId: ret.id, refundId: refund.id },
   });
+  // The vendor was paid on the list price; the flash-deal part of that was a
+  // platform subsidy, so it goes back to the platform, not to the buyer.
+  const subsidyMinor = listMinor - amountMinor;
+  if (subsidyMinor > 0) {
+    await postTxn({
+      type: "ADJUSTMENT",
+      memo: `Flash-deal subsidy returned · ${order.number}`,
+      reference: { orderId: order.id, returnId: ret.id },
+      lines: [
+        { account: vendorPayable(vp.id, order.currency), direction: "DEBIT", amountMinor: subsidyMinor },
+        { account: platformRevenue(order.platformSlug, order.currency), direction: "CREDIT", amountMinor: subsidyMinor },
+      ],
+    });
+  }
   await prisma.$transaction([
     prisma.refund.update({ where: { id: refund.id }, data: { status: "DONE", ledgerTxnId } }),
     prisma.orderEvent.create({
@@ -735,6 +758,11 @@ export async function reviewReturn(userId: string, returnId: string, decision: "
   ]);
 
   return { id: ret.id, status: "APPROVED" as const, refund: { amountMinor, method } };
+}
+
+/** What the buyer actually paid for `qty` units of an order line (flash deals included). */
+function paidShare(item: { qty: number; unitPriceMinor: number; totalMinor: number }, qty: number) {
+  return item.qty > 0 ? Math.round((item.totalMinor * qty) / item.qty) : item.unitPriceMinor * qty;
 }
 
 /** The vendor's return queue (pending + past decisions). */

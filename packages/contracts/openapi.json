@@ -19480,6 +19480,16 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "couponDiscountMinor": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "flashDiscountMinor": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
                         "deliveryFeeMinor": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -19589,6 +19599,8 @@
                         "fulfilmentMethod",
                         "itemsSubtotalMinor",
                         "discountMinor",
+                        "couponDiscountMinor",
+                        "flashDiscountMinor",
                         "deliveryFeeMinor",
                         "serviceFeeMinor",
                         "taxMinor",

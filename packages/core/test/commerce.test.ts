@@ -11,6 +11,9 @@ const trash: string[] = [];
 // Two seeded grandprice offers for the same product → multi-vendor cart.
 let offerA = ""; // 184900 — Kumasi Gadget Store
 let offerB = ""; // 189900 — Accra Electronics Hub
+// The seed runs a live flash deal on this product; tests price at list unless
+// they create their own deal, so pause it for the file and restore it after.
+let pausedFlashPromos: string[] = [];
 
 async function cleanupUser(userId: string) {
   await prisma.couponRedemption.deleteMany({ where: { userId } });
@@ -41,9 +44,16 @@ beforeAll(async () => {
   expect(offers.length).toBeGreaterThanOrEqual(2);
   offerA = offers[0]!.id;
   offerB = offers[1]!.id;
+  const live = await prisma.promotion.findMany({
+    where: { kind: "FLASH_DEAL", isActive: true, items: { some: { product: { slug: "orbit-a54-phone" } } } },
+    select: { id: true },
+  });
+  pausedFlashPromos = live.map((p) => p.id);
+  await prisma.promotion.updateMany({ where: { id: { in: pausedFlashPromos } }, data: { isActive: false } });
 });
 
 afterAll(async () => {
+  await prisma.promotion.updateMany({ where: { id: { in: pausedFlashPromos } }, data: { isActive: true } });
   for (const id of trash) await cleanupUser(id).catch(() => {});
   await prisma.$disconnect();
 });
@@ -126,6 +136,66 @@ describe("paid multi-vendor order (wallet) → escrow → release", () => {
     const commissionTotal = order.vendorOrders.reduce((s, v) => s + v.commissionMinor, 0);
     const feeTotal = order.deliveryFeeMinor + order.serviceFeeMinor + order.taxMinor;
     expect(await balanceOf(platformRevenue(PLATFORM))).toBe(revenueBefore + commissionTotal + feeTotal);
+  });
+});
+
+describe("flash deals (platform-funded)", () => {
+  it("charges the deal price, pays the vendor on list price, and a return refunds only what was paid", async () => {
+    const userId = await newCustomer();
+    await wallet.initiateTopUp({ userId, amountMinor: 1_000_000, platformSlug: PLATFORM });
+    const product = await prisma.product.findUniqueOrThrow({ where: { slug: "orbit-a54-phone" }, select: { id: true } });
+    const promo = await prisma.promotion.create({
+      data: {
+        slug: `test-flash-${Date.now()}`,
+        kind: "FLASH_DEAL",
+        title: "Test flash",
+        platformSlugs: [PLATFORM],
+        items: { create: { productId: product.id, discountBps: 1000 } },
+      },
+    });
+    try {
+      await commerce.addToCart({ userId, platformSlug: PLATFORM, offerId: offerA, qty: 2 });
+      const quote = await commerce.quoteCheckout({ userId, platformSlug: PLATFORM, fulfilmentMethod: "PICKUP" });
+      const list = quote.itemsSubtotalMinor;
+      const unitDeal = Math.round((list / 2) * 0.9);
+      expect(quote.flashDiscountMinor).toBe(list - unitDeal * 2);
+      expect(quote.lines.find((l) => l.label === "Flash deals")?.amountMinor).toBe(-quote.flashDiscountMinor);
+
+      const escrowBefore = await balanceOf(platformEscrow(PLATFORM));
+      const revenueBefore = await balanceOf(platformRevenue(PLATFORM));
+      const order = await commerce.placeOrder({ userId, platformSlug: PLATFORM, fulfilmentMethod: "PICKUP", payment: { method: "wallet" } });
+      expect(order.discountMinor).toBe(quote.flashDiscountMinor);
+      expect(order.totalMinor).toBe(unitDeal * 2 + order.serviceFeeMinor + order.taxMinor);
+
+      const vo = order.vendorOrders[0]!;
+      const item = vo.items[0]!;
+      expect(item.unitPriceMinor).toBe(list / 2);
+      expect(item.totalMinor).toBe(unitDeal * 2);
+      const vendorUser = await prisma.vendorProfile.findUniqueOrThrow({ where: { id: vo.vendorId }, select: { userId: true } });
+      const payableBefore = await balanceOf(vendorPayable(vo.vendorId));
+      await commerce.completeVendorOrder(vendorUser.userId, vo.id);
+
+      // vendor paid on list; escrow drains to zero; the platform funds the deal
+      expect(await balanceOf(vendorPayable(vo.vendorId))).toBe(payableBefore + vo.payoutMinor);
+      expect(await balanceOf(platformEscrow(PLATFORM))).toBe(escrowBefore);
+      expect(await balanceOf(platformRevenue(PLATFORM))).toBe(
+        revenueBefore + vo.commissionMinor + order.serviceFeeMinor + order.taxMinor - order.discountMinor,
+      );
+
+      // return one unit: buyer gets the deal price back, the subsidy returns to the platform
+      const walletBefore = await wallet.walletBalanceMinor(userId);
+      const payableMid = await balanceOf(vendorPayable(vo.vendorId));
+      const revenueMid = await balanceOf(platformRevenue(PLATFORM));
+      const req = await commerce.requestReturn(userId, vo.id, { reason: "changed mind", items: [{ orderItemId: item.id, qty: 1 }] });
+      expect(req.amountMinor).toBe(unitDeal);
+      const reviewed = await commerce.reviewReturn(vendorUser.userId, req.id, "APPROVED");
+      expect(reviewed.refund?.amountMinor).toBe(unitDeal);
+      expect(await wallet.walletBalanceMinor(userId)).toBe(walletBefore + unitDeal);
+      expect(await balanceOf(vendorPayable(vo.vendorId))).toBe(payableMid - list / 2);
+      expect(await balanceOf(platformRevenue(PLATFORM))).toBe(revenueMid + (list / 2 - unitDeal));
+    } finally {
+      await prisma.promotion.delete({ where: { id: promo.id } });
+    }
   });
 });
 

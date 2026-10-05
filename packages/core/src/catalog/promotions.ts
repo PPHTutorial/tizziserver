@@ -42,6 +42,35 @@ const activeWhere = (platformSlug: string) => ({
   ],
 });
 
+/**
+ * Live flash-deal discount per product (basis points), for checkout pricing.
+ * Flash deals are created by platform staff, so the discount is
+ * platform-funded: the buyer pays the deal price, the vendor is still paid
+ * on the list price (see `quoteCheckout` / `placeOrder`). If a product is in
+ * several live deals the biggest discount wins.
+ */
+export async function activeFlashDiscounts(platformSlug: string, productIds: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (productIds.length === 0) return out;
+  const rows = await prisma.promotionItem.findMany({
+    where: {
+      productId: { in: productIds },
+      discountBps: { gt: 0 },
+      promotion: { kind: "FLASH_DEAL", ...activeWhere(platformSlug) },
+    },
+    select: { productId: true, discountBps: true },
+  });
+  for (const r of rows) {
+    const bps = Math.min(r.discountBps ?? 0, 10_000);
+    if (bps > (out.get(r.productId) ?? 0)) out.set(r.productId, bps);
+  }
+  return out;
+}
+
+/** Same rounding as the deal price shown on cards (`dealPriceMinor`). */
+export const flashDealUnitPrice = (unitPriceMinor: number, bps: number) =>
+  Math.round(unitPriceMinor * (1 - bps / 10_000));
+
 function toCard(
   row: {
     productId: string;
