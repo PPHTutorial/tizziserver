@@ -145,7 +145,12 @@ export const TwoFactorResponse = ok(
 );
 
 // --- POST /auth/pin  &  /auth/password -------------------
-export const PinRequest = z.object({ pin: z.string().regex(/^\d{4,6}$/) });
+/** Replacing an existing PIN requires `currentPin` or a RESET_PIN `otpCode`. */
+export const PinRequest = z.object({
+  pin: z.string().regex(/^\d{4,6}$/),
+  currentPin: z.string().regex(/^\d{4,6}$/).optional(),
+  otpCode: z.string().min(4).max(8).optional(),
+});
 export const PasswordRequest = z.object({ password: z.string().min(8).max(128) });
 export const OkSet = ok(z.object({ set: z.literal(true) }));
 

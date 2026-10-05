@@ -109,10 +109,13 @@ export async function rotateTokenPair(input: {
 
   const refreshToken = randomToken();
   const next = await prisma.$transaction(async (tx) => {
-    await tx.session.update({
-      where: { id: session.id },
+    // Conditional revoke: of two concurrent rotations of the same token only
+    // one may win — the loser is a replay and gets the reuse treatment below.
+    const won = await tx.session.updateMany({
+      where: { id: session.id, revokedAt: null },
       data: { revokedAt: new Date(), revokeReason: "rotated" },
     });
+    if (won.count === 0) return null;
     return tx.session.create({
       data: {
         userId: session.userId,
@@ -128,6 +131,10 @@ export async function rotateTokenPair(input: {
       },
     });
   });
+  if (!next) {
+    await revokeFamily(session.familyId, "reuse-detected");
+    throw new AppError("REFRESH_REUSE_DETECTED", "Refresh token reuse detected — all sessions in this family revoked");
+  }
 
   const accessToken = await mintAccess({
     userId: session.userId,
