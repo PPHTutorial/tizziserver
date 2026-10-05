@@ -153,6 +153,13 @@ const schema = z.object({
   SENTRY_ENVIRONMENT: z.string().optional(),
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
 
+  // --- Network -------------------------------------------------------
+  // Reverse proxies in front of the API that append to X-Forwarded-For.
+  // The client IP is taken this many entries from the RIGHT of the header
+  // (the left-most entries are client-controlled and spoofable). 0 ⇒ ignore
+  // X-Forwarded-For entirely and use X-Real-IP only.
+  TRUST_PROXY_HOPS: z.coerce.number().int().nonnegative().default(1),
+
   // --- Platform ------------------------------------------------------
   DEFAULT_PLATFORM: z.string().default("grandprice"),
 

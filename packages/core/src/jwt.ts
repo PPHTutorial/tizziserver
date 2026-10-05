@@ -41,6 +41,7 @@ export async function signAccessToken(claims: AccessClaims): Promise<string> {
 export async function verifyAccessToken(token: string): Promise<AccessClaims> {
   try {
     const { payload } = await jwtVerify(token, await publicKeyP, {
+      algorithms: [ALG], // pin — never let the token header choose the algorithm
       issuer: env.JWT_ISSUER,
       audience: env.JWT_AUDIENCE,
     });
