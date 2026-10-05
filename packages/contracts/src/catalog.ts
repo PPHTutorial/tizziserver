@@ -200,6 +200,27 @@ export const VendorPageResponse = ok(
     verifiedAt: z.string().nullable(),
     productCount: z.number().int(),
     location: z.string().nullable(),
+    followerCount: z.number().int(),
+    /** Always false when signed out. */
+    isFollowing: z.boolean(),
+  }),
+);
+
+export const VendorFollowStateResponse = ok(z.object({ followerCount: z.number().int(), isFollowing: z.boolean() }));
+export const FollowedVendorsResponse = ok(
+  z.object({
+    items: z.array(
+      z.object({
+        id: z.string(),
+        displayName: z.string(),
+        logo: z.string().nullable(),
+        ratingAvg: z.number(),
+        ratingCount: z.number().int(),
+        verified: z.boolean(),
+        followedAt: z.string(),
+      }),
+    ),
+    nextCursor: z.string().nullable(),
   }),
 );
 

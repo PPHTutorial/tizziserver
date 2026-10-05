@@ -1,6 +1,7 @@
 import { prisma, Prisma, type KycDocKind } from "@stall/db";
 import { AppError } from "../errors.ts";
 import { uniqueSlug } from "./util.ts";
+import { vendorFollowState } from "./follows.ts";
 
 export interface FeaturedVendor {
   id: string;
@@ -39,7 +40,7 @@ export async function listFeaturedVendors(input: { platformSlug: string; limit?:
 
 // --- public vendor page ------------------------------------------------
 
-export async function getVendorPage(vendorId: string, platformSlug: string) {
+export async function getVendorPage(vendorId: string, platformSlug: string, viewerUserId?: string) {
   const vendor = await prisma.vendorProfile.findFirst({
     where: { id: vendorId, status: "ACTIVE", platformIds: { has: platformSlug } },
     include: {
@@ -59,6 +60,7 @@ export async function getVendorPage(vendorId: string, platformSlug: string) {
     verifiedAt: vendor.verifiedAt?.toISOString() ?? null,
     productCount: vendor._count.products,
     location: [vendor.business?.city, vendor.business?.country].filter(Boolean).join(", ") || null,
+    ...(await vendorFollowState(vendor.id, viewerUserId)),
   };
 }
 

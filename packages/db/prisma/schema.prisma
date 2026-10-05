@@ -506,6 +506,7 @@ model User {
   productAnswers   ProductAnswer[]
   productReviews   ProductReview[]
   wishlist         WishlistItem[]
+  vendorFollows    VendorFollow[]
   recentlyViewed   RecentlyViewed[]
 
   carts             Cart[]
@@ -775,6 +776,7 @@ model VendorProfile {
   offers       VendorOffer[]
   inventory    Inventory[]
   vendorOrders VendorOrder[]
+  followers    VendorFollow[]
 
   @@map("vendor_profiles")
 }
@@ -1246,6 +1248,22 @@ model ProductReview {
   @@unique([productId, userId])
   @@index([productId])
   @@map("product_reviews")
+}
+
+/// A buyer following a storefront (Figma `seller-store` Follow button).
+/// Follower counts are a live COUNT — no denormalised counter to drift.
+model VendorFollow {
+  id        String   @id @default(cuid(2))
+  userId    String
+  vendorId  String
+  createdAt DateTime @default(now())
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendor VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vendorId])
+  @@index([vendorId])
+  @@map("vendor_follows")
 }
 
 model WishlistItem {
