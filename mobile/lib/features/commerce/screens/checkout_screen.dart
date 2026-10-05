@@ -201,7 +201,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final api = ref.read(stallApiProvider);
       final order = await api.placeOrder(
         paymentMethod: _payment,
-        gateway: _payment == 'gateway' ? 'mock' : null,
+        // No gateway name: the server uses its configured PAYMENTS_PROVIDER
+        // (the mock sandbox in dev; refused in production).
+        gateway: null,
         addressId: _method == 'PICKUP' ? null : _addressId,
         fulfilmentMethod: _method,
         idempotencyKey: 'chk-${DateTime.now().microsecondsSinceEpoch}',
@@ -211,6 +213,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       ref.invalidate(ordersProvider);
       if (mounted) context.go('${RoutePaths.orderConfirmation}?id=${order.id}');
     } on StallApiException catch (e) {
+      if (e.code == 'CONFLICT') {
+        // Price changed / out of stock / unavailable: the server already
+        // refreshed the affected cart lines — reload so the buyer sees the
+        // new total before retrying.
+        await ref.read(cartControllerProvider.notifier).refresh();
+        ref.invalidate(checkoutQuoteProvider);
+      }
+      if (!mounted) return;
       setState(() {
         _placing = false;
         _error = e.message;

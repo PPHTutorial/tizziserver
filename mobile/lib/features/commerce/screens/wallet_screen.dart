@@ -204,7 +204,7 @@ class WalletScreen extends ConsumerWidget {
         title: 'Top up wallet',
         cta: 'Pay',
         onSubmit: (amountMinor, _) async {
-          await ref.read(stallApiProvider).walletTopUp(amountMinor, gateway: 'mock');
+          await ref.read(stallApiProvider).walletTopUp(amountMinor);
           ref.invalidate(walletProvider);
           ref.invalidate(walletTxnsProvider);
         },
