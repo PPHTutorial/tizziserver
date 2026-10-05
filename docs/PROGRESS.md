@@ -4,11 +4,36 @@
 > Resume a cleared session by typing **`RESUME STALL`** (see `docs/RESUME.md`).
 > Flush state before clearing context by typing **`SAVE STALL`**.
 
-Last updated: **2026-10-04** (Session 61)
+Last updated: **2026-10-05** (Session 62 — overnight autonomous run)
 
 ---
 
 ## CURRENT STATE (one paragraph)
+
+**Session 62 — overnight autonomous MVP push (user asleep; /loop + 4 worktree agents).**
+Branch `stall-rebuild` (local only, never pushed), 43 commits since `e766924`. Merged agent
+branches: `security-review-mvp` (critical: client-chosen `gateway:"mock"` = free money, now
+blocked; admin OTP→TOTP bypass; courier PHOTO bypass of drop-off code; PIN reset w/o current
+PIN; 2FA re-enroll disabling 2FA; social email-link takeover; spoofable X-Forwarded-For;
+OTP race; webhook double-credit; upload magic-byte sniffing; SSRF in brand logos; prod boot
+refuses dev JWT keys), `stall-mvp-backend-hardening` (order status only moves forward, vendor
+can't self-complete delivery orders, double-cancel stock release, coupon escrow shortfall,
+delivery-fee rounding, stale price / out-of-stock at checkout → CONFLICT `PRICE_CHANGED` /
+`OUT_OF_STOCK`), `mobile-release-ready` (R8 + keep rules, key.properties signing, iOS usage
+strings + 14.0 + Podfile, release build refuses missing dart-defines, 56 Flutter tests),
+docs (`06-MVP-RELEASE.md`, screen-catalog refresh). Main session built: `/api/v1/health`;
+prod compose `migrate` one-shot + realtime DB URL + `media.<domain>` + nightly `pgbackup`;
+`/legal/privacy` + `/legal/terms`; in-app Delete account + Download my data + licences
+page; `SEED_PROFILE=production` + `SEED_ADMIN_PHONE`; **vendor Follow** (model + migration
+`20261005010000_vendor_follows`, follow/unfollow, `/me/following`, storefront button);
+manual payout queue `/admin/payouts` (worker auto-settles only under mock); **Paystack
+adapter** + **wallet-first payments** (hosted top-up → `/payments/intents/{id}/confirm` +
+webhook, shared atomic settlement; direct checkout refuses hosted providers with
+`TOP_UP_REQUIRED`); prod refuses mock payments / missing Redis; media bucket public-read
+scoped to listing prefixes (KYC → private `kyc/vendors/`, invoices private) + admin KYC
+viewer; social sign-in + manual card form hidden at MVP; PIN throttle reset on success.
+Verified: typecheck 8/8, core 112/112 (+12 opt-in skipped), api 3/3, Flutter analyze 0 +
+test 56/56. NOT verified: any device/Gradle build (aapt2 deadlock), Paystack live sandbox.
 
 **Session 61 (cont. 2) — LGPL ffmpeg, product-page chat/call, "Sell on Stall" flow.**
 (1) Swapped `ffmpeg_kit_flutter_new` (full-GPL) → **`ffmpeg_kit_flutter_new_min` 3.6.4
@@ -968,6 +993,23 @@ Redis, MinIO+bucket, Mailpit all healthy) **and** the no-Docker fallback (S4).
 
 ## NEXT ACTIONS (ordered, concrete — start here on resume)
 
+**S62 morning — what's left is almost all user-owned (see `docs/06-MVP-RELEASE.md`):**
+1. **Decide:** (a) flash-deal pricing — the app shows a deal price but checkout charges the
+   full price; pick vendor-funded (recommended, opt-in per vendor) or platform-funded, then
+   apply the discount in `commerce/cart.ts` pricing; (b) coupon funding (now platform-funded:
+   vendor paid on full price) and whether return refunds should deduct the coupon share;
+   (c) MVP scope per `06-MVP-RELEASE.md` §1 (GrandPrice-only, Android, Inverse Draw off).
+2. **Accounts/keys:** Paystack (test → live; set webhook URL
+   `https://api.<domain>/api/v1/payments/webhook?gateway=paystack`, `PAYSTACK_CALLBACK_URL`),
+   Nalo SMS sender ID (`SMS_PROVIDER=nalo`), VPS + domain + Cloudflare, Play Console upload
+   keystore (`mobile/android/key.properties`), `LEGAL_ENTITY_*`/`SUPPORT_EMAIL`.
+3. **Device pass** once the PC's Android toolchain works (Defender exclusions + reboot, then
+   `pwsh scripts/dev-side-by-side.ps1` + `flutter run --flavor grandprice …`): run a Paystack
+   *sandbox* top-up end to end, R8 release build smoke (ffmpeg/ML Kit/uCrop), photos/video,
+   Follow, Show number, Sell on Stall, delete account.
+4. Post-MVP: FCM push (courier offers while backgrounded), off-box backup copy, iOS flavors,
+   async gateway capture if direct card checkout is wanted.
+
 **Post-launch UX backlog (S59/S60) — items 1–2/4 done + disbursed, do the rest in
 order, one per fresh session:**
 0. ~~**Pre-flight: diff tizziserver against `stall-web`/`stall-mobile` before starting.**~~
@@ -1186,6 +1228,10 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-10-05 (S62) | **Wallet-first payments at MVP.** Card/MoMo money enters only through Paystack hosted-checkout wallet top-ups; orders, draw tickets and win-target pay from the wallet. `directGatewayFor` refuses non-synchronous providers with `TOP_UP_REQUIRED`. | Hosted checkout settles asynchronously (webhook); rewriting order/ticket/prize flows for async capture blind (no keys, no device) was too risky. Wallet path is already tested end to end; MoMo-wallet behaviour suits Ghana. Reversible: implement async capture per flow later. |
+| 2026-10-05 (S62) | **Payouts are settled manually by staff** (`/admin/payouts`: mark paid with transfer ref / fail → exact ledger reversal) until a disbursement API (Paystack Transfers) is wired. | The worker used to mark payouts PAID without moving money. |
+| 2026-10-05 (S62) | **Media bucket public-read only for `avatars/`, `vendors/`, `products/`, `brand-logos/`**; KYC under private `kyc/vendors/`, invoices private; explicit deny on legacy `vendors/kyc/*`. | Whole-bucket public read exposed ID documents and enumerable invoices. |
+| 2026-10-05 (S62) | **`social_login` defaults off** (seed); the welcome screen honours the flag. | The provider SDK hand-off isn't implemented — buttons only opened a stub dialog. |
 | 2026-10-04 (S61) | **`tizziserver` (branch `stall-rebuild`) is the single canonical repo again. Supersedes the S15 split decision: `stall-web`/`stall-mobile` are frozen at `78e9591`/`29f7f55` and no longer receive per-file disbursements.** Re-splitting for cross-platform delivery is user-owned, to be revisited later (e.g. as a scripted subtree/filter export, not manual copying). | Manual per-file disbursement drifted twice (S59 undisbursed; then ~73 mobile files after S60 as the user committed here directly). One source of truth stops the drift; the monorepo already builds web/API and the Flutter app independently. |
 | 2026-09-03 (S15) | **Split the `tizziserver` monorepo into two independent, fresh-history private GitHub repos — `stall-web` (everything but `mobile/`) and `stall-mobile` (the Flutter app) — both under account `PPHTutorial`. `tizziserver` itself is kept, untouched, as a pending revert point** (HEAD `33f2f93`; the uncommitted Phase 3–8 work was copied out, never committed here). Editing workflow going forward: make changes in `tizziserver` (it has the fullest, most current tree), then disburse — copy the changed files to the matching path in whichever split repo owns them (`mobile/*` → `stall-mobile`, everything else → `stall-web`) and commit there. `tizziserver` is not pushed from directly. | The user wants `stall-web`/`stall-mobile` to be the real, independently-versioned deliverables (each installable/buildable standalone, e.g. for separate CI or separate contributors), while preserving `tizziserver`'s working tree exactly as it was in case the Phase 3–8 buildout needs to be reverted later — splitting first and reverting `tizziserver` after would have lost that work permanently. |
 | 2026-09-02 (S14) | **`BoostTier` is the only source of ad/boost pricing + rank multipliers — nothing is hardcoded in the app, the ranker, or the API.** The admin console is the sole writer (`ads.upsertBoostTier`, `/admin/boost-tiers`); mobile reads the active set via `GET /ads/tiers`; `serving.rankBoostMap` reads `rankBoostBps` per campaign/boost. `env.ADS_DEFAULT_CPM/CPC_MINOR` are fallbacks only (a campaign with no tier). | The roadmap is explicit: "backend-configurable `BoostTier` (no hardcoded tiers)". Keeps pricing an ops lever, not a deploy. |
@@ -1252,6 +1298,7 @@ No-Docker fallback: `pnpm dev:db` · `pnpm dev:redis` · `pnpm dev:mail` (+ poin
 
 | Date | Session | What changed |
 |------|---------|--------------|
+| 2026-10-05 | 62 | **Overnight autonomous MVP push** — 4 worktree agents (security, backend hardening, mobile release, docs) merged + main-session work: health route, prod compose (migrate/realtime DB/media host/backups), legal pages, in-app deletion/export, prod seed + admin bootstrap, vendor Follow, manual payouts, Paystack + wallet-first payments, prod config guards, private KYC/invoices, MVP feature hiding, PIN throttle fix. 43 commits; typecheck 8/8, core 112/112, Flutter 56/56. |
 | 2026-10-04 | 61 (cont. 2) | **LGPL ffmpeg (`_min` + hardware H.264); product-page Chat + tap-to-reveal phone (`showPhone` opt-out, `GET /vendors/{id}/phone`); branded 4-step Sell on Stall flow.** Migration `20261004200000_vendor_show_phone` applied to dev DB (:5433). API verified: `phoneAvailable` in product payload, reveal 401 unauthenticated. |
 | 2026-10-04 | 61 (cont.) | **Product media pipeline finished** (picker/crop/compress/white-bg/video transcode + upload in the listing editor; contracts `video`; manifest UCrop + ML Kit; fixed image-loss-on-save). typecheck 8/8, analyze 0; device test + GPL decision pending. |
 | 2026-10-04 | 61 | **Ledger catch-up + repo consolidation, docs only.** Logged post-S60 commits `485c246`/`35eacfd`/`a016c29` (brand logos, featured vendors, country picker, email/phone change, vendor KYC, vendor wallet, admin product review, brand search, color pickers) in CURRENT STATE. Decided `tizziserver` is canonical; split repos frozen. NEXT ACTIONS pre-flight diff + Figma-backlog item 1 (country picker) marked done/obsolete. Oriented token-cheaply (heading grep + slices; no reads of `file.json`/renders/full ledger). |
