@@ -79,6 +79,9 @@ const schema = z.object({
   // `mock` is a deterministic in-process sandbox — no external accounts (B4).
   // Swap to a real provider once its sandbox keys are set.
   PAYMENTS_PROVIDER: z.enum(["mock", "paystack", "flutterwave", "stripe"]).default("mock"),
+  // Staging escape hatch only: production refuses PAYMENTS_PROVIDER=mock
+  // (anyone could "pay" for orders and top-ups for free) unless this is "true".
+  ALLOW_MOCK_PAYMENTS_IN_PRODUCTION: z.enum(["true", "false"]).default("false"),
   PAYMENTS_CURRENCY: z.string().default("GHS"),
   // Shared secret the mock gateway's webhook caller must HMAC-sign the raw body
   // with (header `x-mock-signature`). Dev-only default — set a real random
@@ -185,6 +188,8 @@ export function productionSecretProblems(e: {
   JWT_PUBLIC_KEY: string;
   PAYMENTS_PROVIDER: string;
   MOCK_PAYMENTS_WEBHOOK_SECRET: string;
+  ALLOW_MOCK_PAYMENTS_IN_PRODUCTION?: string;
+  REDIS_URL?: string;
 }): string[] {
   if (e.NODE_ENV !== "production") return [];
   const out: string[] = [];
@@ -193,6 +198,15 @@ export function productionSecretProblems(e: {
   }
   if (e.PAYMENTS_PROVIDER === "mock" && e.MOCK_PAYMENTS_WEBHOOK_SECRET === COMMITTED_MOCK_WEBHOOK_SECRET) {
     out.push("MOCK_PAYMENTS_WEBHOOK_SECRET: the committed default must not be used in production");
+  }
+  if (e.PAYMENTS_PROVIDER === "mock" && e.ALLOW_MOCK_PAYMENTS_IN_PRODUCTION !== "true") {
+    out.push(
+      "PAYMENTS_PROVIDER: mock settles every payment instantly for free — configure a real gateway " +
+        "(or set ALLOW_MOCK_PAYMENTS_IN_PRODUCTION=true for a staging environment only)",
+    );
+  }
+  if (!e.REDIS_URL) {
+    out.push("REDIS_URL: required in production — without Redis every rate limit (OTP, login, uploads) is skipped");
   }
   return out;
 }

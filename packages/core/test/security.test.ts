@@ -57,10 +57,23 @@ describe("productionSecretProblems", () => {
     JWT_PUBLIC_KEY: "MCowBQYDK2VwAyEAKvMYnCyKVQUTN+Iw80vWk3UagyyqYdyjFFsG0D43Q5k=",
     PAYMENTS_PROVIDER: "mock",
     MOCK_PAYMENTS_WEBHOOK_SECRET: "dev-only-mock-webhook-secret-change-me",
+    REDIS_URL: "redis://redis:6379",
+    ALLOW_MOCK_PAYMENTS_IN_PRODUCTION: "true",
   };
   it("flags the committed dev keypair and default mock secret in production", () => {
     expect(productionSecretProblems(base)).toHaveLength(2);
     expect(productionSecretProblems({ ...base, JWT_PUBLIC_KEY: "other", PAYMENTS_PROVIDER: "paystack" })).toEqual([]);
+  });
+  it("refuses mock payments in production unless explicitly allowed (staging)", () => {
+    const real = { ...base, JWT_PUBLIC_KEY: "other", MOCK_PAYMENTS_WEBHOOK_SECRET: "rotated" };
+    expect(productionSecretProblems(real)).toEqual([]);
+    const problems = productionSecretProblems({ ...real, ALLOW_MOCK_PAYMENTS_IN_PRODUCTION: "false" });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/^PAYMENTS_PROVIDER/);
+  });
+  it("requires Redis in production so rate limits can't silently switch off", () => {
+    const problems = productionSecretProblems({ ...base, JWT_PUBLIC_KEY: "other", PAYMENTS_PROVIDER: "paystack", REDIS_URL: undefined });
+    expect(problems).toEqual([expect.stringMatching(/^REDIS_URL/)]);
   });
   it("is silent outside production", () => {
     expect(productionSecretProblems({ ...base, NODE_ENV: "development" })).toEqual([]);
