@@ -100,7 +100,9 @@ export async function topUpWallet(input: {
 /**
  * Top up via a payment gateway: create a `PaymentIntent`, capture it, and — on
  * success — credit the wallet. With `PAYMENTS_PROVIDER=mock` the capture is
- * synchronous; real providers would confirm via `payments/webhook`.
+ * synchronous. A hosted-checkout provider (Paystack) instead returns
+ * `REQUIRES_ACTION` + `authorizationUrl`: the app opens it, and the wallet is
+ * credited by the webhook or `confirmPaymentIntent` when the customer returns.
  */
 export async function initiateTopUp(input: {
   userId: string;
@@ -108,7 +110,14 @@ export async function initiateTopUp(input: {
   platformSlug: string;
   gateway?: string;
   currency?: string;
-}): Promise<{ status: "SUCCEEDED" | "FAILED"; balanceMinor?: number; intentId: string; gatewayRef: string; failureReason?: string }> {
+}): Promise<{
+  status: "SUCCEEDED" | "FAILED" | "REQUIRES_ACTION";
+  balanceMinor?: number;
+  intentId: string;
+  gatewayRef: string;
+  authorizationUrl?: string;
+  failureReason?: string;
+}> {
   const currency = input.currency ?? CUR;
   if (!Number.isInteger(input.amountMinor) || input.amountMinor < 100) {
     throw new AppError("VALIDATION", "Minimum top-up is 100 minor units");
@@ -127,12 +136,18 @@ export async function initiateTopUp(input: {
       purpose: "WALLET_TOPUP",
       amountMinor: input.amountMinor,
       currency,
-      status: "PROCESSING",
+      status: gw.capturesSynchronously ? "PROCESSING" : "REQUIRES_ACTION",
       gateway: gw.name,
       gatewayRef: intent.ref,
       clientSecret: intent.clientSecret,
+      // The webhook needs this to credit the right platform's ledger.
+      metadata: { platformSlug: input.platformSlug } as Prisma.InputJsonValue,
     },
   });
+
+  if (!gw.capturesSynchronously) {
+    return { status: "REQUIRES_ACTION", intentId: pi.id, gatewayRef: intent.ref, authorizationUrl: intent.authorizationUrl };
+  }
 
   const cap = await gw.capture(intent.ref, input.amountMinor);
   if (!cap.ok) {

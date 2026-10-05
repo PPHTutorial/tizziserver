@@ -10,7 +10,7 @@ import {
   type AccountRef,
 } from "../wallet/ledger.ts";
 import { payFromWallet, refundToWallet } from "../wallet/wallet.ts";
-import { gatewayFor } from "../payments/providers.ts";
+import { directGatewayFor, gatewayFor } from "../payments/providers.ts";
 import { addressSnapshot, getAddress } from "./addresses.ts";
 import { getCart } from "./cart.ts";
 import { quoteCheckout } from "./checkout.ts";
@@ -299,7 +299,7 @@ export async function placeOrder(input: PlaceOrderInput) {
         reference: { orderId: created.id, number },
       });
     } else {
-      const gw = gatewayFor(input.payment.gateway);
+      const gw = directGatewayFor(input.payment.gateway);
       const intent = await gw.createIntent({
         amountMinor: quote.totalMinor,
         currency: quote.currency,

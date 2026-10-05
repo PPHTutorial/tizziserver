@@ -8,7 +8,7 @@ import { AppError } from "../errors.ts";
 import { randomToken } from "../crypto.ts";
 import { auctionEscrow, gatewayClearing, postTxn, userWallet } from "../wallet/ledger.ts";
 import { getOrCreateWallet, walletBalanceMinor } from "../wallet/wallet.ts";
-import { gatewayFor } from "../payments/providers.ts";
+import { directGatewayFor, gatewayFor } from "../payments/providers.ts";
 import { recomputeParticipant } from "./qualification.ts";
 import { refreshAuctionFill } from "./auctions.ts";
 
@@ -79,7 +79,7 @@ export async function buyTickets(input: BuyTicketsInput) {
       amountMinor: priceMinor,
       currency: auction.currency,
       status: "PROCESSING",
-      gateway: input.payment.method === "wallet" ? "wallet" : gatewayFor(input.payment.gateway).name,
+      gateway: input.payment.method === "wallet" ? "wallet" : directGatewayFor(input.payment.gateway).name,
       metadata: { auctionId: auction.id, quantity, bonus } as Prisma.InputJsonValue,
     },
   });
@@ -105,7 +105,7 @@ export async function buyTickets(input: BuyTicketsInput) {
         await walletTxnRow(tx, input.userId, { ledgerTxnId: txn.id, direction: "debit", amountMinor: priceMinor, description: `Seats — ${auction.title}`, meta: { auctionId: auction.id } });
       });
     } else {
-      const gw = gatewayFor(input.payment.gateway);
+      const gw = directGatewayFor(input.payment.gateway);
       const intent = await gw.createIntent({ amountMinor: priceMinor, currency: auction.currency, purpose: "TICKET", reference: pi.id, userId: input.userId });
       const cap = await gw.capture(intent.ref, priceMinor);
       if (!cap.ok) {

@@ -23,6 +23,7 @@ const DEFAULT_MOCK_WEBHOOK_SECRET = "dev-only-mock-webhook-secret-change-me";
  */
 export class MockGateway implements PaymentGateway {
   readonly name = "mock";
+  readonly capturesSynchronously = true;
 
   async createIntent(input: CreateIntentInput): Promise<IntentResult> {
     return {

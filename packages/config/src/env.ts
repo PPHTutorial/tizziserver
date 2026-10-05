@@ -89,6 +89,8 @@ const schema = z.object({
   MOCK_PAYMENTS_WEBHOOK_SECRET: z.string().default("dev-only-mock-webhook-secret-change-me"),
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_WEBHOOK_SECRET: z.string().optional(),
+  // Where Paystack sends the customer after paying (e.g. https://api.<domain>/payments/return).
+  PAYSTACK_CALLBACK_URL: z.string().url().optional(),
   FLUTTERWAVE_SECRET_KEY: z.string().optional(),
   FLUTTERWAVE_WEBHOOK_HASH: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),

@@ -152,7 +152,9 @@ describe("adhoc delivery — full lifecycle + ledger", () => {
     await delivery.rateDelivery(userId, dId, "CUSTOMER", { stars: 5, tags: ["fast"] });
     const cp2 = await prisma.courierProfile.findUniqueOrThrow({ where: { id: courierId } });
     expect(cp2.ratingCount).toBeGreaterThan(0);
-  });
+    // Full dispatch→settlement run; slow when the shared dev DB is loaded by
+    // the whole suite (passes in ~5s alone) — generous budget, not a hang.
+  }, 90_000);
 });
 
 describe("dispatch waterfall", () => {

@@ -43,6 +43,13 @@ export interface WebhookResult {
 
 export interface PaymentGateway {
   readonly name: string;
+  /**
+   * True when `capture` settles in-process (the mock sandbox). Hosted-checkout
+   * providers (Paystack) return false: the customer pays on the provider's
+   * page and the money lands via webhook / `confirmPaymentIntent`, so only
+   * wallet top-ups may use them — checkout then pays from the wallet.
+   */
+  readonly capturesSynchronously: boolean;
   createIntent(input: CreateIntentInput): Promise<IntentResult>;
   /** Sandbox/mock capture is synchronous; real providers capture via webhook. */
   capture(ref: string, amountMinor: number): Promise<CaptureResult>;

@@ -8,7 +8,7 @@ import { env } from "@stall/config";
 import { AppError } from "../errors.ts";
 import { gatewayClearing, platformEscrow, platformRevenue, postTxn, userWallet } from "../wallet/ledger.ts";
 import { getOrCreateWallet, walletBalanceMinor } from "../wallet/wallet.ts";
-import { gatewayFor } from "../payments/providers.ts";
+import { directGatewayFor, gatewayFor } from "../payments/providers.ts";
 import { createDelivery } from "../delivery/deliveries.ts";
 import { deliveryPricingConfig } from "../delivery/pricing.ts";
 
@@ -224,7 +224,7 @@ export async function purchaseWinTarget(userId: string, auctionSlug: string, pay
 
   const amountMinor = auction.winTargetMinor;
   const pi = await prisma.paymentIntent.create({
-    data: { userId, purpose: "ORDER", amountMinor, currency: auction.currency, status: "PROCESSING", gateway: payment.method === "wallet" ? "wallet" : gatewayFor(payment.gateway).name, metadata: { auctionId: auction.id, winTarget: true } as Prisma.InputJsonValue },
+    data: { userId, purpose: "ORDER", amountMinor, currency: auction.currency, status: "PROCESSING", gateway: payment.method === "wallet" ? "wallet" : directGatewayFor(payment.gateway).name, metadata: { auctionId: auction.id, winTarget: true } as Prisma.InputJsonValue },
   });
 
   if (payment.method === "wallet") {
@@ -250,7 +250,7 @@ export async function purchaseWinTarget(userId: string, auctionSlug: string, pay
       await tx.paymentIntent.update({ where: { id: pi.id }, data: { status: "SUCCEEDED" } });
     });
   } else {
-    const gw = gatewayFor(payment.gateway);
+    const gw = directGatewayFor(payment.gateway);
     const intent = await gw.createIntent({ amountMinor, currency: auction.currency, purpose: "ORDER", reference: pi.id, userId });
     const cap = await gw.capture(intent.ref, amountMinor);
     if (!cap.ok) {
