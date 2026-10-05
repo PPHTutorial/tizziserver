@@ -230,10 +230,19 @@ export async function getCart(input: { userId: string; platformSlug: string }): 
     },
   });
   const offerById = new Map(offers.map((o) => [o.id, o]));
+  // A variant line is priced from the variant (same rule as `addToCart`), not the offer.
+  const variantIds = rows.map((r) => r.variantId).filter((v): v is string => Boolean(v));
+  const variantPrice = new Map(
+    variantIds.length
+      ? (await prisma.productVariant.findMany({ where: { id: { in: variantIds } }, select: { id: true, priceMinor: true } })).map(
+          (v) => [v.id, v.priceMinor] as const,
+        )
+      : [],
+  );
 
   const toView = (r: (typeof rows)[number]): CartItemView => {
     const o = offerById.get(r.offerId);
-    const currentUnitPriceMinor = o?.priceMinor ?? r.unitPriceMinor;
+    const currentUnitPriceMinor = (r.variantId ? variantPrice.get(r.variantId) : undefined) ?? o?.priceMinor ?? r.unitPriceMinor;
     const tenantOk =
       !o || o.product.platformSlugs.length === 0 || o.product.platformSlugs.includes(input.platformSlug);
     const available = Boolean(o) && o!.status === "ACTIVE" && o!.product.status === "PUBLISHED" && tenantOk;

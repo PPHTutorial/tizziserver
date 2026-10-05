@@ -349,10 +349,19 @@ export async function ensureDeliveryForVendorOrder(vendorOrderId: string): Promi
   // The customer already paid `order.deliveryFeeMinor` into escrow at checkout.
   // Split it across the order's delivery-backed sub-orders so the ledger nets
   // exactly (distance pricing still drives ETA + the courier's *share* ratio).
-  const deliveryFulfilCount = await prisma.fulfilment.count({
+  // Integer split: `Math.round(fee / n)` over- or under-allocates (e.g. 1001
+  // over 2 sub-orders = 501 + 501). Give each share the floor, and hand the
+  // remainder out one minor unit at a time in a stable (vendor-order number) order.
+  const deliveryFuls = await prisma.fulfilment.findMany({
     where: { vendorOrder: { orderId: vo.orderId }, method: "DELIVERY" },
+    select: { vendorOrderId: true, vendorOrder: { select: { number: true } } },
   });
-  const capturedFeeShare = deliveryFulfilCount > 0 ? Math.round(vo.order.deliveryFeeMinor / deliveryFulfilCount) : 0;
+  deliveryFuls.sort((a, b) => a.vendorOrder.number.localeCompare(b.vendorOrder.number, "en", { numeric: true }));
+  const deliveryFulfilCount = deliveryFuls.length;
+  const baseShare = deliveryFulfilCount > 0 ? Math.floor(vo.order.deliveryFeeMinor / deliveryFulfilCount) : 0;
+  const remainder = vo.order.deliveryFeeMinor - baseShare * deliveryFulfilCount;
+  const myIndex = deliveryFuls.findIndex((f) => f.vendorOrderId === vo.id);
+  const capturedFeeShare = baseShare + (myIndex >= 0 && myIndex < remainder ? 1 : 0);
 
   const { delivery } = await createDelivery({
     platformSlug: vo.order.platformSlug,

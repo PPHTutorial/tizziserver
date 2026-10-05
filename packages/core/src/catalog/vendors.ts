@@ -516,7 +516,10 @@ export async function publishProduct(userId: string, productId: string) {
     include: { media: true, offers: true },
   });
   if (!product) throw new AppError("NOT_FOUND", "Product not found");
-  if (product.media.length === 0) throw new AppError("VALIDATION", "Add at least one image before publishing");
+  // A video alone doesn't count — listing cards and the PDP hero need an image.
+  if (!product.media.some((m) => m.kind === "IMAGE")) {
+    throw new AppError("VALIDATION", "Add at least one image before publishing");
+  }
   if (product.offers.length === 0) throw new AppError("VALIDATION", "Set a price before publishing");
 
   await prisma.product.update({
