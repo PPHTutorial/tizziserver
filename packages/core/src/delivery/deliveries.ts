@@ -21,6 +21,7 @@ import {
 } from "@stall/db";
 import { env } from "@stall/config";
 import { AppError } from "../errors.ts";
+import { rateLimit } from "../redis.ts";
 import { numericCode, randomToken } from "../crypto.ts";
 import { courierPayable, platformEscrow, platformRevenue, postTxn } from "../wallet/ledger.ts";
 import { payFromWallet } from "../wallet/wallet.ts";
@@ -592,6 +593,33 @@ async function completeDelivery(courierId: string, deliveryId: string): Promise<
 
 // ------------------------------------------------------------- verification
 
+const CODE_METHODS = new Set(["OTP", "QR"]);
+/** Wrong-code ceiling per delivery step — codes are only 4 digits. */
+const CODE_ATTEMPTS = { limit: 8, windowSec: 3600 };
+
+/**
+ * The courier may switch between the code-based methods (OTP ⇄ QR) but can
+ * never downgrade a code-verified handover to a code-less one (PHOTO /
+ * SIGNATURE / VENDOR_CONFIRM) — otherwise "method":"PHOTO" skips the
+ * customer's code and releases escrow without proof of handover.
+ */
+function effectiveMethod<M extends string>(configured: M | undefined, requested: M | undefined): M {
+  const base = (configured ?? "OTP") as M;
+  if (!requested) return base;
+  if (CODE_METHODS.has(base) && !CODE_METHODS.has(requested)) {
+    throw new AppError("FORBIDDEN", `This handover must be verified with the ${base === "QR" ? "QR" : "code"}`);
+  }
+  return requested;
+}
+
+async function checkHandoverCode(step: "pickup" | "dropoff", deliveryId: string, given: string | undefined, expected: string | null) {
+  const rl = await rateLimit(`delivery:${step}:${deliveryId}`, CODE_ATTEMPTS.limit, CODE_ATTEMPTS.windowSec);
+  if (!rl.ok) throw new AppError("RATE_LIMITED", "Too many wrong codes — contact support", { retryAfterSec: rl.resetSec });
+  if (!given || !expected || given.trim() !== expected) {
+    throw new AppError("VALIDATION", step === "pickup" ? "That pickup code doesn't match" : "That delivery code doesn't match");
+  }
+}
+
 export async function verifyPickup(
   courierId: string,
   deliveryId: string,
@@ -603,12 +631,8 @@ export async function verifyPickup(
     throw new AppError("CONFLICT", "Not at the pickup step yet");
   }
   const pv = d.pickupVerification;
-  const method = input.method ?? pv?.method ?? "OTP";
-  if (method === "OTP" || method === "QR") {
-    if (!input.code || input.code.trim() !== d.pickupCode) {
-      throw new AppError("VALIDATION", "That pickup code doesn't match");
-    }
-  }
+  const method = effectiveMethod(pv?.method, input.method);
+  if (CODE_METHODS.has(method)) await checkHandoverCode("pickup", deliveryId, input.code, d.pickupCode);
   await prisma.$transaction(async (tx) => {
     await tx.pickupVerification.update({
       where: { deliveryId },
@@ -636,12 +660,8 @@ export async function verifyDropoff(
     throw new AppError("CONFLICT", "Not at the drop-off step yet");
   }
   const dv = d.dropoffVerification;
-  const method = input.method ?? dv?.method ?? "OTP";
-  if (method === "OTP" || method === "QR") {
-    if (!input.code || input.code.trim() !== d.dropoffCode) {
-      throw new AppError("VALIDATION", "That delivery code doesn't match");
-    }
-  }
+  const method = effectiveMethod(dv?.method, input.method);
+  if (CODE_METHODS.has(method)) await checkHandoverCode("dropoff", deliveryId, input.code, d.dropoffCode);
   if (method === "SIGNATURE" && !input.signatureKey) throw new AppError("VALIDATION", "A signature is required");
   await prisma.$transaction(async (tx) => {
     await tx.deliveryVerification.update({

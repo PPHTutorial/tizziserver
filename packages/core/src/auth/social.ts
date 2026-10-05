@@ -8,8 +8,12 @@ import { activeRolesFor } from "./identity.ts";
 interface SocialProfile {
   providerUserId: string;
   email?: string;
+  /** Provider asserts it verified ownership of `email`. */
+  emailVerified: boolean;
   name?: string;
 }
+
+const claimTrue = (v: unknown) => v === true || v === "true";
 
 const googleJwks = createRemoteJWKSet(new URL("https://www.googleapis.com/oauth2/v3/certs"));
 const appleJwks = createRemoteJWKSet(new URL("https://appleid.apple.com/auth/keys"));
@@ -22,7 +26,12 @@ async function verifyGoogle(idToken: string): Promise<SocialProfile> {
   }).catch(() => {
     throw new AppError("INVALID_TOKEN", "Google ID token rejected");
   });
-  return { providerUserId: String(payload.sub), email: payload.email as string | undefined, name: payload.name as string | undefined };
+  return {
+    providerUserId: String(payload.sub),
+    email: payload.email as string | undefined,
+    emailVerified: claimTrue(payload.email_verified),
+    name: payload.name as string | undefined,
+  };
 }
 
 async function verifyApple(idToken: string): Promise<SocialProfile> {
@@ -33,7 +42,7 @@ async function verifyApple(idToken: string): Promise<SocialProfile> {
   }).catch(() => {
     throw new AppError("INVALID_TOKEN", "Apple ID token rejected");
   });
-  return { providerUserId: String(payload.sub), email: payload.email as string | undefined };
+  return { providerUserId: String(payload.sub), email: payload.email as string | undefined, emailVerified: claimTrue(payload.email_verified) };
 }
 
 async function verifyFacebook(accessToken: string): Promise<SocialProfile> {
@@ -42,15 +51,16 @@ async function verifyFacebook(accessToken: string): Promise<SocialProfile> {
   }
   const app = `${env.FACEBOOK_CLIENT_ID}|${env.FACEBOOK_CLIENT_SECRET}`;
   const dbg = (await fetch(
-    `https://graph.facebook.com/debug_token?input_token=${accessToken}&access_token=${app}`,
+    `https://graph.facebook.com/debug_token?input_token=${encodeURIComponent(accessToken)}&access_token=${encodeURIComponent(app)}`,
   ).then((r) => r.json())) as { data?: { is_valid?: boolean; app_id?: string } };
   if (!dbg.data?.is_valid || dbg.data.app_id !== env.FACEBOOK_CLIENT_ID) {
     throw new AppError("INVALID_TOKEN", "Facebook access token rejected");
   }
   const me = (await fetch(
-    `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`,
+    `https://graph.facebook.com/me?fields=id,name,email&access_token=${encodeURIComponent(accessToken)}`,
   ).then((r) => r.json())) as { id: string; name?: string; email?: string };
-  return { providerUserId: String(me.id), email: me.email, name: me.name };
+  // Facebook doesn't assert the email was verified — never link on it.
+  return { providerUserId: String(me.id), email: me.email, emailVerified: false, name: me.name };
 }
 
 export interface SocialSignInInput extends Omit<IssueInput, "userId"> {
@@ -76,10 +86,18 @@ export async function signInWithSocial(
 
   let created = false;
   if (!identity) {
-    // link to an existing user by verified email, else create a new one
-    const existing = profile.email
-      ? await prisma.user.findUnique({ where: { email: profile.email.toLowerCase() } })
-      : null;
+    // Link to an existing account by email ONLY when both sides verified it —
+    // otherwise anyone who registers the victim's address at a provider (or
+    // a provider that doesn't verify emails) takes over the Stall account.
+    const email = profile.email?.toLowerCase();
+    const holder = email ? await prisma.user.findUnique({ where: { email } }) : null;
+    if (holder && !(profile.emailVerified && holder.emailVerifiedAt)) {
+      throw new AppError(
+        "CONFLICT",
+        "An account already uses this email — sign in with your phone, then connect this provider",
+      );
+    }
+    const existing = holder;
     const user =
       existing ??
       (await prisma.user.create({

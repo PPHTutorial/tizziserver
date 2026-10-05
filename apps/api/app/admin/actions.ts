@@ -4,8 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@stall/db";
 import { env } from "@stall/config";
-import { auth, trust, ads, admin as adminSvc, auctions, catalog } from "@stall/core";
-import { createAdminSession, clearAdminSession, requireAdmin, requireSuperAdmin } from "@/src/admin/session";
+import { auth, trust, ads, admin as adminSvc, auctions, catalog, rateLimit } from "@stall/core";
+import {
+  createAdminSession,
+  clearAdminSession,
+  requireAdmin,
+  requireSuperAdmin,
+  createPendingMfa,
+  readPendingMfa,
+  clearPendingMfa,
+} from "@/src/admin/session";
 
 // --- auth --------------------------------------------------------------
 
@@ -43,7 +51,9 @@ export async function verifyLoginOtp(_prev: unknown, form: FormData) {
       };
     }
     // SMS OTP alone only proves phone possession — a second, TOTP factor is
-    // required before a session is actually minted.
+    // required before a session is actually minted. The OTP pass is carried
+    // to that step in a signed httpOnly cookie, not the (forgeable) form.
+    await createPendingMfa(res.userId);
     return { step: "totp" as const, phone, error: null };
   }
 
@@ -55,14 +65,20 @@ export async function verifyLoginOtp(_prev: unknown, form: FormData) {
 export async function verifyLoginTotp(_prev: unknown, form: FormData) {
   const phone = String(form.get("phone") ?? "").trim();
   const code = String(form.get("code") ?? "").trim();
-  const normalized = phone.replace(/[^\d+]/g, "");
-  const user = await prisma.user.findUnique({ where: { phone: normalized } });
-  if (!user) return { step: "totp" as const, phone, error: "Session expired — start again" };
+  const userId = await readPendingMfa();
+  if (!userId) return { step: "totp" as const, phone, error: "Session expired — reload the page and sign in again" };
 
-  const ok = await auth.verifyTotp(user.id, code);
+  const rl = await rateLimit(`admin:totp:${userId}`, 5, 900);
+  if (!rl.ok) {
+    await clearPendingMfa();
+    return { step: "totp" as const, phone, error: "Too many attempts — reload the page and try again later" };
+  }
+
+  const ok = await auth.verifyTotp(userId, code);
   if (!ok) return { step: "totp" as const, phone, error: "Incorrect 2FA code" };
 
-  const s = await createAdminSession(user.id);
+  await clearPendingMfa();
+  const s = await createAdminSession(userId);
   if (!s.ok) return { step: "totp" as const, phone, error: s.reason };
   redirect("/admin");
 }

@@ -3,6 +3,7 @@ export * from "./crypto.ts";
 export * from "./observability.ts";
 export * from "./jwt.ts";
 export * from "./redis.ts";
+export * from "./security.ts";
 export * as auth from "./auth/index.ts";
 export * as platform from "./platform/index.ts";
 export * as catalog from "./catalog/index.ts";

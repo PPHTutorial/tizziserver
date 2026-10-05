@@ -9,6 +9,8 @@ import type {
   WebhookResult,
 } from "./gateway.ts";
 
+const DEFAULT_MOCK_WEBHOOK_SECRET = "dev-only-mock-webhook-secret-change-me";
+
 /**
  * Deterministic in-process payment sandbox — no external accounts (blocker B4).
  * `capture` succeeds and books a 1.5% + 30 minor-unit fee, EXCEPT when
@@ -46,6 +48,8 @@ export class MockGateway implements PaymentGateway {
   parseWebhook(headers: Record<string, string | undefined>, rawBody: string): WebhookResult | null {
     const signature = headers["x-mock-signature"];
     if (!signature) return null;
+    // The default secret is public (it's in the repo) — never honour it in prod.
+    if (env.NODE_ENV === "production" && env.MOCK_PAYMENTS_WEBHOOK_SECRET === DEFAULT_MOCK_WEBHOOK_SECRET) return null;
     const expected = hmacHex(env.MOCK_PAYMENTS_WEBHOOK_SECRET, rawBody);
     if (!timingSafeEqualHex(signature, expected)) return null;
 

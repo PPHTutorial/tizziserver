@@ -15,7 +15,12 @@ export interface RouteOpts<B, Q> {
   query?: ZodType<Q>;
   auth?: AuthOpt;
   capability?: string;
-  rateLimit?: { limit: number; windowSec: number; by?: "ip" | "principal" };
+  /**
+   * `bucket` overrides the counter's route component. By default the counter is
+   * keyed on the concrete path, so `/vendors/A/phone` and `/vendors/B/phone`
+   * count separately — set a bucket when the limit must span every id.
+   */
+  rateLimit?: { limit: number; windowSec: number; by?: "ip" | "principal"; bucket?: string };
   idempotent?: boolean;
   /** AuditLog action string, or a fn deriving {action,targetType?,targetId?} from the result. */
   audit?: string | ((r: { data: unknown; ctx: RequestContext }) => AuditSpec | null);
@@ -55,7 +60,8 @@ export function withApi<B = undefined, Q = undefined, R = unknown>(
       // --- rate limit -------------------------------------------------
       if (opts.rateLimit) {
         const who = opts.rateLimit.by === "principal" ? ctx.principal?.userId ?? ctx.ip ?? "anon" : ctx.ip ?? "anon";
-        const rl = await rateLimit(`${req.method}:${path}:${who}`, opts.rateLimit.limit, opts.rateLimit.windowSec);
+        const scope = opts.rateLimit.bucket ?? `${req.method}:${path}`;
+        const rl = await rateLimit(`${scope}:${who}`, opts.rateLimit.limit, opts.rateLimit.windowSec);
         if (!rl.ok) {
           return fail("RATE_LIMITED", "Too many requests", 429, { retryAfterSec: rl.resetSec });
         }
@@ -96,7 +102,8 @@ export function withApi<B = undefined, Q = undefined, R = unknown>(
       if (idemKey) {
         const prior = await prisma.idempotencyKey.findUnique({ where: { key: idemKey } });
         if (prior) {
-          if (prior.requestHash !== requestHash) {
+          // Keys are global — never replay another principal's response snapshot.
+          if ((prior.principalId ?? null) !== (ctx.principal?.userId ?? null) || prior.requestHash !== requestHash) {
             return fail("CONFLICT", "Idempotency-Key reused with a different request", 409);
           }
           return NextResponse.json(

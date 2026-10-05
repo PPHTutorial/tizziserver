@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { env } from "@stall/config";
 import { prisma, type Role } from "@stall/db";
-import { AppError, verifyAccessToken } from "@stall/core";
+import { AppError, resolveClientIp, verifyAccessToken } from "@stall/core";
 
 export interface Principal {
   userId: string;
@@ -21,8 +21,8 @@ export interface RequestContext {
 }
 
 function clientIp(req: NextRequest): string | undefined {
-  const xff = req.headers.get("x-forwarded-for");
-  return xff ? xff.split(",")[0]!.trim() : req.headers.get("x-real-ip") ?? undefined;
+  // Left-most XFF entries are client-controlled — see resolveClientIp.
+  return resolveClientIp(req.headers.get("x-forwarded-for"), req.headers.get("x-real-ip"), env.TRUST_PROXY_HOPS);
 }
 
 /** Parse headers + (optionally) authenticate the bearer access token. */
