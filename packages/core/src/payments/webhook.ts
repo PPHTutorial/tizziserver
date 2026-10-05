@@ -16,7 +16,10 @@ export async function handlePaymentWebhook(input: {
   if (!evt) return { received: true, handled: "rejected:bad-signature" };
   if (!evt.ref) return { received: true, handled: "ignored:no-ref" };
 
-  const intent = await prisma.paymentIntent.findFirst({ where: { gatewayRef: evt.ref } });
+  // Scope to the gateway whose signature we just verified — refs are only
+  // unique per provider, and one gateway's webhook must never settle another's
+  // intent (e.g. a mock-signed event resolving a Paystack intent).
+  const intent = await prisma.paymentIntent.findFirst({ where: { gatewayRef: evt.ref, gateway: gw.name } });
   if (!intent) return { received: true, handled: "ignored:unknown-intent" };
 
   // Only a still-pending intent can be resolved by webhook — a payment already
@@ -33,17 +36,25 @@ export async function handlePaymentWebhook(input: {
   }
 
   if (evt.event === "payment.succeeded" && isPending) {
-    const already = await prisma.payment.count({ where: { intentId: intent.id, status: "SUCCEEDED" } });
-    await prisma.$transaction([
-      prisma.paymentIntent.update({ where: { id: intent.id }, data: { status: "SUCCEEDED" } }),
-      ...(already === 0
-        ? [
-            prisma.payment.create({
-              data: { intentId: intent.id, status: "SUCCEEDED", capturedMinor: intent.amountMinor, processedAt: new Date() },
-            }),
-          ]
-        : []),
-    ]);
+    // Claim the pending→SUCCEEDED transition atomically: two concurrent
+    // deliveries of the same event both saw `isPending` and would each have
+    // created a payment and credited the wallet.
+    const outcome = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.paymentIntent.updateMany({
+        where: { id: intent.id, status: { in: ["REQUIRES_ACTION", "PROCESSING"] } },
+        data: { status: "SUCCEEDED" },
+      });
+      if (claimed.count === 0) return { won: false, already: 1 };
+      const already = await tx.payment.count({ where: { intentId: intent.id, status: "SUCCEEDED" } });
+      if (already === 0) {
+        await tx.payment.create({
+          data: { intentId: intent.id, status: "SUCCEEDED", capturedMinor: intent.amountMinor, processedAt: new Date() },
+        });
+      }
+      return { won: true, already };
+    });
+    if (!outcome.won) return { received: true, handled: "noop:already-settled" };
+    const already = outcome.already;
 
     if (intent.purpose === "WALLET_TOPUP" && already === 0) {
       const { topUpWallet } = await import("../wallet/wallet.ts");

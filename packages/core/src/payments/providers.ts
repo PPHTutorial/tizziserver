@@ -65,7 +65,17 @@ export function gatewayFor(name?: string): PaymentGateway {
   const key = (name ?? env.PAYMENTS_PROVIDER).toLowerCase();
   const make = REGISTRY[key];
   if (!make) throw new AppError("VALIDATION", `Unknown payment gateway: ${key}`);
+  // The mock sandbox captures instantly and accepts any amount. Callers can
+  // name a gateway (wallet top-up body, webhook `?gateway=`), so in production
+  // it must only be reachable when it IS the configured provider — otherwise
+  // `{"gateway":"mock"}` is a free wallet top-up.
+  if (key === "mock" && !mockGatewayAllowed()) {
+    throw new AppError("VALIDATION", "Unknown payment gateway: mock");
+  }
   return make();
 }
+
+export const mockGatewayAllowed = (): boolean =>
+  env.PAYMENTS_PROVIDER === "mock" || env.NODE_ENV !== "production";
 
 export const defaultGateway = (): PaymentGateway => gatewayFor();
