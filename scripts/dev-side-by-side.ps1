@@ -58,11 +58,12 @@ if ($existing -notcontains 'stall-dev-s3') {
   docker run -d --name stall-dev-s3 --restart unless-stopped -p 127.0.0.1:9200:9000 `
     -e "MINIO_ROOT_USER=$(Get-DotEnv 'S3_ACCESS_KEY_ID')" `
     -e "MINIO_ROOT_PASSWORD=$(Get-DotEnv 'S3_SECRET_ACCESS_KEY')" `
+    -v "${root}/infra/docker/minio-media-policy.json:/policy.tmpl.json:ro" `
     quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z server /data | Out-Null
 } else { docker start stall-dev-s3 | Out-Null }
 Wait-Port 6380 'Redis'
 Wait-Port 9200 'MinIO'
-docker exec stall-dev-s3 sh -c "for i in 1 2 3 4 5 6 7 8 9 10; do mc alias set stall http://127.0.0.1:9000 `"`$MINIO_ROOT_USER`" `"`$MINIO_ROOT_PASSWORD`" >/dev/null 2>&1 && break; sleep 2; done; mc mb --ignore-existing stall/$bucket >/dev/null && mc anonymous set download stall/$bucket >/dev/null" | Out-Null
+docker exec stall-dev-s3 sh -c "for i in 1 2 3 4 5 6 7 8 9 10; do mc alias set stall http://127.0.0.1:9000 `"`$MINIO_ROOT_USER`" `"`$MINIO_ROOT_PASSWORD`" >/dev/null 2>&1 && break; sleep 2; done; mc mb --ignore-existing stall/$bucket >/dev/null && sed 's/BUCKET/$bucket/g' /policy.tmpl.json > /tmp/policy.json && mc anonymous set-json /tmp/policy.json stall/$bucket >/dev/null" | Out-Null
 
 # --- Env overrides (process-only; dotenv-cli never overrides these) ---------
 # 127.0.0.1, not localhost: localhost resolves to ::1 and the containers bind IPv4.

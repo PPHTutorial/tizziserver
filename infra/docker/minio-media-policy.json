@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "AWS": ["*"] },
+      "Action": ["s3:GetObject"],
+      "Resource": [
+        "arn:aws:s3:::BUCKET/avatars/*",
+        "arn:aws:s3:::BUCKET/vendors/*",
+        "arn:aws:s3:::BUCKET/products/*",
+        "arn:aws:s3:::BUCKET/brand-logos/*"
+      ]
+    },
+    {
+      "Effect": "Deny",
+      "Principal": { "AWS": ["*"] },
+      "Action": ["s3:GetObject"],
+      "Resource": ["arn:aws:s3:::BUCKET/vendors/kyc/*"]
+    }
+  ]
+}

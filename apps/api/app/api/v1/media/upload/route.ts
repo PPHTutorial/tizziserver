@@ -19,8 +19,8 @@ const KINDS: Record<string, KindRule> = {
   avatar: { prefix: "avatars", video: false },
   vendorLogo: { prefix: "vendors", video: false },
   vendorBanner: { prefix: "vendors", video: false },
-  vendorKycDoc: { prefix: "vendors/kyc", video: false },
-  vendorKycSelfie: { prefix: "vendors/kyc", video: false },
+  vendorKycDoc: { prefix: "kyc/vendors", video: false }, // private prefix — never public-read
+  vendorKycSelfie: { prefix: "kyc/vendors", video: false }, // private prefix — never public-read
   product: { prefix: "products", video: false, roles: ["VENDOR"] },
   productVideo: { prefix: "products/video", video: true, roles: ["VENDOR"] },
 };

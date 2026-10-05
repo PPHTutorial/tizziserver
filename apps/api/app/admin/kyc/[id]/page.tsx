@@ -34,7 +34,14 @@ export default async function KycDetail({ params }: { params: Promise<{ id: stri
               <li key={d.id} className="flex items-center gap-2">
                 <Badge tone={d.status === "APPROVED" ? "green" : d.status === "REJECTED" ? "red" : "amber"}>{d.status}</Badge>
                 <span>{d.type}</span>
-                <span className="text-neutral-400 text-xs">{d.fileKey}</span>
+                <a
+                  className="text-blue-600 hover:underline text-xs"
+                  href={`/admin/kyc/file?key=${encodeURIComponent(d.fileKey)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View document →
+                </a>
               </li>
             ))}
           </ul>
