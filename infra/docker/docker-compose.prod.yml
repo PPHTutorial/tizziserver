@@ -11,6 +11,8 @@ name: stall-prod
 # Usage:
 #   cp .env.example .env.prod   # fill in REAL secrets — never commit .env.prod
 #   docker compose -f infra/docker/docker-compose.prod.yml --env-file ../../.env.prod up -d --build
+#   # first deploy only — reference data + your admin phone, no demo data:
+#   docker compose -f infra/docker/docker-compose.prod.yml --env-file ../../.env.prod #     run --rm -e SEED_PROFILE=production -e SEED_ADMIN_PHONE=+233XXXXXXXXX migrate pnpm exec prisma db seed
 #
 # .env.prod supplies everything (JWT keys, SMTP, Nalo SMS, Firebase/FCM,
 # Sentry, OTEL, POSTGRES_PASSWORD, REDIS_PASSWORD, MINIO_ROOT_PASSWORD,

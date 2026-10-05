@@ -162,6 +162,26 @@ const categories: [string, string, string, string | null, string[]][] = [
   ["regulators", "Regulators & Hoses", "screwdriver-wrench", "gas-accessories", ["tizzi-gas"]],
 ];
 
+/** Category tree (+ per-category attribute schemas) — reference data, seeded
+ *  in every profile. Parents first (array order guarantees it). */
+async function seedCategories(): Promise<Record<string, string>> {
+  const catIdBySlug: Record<string, string> = {};
+  for (const [slug, name, icon, parentSlug, platformSlugs] of categories) {
+    const parentId = parentSlug ? catIdBySlug[parentSlug] : undefined;
+    const parent = parentSlug ? categories.find((c) => c[0] === parentSlug) : undefined;
+    const path = parent ? `/${parentSlug}/${slug}` : `/${slug}`;
+    const attributeSchema = attributeSchemaBySlug[slug];
+    const row = await prisma.category.upsert({
+      where: { slug },
+      create: { slug, name, icon, parentId, path, platformSlugs, sortOrder: Object.keys(catIdBySlug).length, attributeSchema },
+      update: { name, icon, parentId, path, platformSlugs, attributeSchema },
+    });
+    catIdBySlug[slug] = row.id;
+  }
+
+  return catIdBySlug;
+}
+
 async function seedCatalog() {
   // Vendor users + profiles + approved KYC.
   const vendorIdBySlug: Record<string, string> = {};
@@ -204,20 +224,7 @@ async function seedCatalog() {
     });
   }
 
-  // Category tree — parents first (array order guarantees it).
-  const catIdBySlug: Record<string, string> = {};
-  for (const [slug, name, icon, parentSlug, platformSlugs] of categories) {
-    const parentId = parentSlug ? catIdBySlug[parentSlug] : undefined;
-    const parent = parentSlug ? categories.find((c) => c[0] === parentSlug) : undefined;
-    const path = parent ? `/${parentSlug}/${slug}` : `/${slug}`;
-    const attributeSchema = attributeSchemaBySlug[slug];
-    const row = await prisma.category.upsert({
-      where: { slug },
-      create: { slug, name, icon, parentId, path, platformSlugs, sortOrder: Object.keys(catIdBySlug).length, attributeSchema },
-      update: { name, icon, parentId, path, platformSlugs, attributeSchema },
-    });
-    catIdBySlug[slug] = row.id;
-  }
+  const catIdBySlug = await seedCategories();
 
   // Products + offers (+ gas listing) — keyed by stable slug for idempotency.
   const products: {
@@ -545,13 +552,18 @@ async function seedPromotions() {
 }
 
 // --- Domain 4/6 — checkout config + starter coupons ---------------------
-async function seedCommerce() {
+async function seedCommerce({ demo }: { demo: boolean }) {
   const feeValue = { serviceFeeBps: 200, taxBps: 0, deliveryFlatMinor: 1500, freeDeliveryThresholdMinor: 20000 };
   await prisma.appConfig.upsert({
     where: { id: "seed-checkout-fees" },
     create: { id: "seed-checkout-fees", key: "checkout.fees", scope: "GLOBAL", value: feeValue },
     update: { value: feeValue },
   });
+
+  if (!demo) {
+    console.log("  commerce — checkout.fees (no demo coupons)");
+    return;
+  }
 
   const coupons: {
     code: string;
@@ -591,7 +603,7 @@ async function seedCommerce() {
 }
 
 // --- Phase 4: delivery zones + a live courier per platform --------------
-async function seedDelivery() {
+async function seedDelivery({ demo }: { demo: boolean }) {
   const zones: [string, number, number][] = [
     ["grandprice", 5.6037, -0.187],
     ["tizzi-gas", 5.585, -0.205],
@@ -604,6 +616,8 @@ async function seedDelivery() {
       update: { centerLat: lat, centerLng: lng, radiusM: 30000 },
     });
   }
+
+  if (!demo) return; // zones only — real couriers onboard through the app
 
   const couriers: { slug: string; phone: string; first: string; last: string; lat: number; lng: number }[] = [
     { slug: "grandprice", phone: "+233200000010", first: "Kofi", last: "Mensah", lat: 5.606, lng: -0.19 },
@@ -750,7 +764,40 @@ async function seedAuctions() {
   console.log(`  auctions — 2 live draws (grandprice)`);
 }
 
+/**
+ * `SEED_PROFILE=production` seeds reference data only — currencies, regions,
+ * flags, platforms, fees, pricing, categories, delivery zones, checkout
+ * config, boost tiers — plus the first admin from SEED_ADMIN_PHONE. No demo
+ * users, vendors, products, couriers, coupons, draws or campaigns. Any other
+ * value (default) is the full dev/demo seed. Idempotent either way.
+ */
+const demo = process.env.SEED_PROFILE !== "production";
+
+/** First ADMIN for the admin console (it signs in by OTP to this phone). */
+async function bootstrapAdmin() {
+  const phone = process.env.SEED_ADMIN_PHONE?.trim();
+  if (!phone) {
+    console.log("  admin — SEED_ADMIN_PHONE not set; no admin created (set it and re-run the seed)");
+    return;
+  }
+  if (!/^\+[1-9]\d{7,14}$/.test(phone)) throw new Error("SEED_ADMIN_PHONE must be E.164, e.g. +233201234567");
+  const user = await prisma.user.upsert({
+    where: { phone },
+    create: { phone, status: "ACTIVE", tokenEpoch: { create: {} } },
+    update: { status: "ACTIVE" },
+  });
+  for (const role of ["CUSTOMER", "ADMIN"] as const) {
+    await prisma.userRole.upsert({
+      where: { userId_role: { userId: user.id, role } },
+      create: { userId: user.id, role, status: "ACTIVE", activatedAt: new Date() },
+      update: { status: "ACTIVE" },
+    });
+  }
+  console.log(`  admin — ${phone} has ADMIN`);
+}
+
 async function main() {
+  console.log(`seed profile: ${demo ? "demo" : "production"}`);
   for (const c of currencies) {
     await prisma.currency.upsert({ where: { code: c.code }, create: c, update: c });
   }
@@ -812,11 +859,16 @@ async function main() {
     update: { value: { ios: "1.0.0", android: "1.0.0" } },
   });
 
-  await seedCatalog();
-  await seedCommerce();
-  await seedDelivery();
-  await seedAuctions();
-  await seedAdvertising();
+  if (demo) {
+    await seedCatalog(); // demo vendors + products (+ the category tree)
+  } else {
+    await seedCategories();
+  }
+  await seedCommerce({ demo });
+  await seedDelivery({ demo });
+  if (demo) await seedAuctions();
+  await seedAdvertising(); // boost tiers always; demo campaign/referrals only if demo users exist
+  if (!demo) await bootstrapAdmin();
 
   const [pf, cur, plat] = await Promise.all([
     prisma.platformFeature.count(),
