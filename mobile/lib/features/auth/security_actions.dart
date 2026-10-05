@@ -1,26 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../api/api_exception.dart';
 import '../../app/providers.dart';
 import '../../design/context_ext.dart';
 import '../../design/tokens.g.dart';
 import '../../design/widgets.dart';
+import '../trust/trust_providers.dart';
 
 /// Shared account-security actions (§24, screens 428–429). Used from the account
 /// tab and the Security Centre so the flows stay identical everywhere.
 
 Future<void> setTransactionPin(BuildContext context, WidgetRef ref) async {
   final controller = TextEditingController();
+  final currentController = TextEditingController();
+  // Replacing an existing PIN needs the current one (server-enforced, so a
+  // stolen session can't silently reset it). Unknown status → ask anyway.
+  final hasPin = ref.read(securityCentreProvider).valueOrNull?.pinSet ?? true;
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Set transaction PIN'),
-      content: AppField(
-        label: 'Transaction PIN',
-        hintText: '4–6 digits',
-        controller: controller,
-        keyboardType: TextInputType.number,
-        obscureText: true,
+      title: Text(hasPin ? 'Change transaction PIN' : 'Set transaction PIN'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasPin) ...[
+            AppField(
+              label: 'Current PIN',
+              hintText: 'Leave empty if you never set one',
+              controller: currentController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+            ),
+            const SizedBox(height: AppSpace.s12),
+          ],
+          AppField(
+            label: 'New PIN',
+            hintText: '4–6 digits',
+            controller: controller,
+            keyboardType: TextInputType.number,
+            obscureText: true,
+          ),
+        ],
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
@@ -30,14 +51,19 @@ Future<void> setTransactionPin(BuildContext context, WidgetRef ref) async {
   );
   if (ok != true) return;
   try {
-    await ref.read(stallApiProvider).setPin(controller.text.trim());
+    final current = currentController.text.trim();
+    await ref
+        .read(stallApiProvider)
+        .setPin(controller.text.trim(), currentPin: current.isEmpty ? null : current);
+    ref.invalidate(securityCentreProvider);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN set.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN saved.')));
     }
-  } catch (_) {
+  } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Couldn\'t set PIN.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e is StallApiException ? e.message : 'Couldn\'t set PIN.')),
+      );
     }
   }
 }

@@ -345,8 +345,12 @@ class StallApi {
   Future<void> setPassword(String password) =>
       _send('POST', '/api/v1/auth/password', body: {'password': password});
 
-  Future<void> setPin(String pin) =>
-      _send('POST', '/api/v1/auth/pin', body: {'pin': pin});
+  /// Set the transaction PIN; replacing an existing one needs [currentPin].
+  Future<void> setPin(String pin, {String? currentPin}) => _send(
+    'POST',
+    '/api/v1/auth/pin',
+    body: {'pin': pin, if (currentPin != null) 'currentPin': currentPin},
+  );
 
   Future<TwoFactorEnroll> enroll2fa() async {
     final d = await _send(

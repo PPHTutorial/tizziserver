@@ -274,6 +274,15 @@ class _DetailState extends ConsumerState<_Detail> {
                           .advanceSellerOrder(o.id, action.next);
                     }, done: action.done),
             )
+          else if (o.status == 'HANDED_OVER' && !o.isPickup)
+            // The server refuses vendor completion for delivery orders — they
+            // complete (and release the payout) when the courier confirms
+            // drop-off, so there's nothing for the seller to press here.
+            _doneBanner(
+              context,
+              'With the courier — completes automatically on delivery',
+              c.textMed,
+            )
           else if (o.status == 'HANDED_OVER')
             PrimaryButton(
               label: 'Complete order — release payout',
