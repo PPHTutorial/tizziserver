@@ -112,7 +112,9 @@ class PrimaryButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null) ...[Icon(icon, size: 18), const SizedBox(width: AppSpace.s8)],
-                Text(label),
+                // Flexible: long labels in narrow (e.g. half-width) buttons
+                // ellipsize instead of overflowing.
+                Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
               ],
             ),
     );

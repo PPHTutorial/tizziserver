@@ -16,7 +16,9 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 val hasReleaseSigning = keystorePropertiesFile.exists()
 if (hasReleaseSigning) {
-    keystoreProperties.load(keystorePropertiesFile.inputStream())
+    keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
+} else {
+    logger.warn("android/key.properties not found: release builds will be DEBUG-signed (not uploadable to Play).")
 }
 
 android {
@@ -72,7 +74,9 @@ android {
     if (hasReleaseSigning) {
         signingConfigs {
             create("release") {
-                storeFile = file(keystoreProperties["storeFile"] as String)
+                // Relative paths resolve against android/ (next to
+                // key.properties, as key.properties.example describes).
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
                 storePassword = keystoreProperties["storePassword"] as String
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
@@ -82,9 +86,21 @@ android {
 
     buildTypes {
         release {
-            // Real signing once `key.properties` exists; the debug keystore
-            // otherwise, so `flutter build --release` still works without it.
+            // Real signing once `key.properties` exists. FALLBACK ONLY: with no
+            // key.properties the release build is signed with the local debug
+            // keystore so `flutter build --release` still works for testing —
+            // Play Console rejects debug-signed bundles, so never upload one.
             signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+
+            // R8 code shrinking + resource shrinking. Keep rules for the
+            // JNI/reflection-heavy plugins (ffmpeg-kit, ML Kit, uCrop,
+            // video_player) live in proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

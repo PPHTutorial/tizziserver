@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Grandprice</string>
+	<string>GrandPrice</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -46,10 +46,22 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Used for voice search — say what you're looking for instead of typing it.</string>
+	<string>Used for voice search, and to record sound when you film a product video.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Used to turn your voice search into text.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Used to scan a product barcode and jump straight to it.</string>
+	<string>Used to scan product barcodes, photograph items you list for sale, and capture your ID for seller verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Used to choose photos and videos for your listings, store logo and cover.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Used to show stores and items near you and to pin your store or delivery address on the map.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>https</string>
+		<string>http</string>
+	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

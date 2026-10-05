@@ -116,20 +116,33 @@ class _MaskJob {
 
 Uint8List? _compositeOnWhite(_MaskJob job) {
   final src = img.decodeJpg(job.jpeg);
-  if (src == null || job.mask.length != src.width * src.height) return null;
+  if (src == null) return null;
+  final out = compositeOnWhite(src, job.mask);
+  return out == null ? null : img.encodeJpg(out, quality: _imageQuality);
+}
+
+/// Blends [src] over a white background using a per-pixel foreground
+/// confidence [mask] (row-major, one value in 0..1 per pixel, as ML Kit's
+/// `foregroundConfidenceMask` returns it).
+///
+/// Returns null — "keep the original photo" — when the mask doesn't match the
+/// image size or the detected subject covers under 2% of the frame (almost
+/// always a mis-detection).
+@visibleForTesting
+img.Image? compositeOnWhite(img.Image src, Float32List mask) {
+  if (mask.length != src.width * src.height) return null;
 
   var subjectPixels = 0;
-  for (final c in job.mask) {
+  for (final c in mask) {
     if (c > 0.5) subjectPixels++;
   }
-  // Under 2% of the frame is almost always a mis-detection.
-  if (subjectPixels < job.mask.length * 0.02) return null;
+  if (subjectPixels < mask.length * 0.02) return null;
 
   final out = img.Image(width: src.width, height: src.height);
   var i = 0;
   for (var y = 0; y < src.height; y++) {
     for (var x = 0; x < src.width; x++) {
-      final a = job.mask[i++];
+      final a = mask[i++].clamp(0.0, 1.0);
       final p = src.getPixel(x, y);
       out.setPixelRgb(
         x,
@@ -140,7 +153,7 @@ Uint8List? _compositeOnWhite(_MaskJob job) {
       );
     }
   }
-  return img.encodeJpg(out, quality: _imageQuality);
+  return out;
 }
 
 /// The LGPL `_min` ffmpeg build has no software H.264 encoder (x264 is GPL),

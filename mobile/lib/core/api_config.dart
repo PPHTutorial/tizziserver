@@ -1,7 +1,22 @@
+import 'package:flutter/foundation.dart';
+
 /// Runtime API configuration. Override with `--dart-define`:
 ///   flutter run --dart-define=STALL_API_URL=http://10.0.2.2:3000 \
 ///               --dart-define=STALL_REALTIME_URL=http://10.0.2.2:3001 \
 ///               --dart-define=STALL_PLATFORM=tizzi-gas
+///
+/// Release builds MUST pass the real endpoints — the localhost defaults below
+/// are for development only, and `main()` refuses to start a release build
+/// that is missing any of them (see [missingReleaseDefines]). E.g.:
+///   flutter build appbundle --release --flavor grandprice \
+///     --dart-define=STALL_PLATFORM=grandprice \
+///     --dart-define=STALL_API_URL=https://api.example.com \
+///     --dart-define=STALL_REALTIME_URL=https://rt.example.com \
+///     --dart-define=STALL_MEDIA_URL=https://media.example.com/stall-media \
+///     --obfuscate --split-debug-info=build/symbols
+/// (iOS: `flutter build ipa --release --flavor … ` with the same defines.)
+/// Keep `--flavor` and `STALL_PLATFORM` in step: the flavor picks the native
+/// app identity, the define picks the tenant the Dart code talks to.
 class ApiConfig {
   const ApiConfig({
     required this.baseUrl,
@@ -45,6 +60,21 @@ const String kMediaBaseUrl = String.fromEnvironment(
   'STALL_MEDIA_URL',
   defaultValue: 'http://localhost:9000/stall-media',
 );
+
+/// The `--dart-define`s a release build can't run without (they default to
+/// localhost, which no shipped phone can reach). Empty when all are present.
+///
+/// `bool.hasEnvironment` is a compile-time constant, so this is fixed per
+/// build. [releaseMode] is injectable for tests only.
+List<String> missingReleaseDefines({bool releaseMode = kReleaseMode}) {
+  if (!releaseMode) return const [];
+  return [
+    if (!const bool.hasEnvironment('STALL_API_URL')) 'STALL_API_URL',
+    if (!const bool.hasEnvironment('STALL_REALTIME_URL')) 'STALL_REALTIME_URL',
+    if (!const bool.hasEnvironment('STALL_MEDIA_URL')) 'STALL_MEDIA_URL',
+    if (!const bool.hasEnvironment('STALL_PLATFORM')) 'STALL_PLATFORM',
+  ];
+}
 
 /// Resolve a stored object key to a fetchable URL. Absolute URLs pass through.
 /// Legacy `seed/…` / `banners/…` placeholder keys (from before real uploads /
