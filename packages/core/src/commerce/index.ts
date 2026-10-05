@@ -5,4 +5,5 @@ export * from "./cart.ts";
 export * from "./checkout.ts";
 export * from "./orders.ts";
 export * from "./payouts.ts";
+export * from "./payout-admin.ts";
 export * from "./invoice.ts";

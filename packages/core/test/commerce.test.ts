@@ -404,6 +404,26 @@ describe("vendor payout — PIN gated", () => {
     expect((await commerce.listVendorPayouts(vendorUserId)).some((p) => p.id === res.payoutId)).toBe(true);
   });
 
+  it("manual settlement: FAIL returns the funds, PAID is final", async () => {
+    const { vendorUserId, vendorId, payoutMinor } = await completedVendorOrder(offerA);
+    await setPin(vendorUserId, "4321");
+    const balBefore = await commerce.vendorBalanceMinor(vendorId);
+
+    const failed = await commerce.requestVendorPayout({ userId: vendorUserId, platformSlug: PLATFORM, amountMinor: payoutMinor, pin: "4321" });
+    expect(await commerce.vendorBalanceMinor(vendorId)).toBe(balBefore - payoutMinor);
+    expect((await commerce.listOpenPayouts()).some((p) => p.id === failed.payoutId)).toBe(true);
+    await commerce.failPayout(failed.payoutId, vendorUserId, "wrong MoMo number");
+    expect(await commerce.vendorBalanceMinor(vendorId)).toBe(balBefore);
+    await expect(commerce.markPayoutPaid(failed.payoutId, vendorUserId, "MOMO-123")).rejects.toMatchObject({ code: "CONFLICT" });
+
+    const paid = await commerce.requestVendorPayout({ userId: vendorUserId, platformSlug: PLATFORM, amountMinor: payoutMinor, pin: "4321" });
+    await commerce.markPayoutPaid(paid.payoutId, vendorUserId, "MOMO-456");
+    const row = await prisma.payout.findUniqueOrThrow({ where: { id: paid.payoutId } });
+    expect(row).toMatchObject({ status: "PAID", gatewayRef: "manual:MOMO-456" });
+    await expect(commerce.failPayout(paid.payoutId, vendorUserId, "oops")).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(await commerce.vendorBalanceMinor(vendorId)).toBe(balBefore - payoutMinor);
+  });
+
   it("rejects a withdrawal above the balance, and a concurrent double-withdrawal can't both succeed", async () => {
     const { vendorUserId, vendorId } = await completedVendorOrder(offerB);
     await setPin(vendorUserId, "1122");

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@stall/db";
 import { env } from "@stall/config";
-import { auth, trust, ads, admin as adminSvc, auctions, catalog, rateLimit } from "@stall/core";
+import { auth, trust, ads, admin as adminSvc, auctions, catalog, commerce, rateLimit } from "@stall/core";
 import {
   createAdminSession,
   clearAdminSession,
@@ -275,4 +275,19 @@ export async function applySafetyAction(form: FormData) {
     reason: String(form.get("reason") ?? "admin action"),
   });
   revalidatePath(`/admin/users`);
+}
+
+// --- payouts (manual settlement) -----------------------------------------
+
+export async function markPayoutPaid(form: FormData) {
+  const s = await requireAdmin();
+  await commerce.markPayoutPaid(String(form.get("payoutId")), s.userId, String(form.get("transferRef") ?? ""));
+  revalidatePath("/admin/payouts");
+}
+
+export async function failPayout(form: FormData) {
+  // Reverses ledger entries — ADMIN only.
+  const s = await requireSuperAdmin();
+  await commerce.failPayout(String(form.get("payoutId")), s.userId, String(form.get("reason") ?? ""));
+  revalidatePath("/admin/payouts");
 }

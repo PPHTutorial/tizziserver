@@ -103,6 +103,10 @@ async function etaRefresh() {
 
 // --- payout drain ------------------------------------------------
 async function payoutDrain() {
+  // Only the mock gateway may auto-settle. With a real provider configured but
+  // no disbursement adapter yet, payouts stay PENDING for staff to settle in
+  // the admin console (/admin/payouts) — never "PAID" without money moving.
+  if (env.PAYMENTS_PROVIDER !== "mock") return;
   const pending = await prisma.payout.findMany({ where: { status: "PENDING" }, take: 50 });
   for (const p of pending) {
     await prisma.payout.update({ where: { id: p.id }, data: { status: "PROCESSING" } });
