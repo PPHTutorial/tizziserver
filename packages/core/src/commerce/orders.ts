@@ -165,6 +165,20 @@ export async function placeOrder(input: PlaceOrderInput) {
   const blocked = cart.groups.flatMap((g) => g.items).filter((i) => !i.available);
   if (blocked.length) throw new AppError("CONFLICT", "Some items are no longer available — please review your cart", { itemIds: blocked.map((i) => i.id) });
 
+  // Never charge a stale add-to-cart snapshot: if a seller changed the price
+  // since, refresh those lines to the live price and make the buyer confirm
+  // the new total (a retry then goes through at the current price).
+  const repriced = cart.groups.flatMap((g) => g.items).filter((i) => i.priceChanged);
+  if (repriced.length) {
+    await prisma.$transaction(
+      repriced.map((i) => prisma.cartItem.update({ where: { id: i.id }, data: { unitPriceMinor: i.currentUnitPriceMinor } })),
+    );
+    throw new AppError("CONFLICT", "Some prices changed since you added them — please review your cart", {
+      itemIds: repriced.map((i) => i.id),
+      reason: "PRICE_CHANGED",
+    });
+  }
+
   let addr: Awaited<ReturnType<typeof getAddress>> | null = null;
   if (method !== "PICKUP") {
     if (!input.addressId) throw new AppError("VALIDATION", "A delivery address is required");
@@ -245,10 +259,21 @@ export async function placeOrder(input: PlaceOrderInput) {
       });
       for (const it of g.items) {
         if (!it.variantId) continue;
-        await tx.inventory.updateMany({
-          where: { variantId: it.variantId, vendorId: g.vendorId },
-          data: { reserved: { increment: it.qty } },
-        });
+        // Atomic stock-checked hold: only reserve if `quantity - reserved`
+        // still covers this line, so two buyers can't both take the last unit.
+        const held = await tx.$executeRaw`
+          UPDATE "inventory" SET "reserved" = "reserved" + ${it.qty}
+          WHERE "variantId" = ${it.variantId} AND "vendorId" = ${g.vendorId} AND "quantity" - "reserved" >= ${it.qty}`;
+        if (held === 0) {
+          const inv = await tx.inventory.findUnique({ where: { variantId_vendorId: { variantId: it.variantId, vendorId: g.vendorId } } });
+          // No inventory row ⇒ stock isn't tracked for this listing; don't block.
+          if (inv) {
+            throw new AppError("CONFLICT", `Only ${Math.max(0, inv.quantity - inv.reserved)} of "${it.title}" left in stock`, {
+              itemIds: [it.id],
+              reason: "OUT_OF_STOCK",
+            });
+          }
+        }
       }
     }
 
