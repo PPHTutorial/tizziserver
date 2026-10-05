@@ -60,7 +60,7 @@ export async function readAdminSession(): Promise<AdminSession | null> {
   const raw = jar.get(COOKIE)?.value;
   if (!raw) return null;
   try {
-    const { payload } = await jwtVerify(raw, await publicKeyP, { issuer: env.JWT_ISSUER, audience: AUD });
+    const { payload } = await jwtVerify(raw, await publicKeyP, { algorithms: [ALG], issuer: env.JWT_ISSUER, audience: AUD });
     const userId = String(payload.sub);
     // Re-derive authority from the DB on every request instead of trusting the
     // JWT's embedded roles — this session has no epoch/revocation mechanism of
@@ -97,4 +97,50 @@ export async function requireSuperAdmin(): Promise<AdminSession> {
 export async function clearAdminSession() {
   const jar = await cookies();
   jar.delete(COOKIE);
+}
+
+// --- pending second factor --------------------------------------------
+//
+// Proof that THIS browser just passed the SMS-OTP step for `userId`. The TOTP
+// step must read the user from here — never from a form field — or the OTP
+// step could be skipped by posting a phone number + TOTP guess directly.
+
+const MFA_COOKIE = "stall_admin_mfa";
+const MFA_AUD = "stall-admin-mfa";
+const MFA_TTL_SEC = 5 * 60;
+
+export async function createPendingMfa(userId: string): Promise<void> {
+  const token = await new SignJWT({})
+    .setProtectedHeader({ alg: ALG, typ: "JWT" })
+    .setSubject(userId)
+    .setIssuedAt()
+    .setIssuer(env.JWT_ISSUER)
+    .setAudience(MFA_AUD)
+    .setExpirationTime(`${MFA_TTL_SEC}s`)
+    .sign(await privateKeyP);
+  const jar = await cookies();
+  jar.set(MFA_COOKIE, token, {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/admin",
+    maxAge: MFA_TTL_SEC,
+  });
+}
+
+export async function readPendingMfa(): Promise<string | null> {
+  const jar = await cookies();
+  const raw = jar.get(MFA_COOKIE)?.value;
+  if (!raw) return null;
+  try {
+    const { payload } = await jwtVerify(raw, await publicKeyP, { algorithms: [ALG], issuer: env.JWT_ISSUER, audience: MFA_AUD });
+    return payload.sub ? String(payload.sub) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPendingMfa(): Promise<void> {
+  const jar = await cookies();
+  jar.delete(MFA_COOKIE);
 }
