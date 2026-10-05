@@ -173,6 +173,16 @@ class SettingsScreen extends ConsumerWidget {
                       onTap: () => openLegalPage(ref, 'terms'),
                     ),
                     AppListRow(
+                      icon: AppIcons.description_outlined,
+                      label: 'Open-source licences',
+                      // Required attribution for bundled libraries (e.g. the
+                      // LGPL ffmpeg-kit build used for product videos).
+                      onTap: () => showLicensePage(
+                        context: context,
+                        applicationName: boot?.platform.name ?? 'Stall',
+                      ),
+                    ),
+                    AppListRow(
                       icon: AppIcons.delete_outline,
                       label: 'Delete account',
                       tint: c.error,
